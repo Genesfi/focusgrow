@@ -286,6 +286,17 @@ public:
     FocusStats GetStats() const { return m_stats; }
 
     std::wstring GetStateJson() const {
+        HWND hwndForeground = GetForegroundWindow();
+        std::wstring activeExe = L"";
+        if (hwndForeground) {
+            DWORD pid = 0;
+            GetWindowThreadProcessId(hwndForeground, &pid);
+            if (pid > 0) {
+                std::wstring dummyPath;
+                activeExe = AppDetector::GetProcessNameFromPid(pid, dummyPath);
+            }
+        }
+
         std::wstringstream ss;
         ss << L"{"
            << L"\"state\":\"" << (m_state == SessionState::Idle ? L"idle" : (m_state == SessionState::Focusing ? L"focusing" : L"resting")) << L"\","
@@ -298,7 +309,8 @@ public:
            << L"\"completedMinutes\":" << m_stats.completedMinutesToday << L","
            << L"\"dailyGoalHours\":" << (m_stats.totalGoalMinutes / 60) << L","
            << L"\"yesterdayHours\":" << (m_stats.yesterdayHoursX10 / 10.0) << L","
-           << L"\"streakDays\":" << m_stats.streakDays
+           << L"\"streakDays\":" << m_stats.streakDays << L","
+           << L"\"activeExe\":\"" << activeExe << L"\""
            << L"}";
         return ss.str();
     }

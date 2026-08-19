@@ -1025,3 +1025,239 @@ body.pip-mode .up-next-info {
 body.pip-mode .card-header h2 {
     font-size: 13px;
 }
+
+/* Motivational & Wisdom Quote Banner */
+.quote-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 8px 0;
+    transition: all 0.3s ease;
+}
+
+.quote-card.active-timer-quote {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: rgba(96, 205, 255, 0.04);
+    border-color: rgba(96, 205, 255, 0.15);
+    margin: 4px 0 10px 0;
+    padding: 8px 12px;
+}
+
+.quote-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.quote-content {
+    flex: 1;
+}
+
+.quote-text {
+    font-size: 11.5px;
+    font-style: italic;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.quote-author {
+    font-size: 10px;
+    color: var(--accent-blue);
+    margin-top: 3px;
+    font-weight: 600;
+}
+
+/* Per-App Statistics Modal Styles */
+.stats-modal-card {
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.stats-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px;
+    border-radius: 8px;
+    gap: 4px;
+    margin-bottom: 14px;
+}
+
+.stats-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.stats-tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.stats-tab-btn.active {
+    background: var(--card-bg);
+    color: var(--accent-blue);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.stats-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.kpi-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+}
+
+.kpi-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kpi-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 4px 0 2px 0;
+}
+
+.kpi-val.kpi-time-range {
+    font-size: 11px;
+    color: var(--accent-blue);
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.kpi-sub {
+    font-size: 9.5px;
+    color: var(--text-secondary);
+}
+
+.stats-goal-bar-container {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+}
+
+.stats-goal-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.stats-goal-bar-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.stats-goal-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.stats-goal-status {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-align: right;
+}
+
+.stats-section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.stats-app-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.stats-app-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.stats-app-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.stats-app-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stats-app-time {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-blue);
+}
+
+.stats-app-bar-bg {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.stats-app-bar-fill {
+    height: 100%;
+    background: var(--accent-blue);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+

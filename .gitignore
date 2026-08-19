@@ -1,0 +1,35 @@
+# Windows build outputs & binaries
+bin/
+*.exe
+*.obj
+*.res
+*.ilk
+*.pdb
+*.exp
+*.lib
+
+# WebView2 Runtime User Data & Cache
+*.WebView2/
+EBWebView/
+
+# IDE & Editor project files
+.vs/
+.idea/
+.vscode/
+*.swp
+*.swo
+*.user
+*.suo
+*.vcxproj.user
+
+# OS System files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs & Temporary files
+*.log
+*.tmp
+*.bak

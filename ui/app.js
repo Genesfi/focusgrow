@@ -559,6 +559,189 @@ document.addEventListener('DOMContentLoaded', () => {
         goalDonutFill.style.strokeDashoffset = 301.5 * (1 - donutRatio);
     }
 
+    // Statistics Modal Elements
+    const statsModal = document.getElementById('stats-modal');
+    const btnOpenStats = document.getElementById('btn-open-stats');
+    const btnCloseStatsModal = document.getElementById('btn-close-stats-modal');
+
+    // Quotes Database (Motivational & Wisdom Quotes in Indonesian & English)
+    const FOCUS_QUOTES = [
+        { text: "Tetap fokus pada tujuanmu. Hasil besar dibangun dari langkah-langkah kecil setiap hari.", author: "FocusGrow Wisdom" },
+        { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
+        { text: "Konsistensi adalah kunci keberhasilan. Kerjakan tugasmu dengan penuh kesungguhan.", author: "Pepatah Produktif" },
+        { text: "Deep work is the superpower of the 21st century.", author: "Cal Newport" },
+        { text: "Jangan biarkan gangguan kecil menghalangi impian besarmu.", author: "Motivasi Kerja" },
+        { text: "Do what you have to do until you can do what you want to do.", author: "Oprah Winfrey" },
+        { text: "Satu jam fokus penuh jauh lebih berharga daripada seharian bekerja setengah hati.", author: "Prinsip Produktivitas" },
+        { text: "Starve your distractions, feed your focus.", author: "Anonymous" },
+        { text: "Kerjakan yang paling penting terlebih dahulu, biarkan yang lain menyusul.", author: "Manajemen Waktu" },
+        { text: "Action is the foundational key to all success.", author: "Pablo Picasso" },
+        { text: "Impian tidak terwujud lewat keajaiban; itu membutuhkan keringat, tekad, dan kerja keras.", author: "Colin Powell" },
+        { text: "You don't need more time, you just need more focus.", author: "Productivity Master" },
+        { text: "Fokus pada proses, hasil indah akan mengikuti dengan sendirinya.", author: "Filosofi Kerja" },
+        { text: "It's not that I'm so smart, it's just that I stay with problems longer.", author: "Albert Einstein" },
+        { text: "Fokus adalah seni mengatakan 'tidak' pada seribu hal baik lainnya.", author: "Steve Jobs" }
+    ];
+
+    const REST_QUOTES = [
+        { text: "Istirahat bukan berarti berhenti, melainkan mengisi ulang energi untuk melangkah lebih jauh.", author: "Nasihat Sehat" },
+        { text: "Rest when you're weary. Refresh and renew yourself, your body, your mind, your spirit.", author: "Ralph Marston" },
+        { text: "Jauhkan pandangan dari layar, regangkan tubuhmu, dan hirup udara segar.", author: "Panduan Istirahat" },
+        { text: "Almost everything will work again if you unplug it for a few minutes, including you.", author: "Anne Lamott" },
+        { text: "Kesehatan dan ketenangan pikiranmu adalah investasi terbaik untuk masa depan.", author: "Renungan Diri" },
+        { text: "Take a break. A rested mind can solve problems that a tired mind cannot.", author: "Wellness Wisdom" },
+        { text: "Minum air putih, berdiri sejenak, dan biarkan matamu beristirahat.", author: "Tips Sehat FocusGrow" },
+        { text: "Rest is not idleness, and to lie sometimes on the grass under trees is by no means a waste of time.", author: "John Lubbock" },
+        { text: "Tubuhmu butuh jeda agar bisa berlari kencang kembali nanti.", author: "Wejangan Bijak" },
+        { text: "He who holds his breath for too long will collapse. Breathe and rest now.", author: "Ancient Wisdom" }
+    ];
+
+    function updateRandomQuote(mode = 'focus') {
+        const quotes = (mode === 'rest' || mode === 'resting') ? REST_QUOTES : FOCUS_QUOTES;
+        const q = quotes[Math.floor(Math.random() * quotes.length)];
+        
+        const qTextSetup = document.getElementById('quote-text-setup');
+        const qAuthorSetup = document.getElementById('quote-author-setup');
+        const qTextTimer = document.getElementById('quote-text-timer');
+        const qAuthorTimer = document.getElementById('quote-author-timer');
+
+        if (qTextSetup) qTextSetup.textContent = `"${q.text}"`;
+        if (qAuthorSetup) qAuthorSetup.textContent = `— ${q.author}`;
+        if (qTextTimer) qTextTimer.textContent = `"${q.text}"`;
+        if (qAuthorTimer) qAuthorTimer.textContent = `— ${q.author}`;
+    }
+
+    updateRandomQuote('focus');
+
+    // Statistics Modal Handlers
+    btnOpenStats?.addEventListener('click', () => {
+        statsModal.classList.add('active');
+        renderStatsDashboard('today');
+    });
+
+    btnCloseStatsModal?.addEventListener('click', () => {
+        statsModal.classList.remove('active');
+    });
+
+    document.querySelectorAll('.stats-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const range = btn.getAttribute('data-range');
+            renderStatsDashboard(range);
+        });
+    });
+
+    // Helper: Format Seconds to Human readable (e.g. 1h 24m or 45m)
+    function formatSecs(secs) {
+        if (!secs || secs <= 0) return '0m';
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m`;
+    }
+
+    // Helper: Get Date Strings Array for Today, Week (7 days), or Month (30 days)
+    function getDateRangeArray(range) {
+        const dates = [];
+        const days = range === 'month' ? 30 : (range === 'week' ? 7 : 1);
+        const now = new Date();
+        for (let i = 0; i < days; i++) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            dates.push(d.toISOString().split('T')[0]);
+        }
+        return dates;
+    }
+
+    // Render Statistics Dashboard Modal
+    let activeStatsRange = 'today';
+    function renderStatsDashboard(range = activeStatsRange) {
+        activeStatsRange = range;
+        const targetDates = getDateRangeArray(range);
+        
+        let totalSecs = 0;
+        const appMap = {};
+        userData.appStatsByDate = userData.appStatsByDate || {};
+        userData.workTimeRangesByDate = userData.workTimeRangesByDate || {};
+
+        targetDates.forEach(dateStr => {
+            const dayStats = userData.appStatsByDate[dateStr];
+            if (dayStats) {
+                Object.keys(dayStats).forEach(exe => {
+                    const sec = dayStats[exe] || 0;
+                    totalSecs += sec;
+                    appMap[exe] = (appMap[exe] || 0) + sec;
+                });
+            }
+        });
+
+        // Summary Cards
+        document.getElementById('stats-kpi-total-time').textContent = formatSecs(totalSecs);
+
+        const totalMins = Math.floor(totalSecs / 60);
+        const daysCount = (range === 'month' ? 30 : (range === 'week' ? 7 : 1));
+        const targetGoalMins = (userData.dailyGoalHours || 1) * 60 * daysCount;
+        const goalPercent = Math.min(100, Math.round((totalMins / targetGoalMins) * 100));
+        
+        document.getElementById('stats-kpi-goal-percent').textContent = `${goalPercent}%`;
+        document.getElementById('stats-kpi-goal-sub').textContent = `Target: ${(targetGoalMins / 60).toFixed(0)} hrs`;
+        document.getElementById('stats-kpi-streak').textContent = `${userData.streakDays || 0} Days`;
+
+        // Active Work Window (First Start - Last Active)
+        const todayRange = userData.workTimeRangesByDate[todayDateStr];
+        const workWinElem = document.getElementById('stats-kpi-work-window');
+        if (todayRange && todayRange.firstStart) {
+            workWinElem.textContent = `${todayRange.firstStart} - ${todayRange.lastActive}`;
+        } else {
+            workWinElem.textContent = 'Not started';
+        }
+
+        // Goal Bar
+        document.getElementById('stats-goal-target-text').textContent = `${(targetGoalMins / 60).toFixed(1)} hrs (${range})`;
+        const remMins = Math.max(0, targetGoalMins - totalMins);
+        document.getElementById('stats-goal-status-text').textContent = remMins > 0 ? `${(remMins / 60).toFixed(1)} hrs remaining` : `Goal Met! 🎉`;
+        document.getElementById('stats-goal-bar-fill').style.width = `${goalPercent}%`;
+
+        // Ranked App List
+        const statsAppListContainer = document.getElementById('stats-app-list-container');
+        statsAppListContainer.innerHTML = '';
+
+        const sortedApps = Object.keys(appMap)
+            .map(exe => ({ exe, secs: appMap[exe] }))
+            .sort((a, b) => b.secs - a.secs);
+
+        if (sortedApps.length === 0) {
+            statsAppListContainer.innerHTML = `<div style="text-align:center; padding:24px; color:var(--text-muted); font-size:12px;">No focus data recorded for this period yet. Start a focus session to track app statistics!</div>`;
+            return;
+        }
+
+        const maxAppSecs = sortedApps[0].secs || 1;
+
+        sortedApps.forEach(item => {
+            const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
+            const relativePercent = Math.round((item.secs / maxAppSecs) * 100);
+
+            const div = document.createElement('div');
+            div.className = 'stats-app-item';
+            div.innerHTML = `
+                <div class="stats-app-top">
+                    <div class="stats-app-name">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff" stroke-width="2" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                        <span>${item.exe}</span>
+                    </div>
+                    <div class="stats-app-time">${formatSecs(item.secs)} (${percent}%)</div>
+                </div>
+                <div class="stats-app-bar-bg">
+                    <div class="stats-app-bar-fill" style="width: ${relativePercent}%;"></div>
+                </div>
+            `;
+            statsAppListContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.stats-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-range') === range);
+        });
+    }
+
     // Process C++ IPC Messages & Trigger Notifications
     window.onCppStateUpdate = function(data, isPip) {
         if (!data) return;
@@ -566,15 +749,37 @@ document.addEventListener('DOMContentLoaded', () => {
         activeState = data.state;
         isPaused = data.isPaused;
 
+        // Record per-app focus time tick (1 sec) & work hours window
+        if (activeState === 'focusing' && !isPaused && data.activeExe) {
+            userData.appStatsByDate = userData.appStatsByDate || {};
+            userData.appStatsByDate[todayDateStr] = userData.appStatsByDate[todayDateStr] || {};
+            const currentSec = userData.appStatsByDate[todayDateStr][data.activeExe] || 0;
+            userData.appStatsByDate[todayDateStr][data.activeExe] = currentSec + 1;
+
+            const timeNowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            userData.workTimeRangesByDate = userData.workTimeRangesByDate || {};
+            if (!userData.workTimeRangesByDate[todayDateStr]) {
+                userData.workTimeRangesByDate[todayDateStr] = { firstStart: timeNowStr, lastActive: timeNowStr };
+            } else {
+                userData.workTimeRangesByDate[todayDateStr].lastActive = timeNowStr;
+            }
+
+            saveUserData();
+        }
+
         if (activeState !== previousState) {
             if (activeState === 'focusing' && previousState === 'idle') {
                 sendNotification('Focus Mode Started', `Session started! Period 1 of ${data.totalPeriods || 1}. Stay focused!`);
+                updateRandomQuote('focus');
             } else if (activeState === 'resting') {
                 sendNotification('Time to Rest', `Focus period done! Step away from your computer for a ${selectedBreakMins} min break.`);
+                updateRandomQuote('rest');
             } else if (activeState === 'focusing' && previousState === 'resting') {
                 sendNotification('Focus Mode Active', `Break finished! Return to your work application.`);
+                updateRandomQuote('focus');
             } else if (activeState === 'idle' && (previousState === 'focusing' || previousState === 'resting')) {
                 sendNotification('Session Completed', `Great job! Focus session completed successfully.`);
+                updateRandomQuote('focus');
             }
             previousState = activeState;
             notifiedOneMinWarning = false;

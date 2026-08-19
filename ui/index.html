@@ -213,9 +213,14 @@
                 <section class="card progress-card">
                     <div class="card-header">
                         <h2>Daily progress</h2>
-                        <button class="icon-btn" id="btn-edit-goal" title="Edit Daily Goal">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </button>
+                        <div class="header-actions">
+                            <button class="icon-btn" id="btn-open-stats" title="View Focus Statistics">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                            </button>
+                            <button class="icon-btn" id="btn-edit-goal" title="Edit Daily Goal">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="progress-body">
@@ -376,6 +381,74 @@
                     <span>Clear App Whitelist</span>
                     <button class="small-action-btn" id="btn-clear-whitelist">Clear</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-App Focus Statistics Modal -->
+    <div class="modal-overlay" id="stats-modal">
+        <div class="modal-card stats-modal-card">
+            <div class="modal-header">
+                <div class="stats-modal-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                    <h3>Focus Statistics & App Usage Analytics</h3>
+                </div>
+                <button class="icon-btn modal-close" id="btn-close-stats-modal">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <!-- Date Range Filter Tabs -->
+            <div class="stats-tabs">
+                <button class="stats-tab-btn active" data-range="today">Today</button>
+                <button class="stats-tab-btn" data-range="week">This Week</button>
+                <button class="stats-tab-btn" data-range="month">This Month</button>
+            </div>
+
+            <!-- Realtime Working Hours & Goal KPI Summary -->
+            <div class="stats-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Focus Time</div>
+                    <div class="kpi-val" id="stats-kpi-total-time">0m</div>
+                    <div class="kpi-sub">Across active periods</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Goal Completion</div>
+                    <div class="kpi-val" id="stats-kpi-goal-percent">0%</div>
+                    <div class="kpi-sub" id="stats-kpi-goal-sub">Target: 1 hr</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Active Work Window</div>
+                    <div class="kpi-val kpi-time-range" id="stats-kpi-work-window">Not started</div>
+                    <div class="kpi-sub">Realtime working hours</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Streak</div>
+                    <div class="kpi-val" id="stats-kpi-streak">0 Days</div>
+                    <div class="kpi-sub">Consecutive goal met</div>
+                </div>
+            </div>
+
+            <!-- Goal Progress Bar -->
+            <div class="stats-goal-bar-container">
+                <div class="stats-goal-bar-header">
+                    <span>Goal Progress</span>
+                    <span id="stats-goal-target-text">1.0 hrs (Today)</span>
+                </div>
+                <div class="stats-goal-bar-bg">
+                    <div class="stats-goal-bar-fill" id="stats-goal-bar-fill" style="width: 0%;"></div>
+                </div>
+                <div class="stats-goal-status" id="stats-goal-status-text">0.0 hrs remaining</div>
+            </div>
+
+            <!-- Ranked App Focus Time List -->
+            <div class="stats-section-title">
+                <span>Application & Tool Breakdown</span>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Ranked by focus time</span>
+            </div>
+
+            <div class="stats-app-list" id="stats-app-list-container">
+                <!-- Dynamically populated via app.js -->
             </div>
         </div>
     </div>

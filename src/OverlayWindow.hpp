@@ -14,6 +14,43 @@ private:
     HWND m_hwnd = nullptr;
     OverlayMode m_mode = OverlayMode::None;
     std::wstring m_timerText = L"00:00";
+    std::wstring m_currentQuote = L"";
+
+    std::wstring GetRandomQuote(OverlayMode mode) {
+        static const std::vector<std::wstring> focusQuotes = {
+            L"\"Tetap fokus pada tujuanmu. Hasil besar dibangun dari langkah-langkah kecil setiap hari.\"",
+            L"\"Focus on being productive instead of busy. — Tim Ferriss\"",
+            L"\"Konsistensi adalah kunci keberhasilan. Kerjakan tugasmu dengan penuh kesungguhan.\"",
+            L"\"Deep work is the superpower of the 21st century. — Cal Newport\"",
+            L"\"Jangan biarkan gangguan kecil menghalangi impian besarmu.\"",
+            L"\"Do what you have to do until you can do what you want to do. — Oprah Winfrey\"",
+            L"\"Satu jam fokus penuh jauh lebih berharga daripada seharian bekerja setengah hati.\"",
+            L"\"Starve your distractions, feed your focus.\"",
+            L"\"Kerjakan yang paling penting terlebih dahulu, biarkan yang lain menyusul.\"",
+            L"\"Action is the foundational key to all success. — Pablo Picasso\"",
+            L"\"Impian tidak terwujud lewat keajaiban; itu membutuhkan keringat, tekad, dan kerja keras.\"",
+            L"\"You don't need more time, you just need more focus.\"",
+            L"\"Fokus pada proses, hasil indah akan mengikuti dengan sendirinya.\"",
+            L"\"It's not that I'm so smart, it's just that I stay with problems longer. — Albert Einstein\"",
+            L"\"Fokus adalah seni mengatakan 'tidak' pada seribu hal baik lainnya. — Steve Jobs\""
+        };
+
+        static const std::vector<std::wstring> restQuotes = {
+            L"\"Istirahat bukan berarti berhenti, melainkan mengisi ulang energi untuk melangkah lebih jauh.\"",
+            L"\"Rest when you're weary. Refresh and renew yourself, your body, your mind, your spirit. — Ralph Marston\"",
+            L"\"Jauhkan pandangan dari layar, regangkan tubuhmu, dan hirup udara segar.\"",
+            L"\"Almost everything will work again if you unplug it for a few minutes, including you. — Anne Lamott\"",
+            L"\"Kesehatan dan ketenangan pikiranmu adalah investasi terbaik untuk masa depan.\"",
+            L"\"Take a break. A rested mind can solve problems that a tired mind cannot.\"",
+            L"\"Minum air putih, berdiri sejenak, dan biarkan matamu beristirahat.\"",
+            L"\"Rest is not idleness; to lie on the grass under trees is by no means a waste of time. — John Lubbock\"",
+            L"\"Tubuhmu butuh jeda agar bisa berlari kencang kembali nanti.\"",
+            L"\"He who holds his breath for too long will collapse. Breathe and rest now.\""
+        };
+
+        const auto& list = (mode == OverlayMode::RestBreak) ? restQuotes : focusQuotes;
+        return list[rand() % list.size()];
+    }
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         OverlayWindow* self = nullptr;
@@ -48,15 +85,15 @@ private:
 
             int centerY = (rc.bottom - rc.top) / 2;
 
-            // Title - Clean text without ANSI encoding distortion
+            // Title
             HFONT hTitleFont = CreateFontW(-36, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                 CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
             HFONT hOldFont = (HFONT)SelectObject(hdc, hTitleFont);
 
             SetTextColor(hdc, RGB(255, 255, 255));
             RECT rcTitle = rc;
-            rcTitle.top = centerY - 160;
-            rcTitle.bottom = rcTitle.top + 60;
+            rcTitle.top = centerY - 180;
+            rcTitle.bottom = rcTitle.top + 50;
 
             if (m_mode == OverlayMode::RestBreak) {
                 DrawTextW(hdc, L"TIME TO REST & TAKE A BREAK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
@@ -73,19 +110,19 @@ private:
             SetTextColor(hdc, accentColor);
 
             RECT rcTimer = rc;
-            rcTimer.top = centerY - 70;
-            rcTimer.bottom = rcTimer.top + 90;
+            rcTimer.top = centerY - 110;
+            rcTimer.bottom = rcTimer.top + 80;
             DrawTextW(hdc, m_timerText.c_str(), -1, &rcTimer, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
             // Subtitle Message
-            HFONT hSubFont = CreateFontW(-22, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+            HFONT hSubFont = CreateFontW(-20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                 CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
             SelectObject(hdc, hSubFont);
             SetTextColor(hdc, RGB(200, 200, 200));
 
             RECT rcSub = rc;
-            rcSub.top = centerY + 40;
-            rcSub.bottom = rcSub.top + 100;
+            rcSub.top = centerY - 10;
+            rcSub.bottom = rcSub.top + 60;
 
             std::wstring subText;
             if (m_mode == OverlayMode::RestBreak) {
@@ -94,6 +131,23 @@ private:
                 subText = L"This application is not on your allowed focus whitelist.\nSwitch back to your work app or enable it in FocusGrow allowed list.";
             }
             DrawTextW(hdc, subText.c_str(), -1, &rcSub, DT_CENTER | DT_WORDBREAK);
+
+            // Motivational / Rest Quote Box Banner
+            if (!m_currentQuote.empty()) {
+                HFONT hQuoteFont = CreateFontW(-22, 0, 0, 0, FW_SEMIBOLD, TRUE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                    CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+                SelectObject(hdc, hQuoteFont);
+                SetTextColor(hdc, (m_mode == OverlayMode::RestBreak) ? RGB(167, 243, 208) : RGB(186, 230, 253));
+
+                RECT rcQuote = rc;
+                rcQuote.top = centerY + 80;
+                rcQuote.bottom = rcQuote.top + 100;
+                rcQuote.left += 60;
+                rcQuote.right -= 60;
+
+                DrawTextW(hdc, m_currentQuote.c_str(), -1, &rcQuote, DT_CENTER | DT_WORDBREAK);
+                DeleteObject(hQuoteFont);
+            }
 
             SelectObject(hdc, hOldFont);
             DeleteObject(hTitleFont);
@@ -141,6 +195,7 @@ public:
     void ShowOnMonitor(OverlayMode mode, const std::wstring& timerText, HWND targetHwnd = nullptr) {
         m_mode = mode;
         m_timerText = timerText;
+        m_currentQuote = GetRandomQuote(mode);
         if (!m_hwnd) return;
 
         HMONITOR hMon = nullptr;
