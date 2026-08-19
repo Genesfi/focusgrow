@@ -92,6 +92,7 @@ body {
     padding: 16px;
     flex: 1;
     overflow: hidden;
+    min-height: 0;
 }
 
 /* Cards */
@@ -104,6 +105,14 @@ body {
     flex-direction: column;
     position: relative;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    min-height: 0;
+}
+
+.focus-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -175,6 +184,10 @@ body {
     flex-direction: column;
     height: 100%;
     z-index: 2;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding-right: 4px;
 }
 
 .view-content.active {
@@ -606,6 +619,12 @@ input[type="number"] {
     flex-direction: column;
     gap: 16px;
     overflow: hidden;
+    min-height: 0;
+    height: 100%;
+}
+
+.progress-card {
+    flex-shrink: 0;
 }
 
 /* Daily Progress Card */
@@ -704,6 +723,7 @@ input[type="number"] {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-height: 140px;
 }
 
 .search-box {
@@ -867,13 +887,23 @@ input:checked + .slider:before {
     border-radius: 12px;
     width: 380px;
     max-width: 92vw;
-    max-height: calc(100vh - 36px);
+    max-height: calc(100vh - 32px);
     padding: 18px 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     overflow: hidden;
+}
+
+.modal-body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 6px;
 }
 
 .modal-header {
@@ -923,7 +953,11 @@ input:checked + .slider:before {
     padding-right: 4px;
 }
 
-/* Styled custom scrollbar for modal scrollable content */
+/* Styled custom scrollbar for modal and dashboard scrollable content */
+.view-content::-webkit-scrollbar,
+.app-list::-webkit-scrollbar,
+.dashboard::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar,
 .options-list::-webkit-scrollbar,
 .modal-card::-webkit-scrollbar,
 .stats-modal-card::-webkit-scrollbar,
@@ -931,6 +965,10 @@ input:checked + .slider:before {
     width: 5px;
 }
 
+.view-content::-webkit-scrollbar-track,
+.app-list::-webkit-scrollbar-track,
+.dashboard::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track,
 .options-list::-webkit-scrollbar-track,
 .modal-card::-webkit-scrollbar-track,
 .stats-modal-card::-webkit-scrollbar-track,
@@ -938,6 +976,10 @@ input:checked + .slider:before {
     background: transparent;
 }
 
+.view-content::-webkit-scrollbar-thumb,
+.app-list::-webkit-scrollbar-thumb,
+.dashboard::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb,
 .options-list::-webkit-scrollbar-thumb,
 .modal-card::-webkit-scrollbar-thumb,
 .stats-modal-card::-webkit-scrollbar-thumb,
@@ -946,6 +988,10 @@ input:checked + .slider:before {
     border-radius: 4px;
 }
 
+.view-content::-webkit-scrollbar-thumb:hover,
+.app-list::-webkit-scrollbar-thumb:hover,
+.dashboard::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover,
 .options-list::-webkit-scrollbar-thumb:hover,
 .modal-card::-webkit-scrollbar-thumb:hover,
 .stats-modal-card::-webkit-scrollbar-thumb:hover,
@@ -1807,5 +1853,110 @@ body.pip-mode .ytmusic-ticker {
     border-color: var(--accent-blue);
     color: var(--text-primary);
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+/* App Filter Chips Styling */
+.filter-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+}
+
+.filter-chip.active {
+    background: var(--accent-blue, #60cdff);
+    border-color: var(--accent-blue, #60cdff);
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(96, 205, 255, 0.3);
+}
+
+/* ========================================================
+   RESPONSIVE COMPACT STYLES FOR SMALL WINDOW HEIGHTS
+   ======================================================== */
+@media (max-height: 680px) {
+    .dashboard {
+        padding: 10px;
+        gap: 10px;
+    }
+    .card {
+        padding: 12px 14px;
+    }
+    .subtitle {
+        margin-bottom: 8px;
+        font-size: 11px;
+    }
+    .timer-picker-box {
+        padding: 10px 14px;
+        margin-bottom: 8px;
+    }
+    .picker-mins-input {
+        font-size: 38px;
+        width: 75px;
+    }
+    .setting-row {
+        padding: 6px 10px;
+        margin-bottom: 8px;
+    }
+    .breaks-summary {
+        margin-bottom: 8px;
+        font-size: 11px;
+    }
+    .checkbox-row {
+        margin-bottom: 8px;
+    }
+    .progress-body {
+        padding: 2px 0;
+    }
+    .goal-donut-container {
+        width: 90px;
+        height: 90px;
+    }
+    .donut-value {
+        font-size: 20px;
+    }
+    .stat-value {
+        font-size: 24px;
+    }
+    .completed-footer {
+        margin-top: 4px;
+        padding-top: 4px;
+        font-size: 11px;
+    }
+    .search-box {
+        margin-bottom: 6px;
+    }
+    #app-search-input {
+        padding: 5px 10px 5px 30px;
+        font-size: 11px;
+    }
+    .app-toolbar {
+        margin-top: 4px !important;
+        margin-bottom: 6px !important;
+    }
+    .app-item {
+        padding: 6px 10px;
+        min-height: 42px;
+        gap: 10px;
+    }
+    .app-icon {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+@media (max-height: 540px) {
+    .dashboard {
+        overflow-y: auto;
+    }
 }
 

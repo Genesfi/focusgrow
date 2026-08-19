@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Persistent State Management
     const STORAGE_KEY = 'focusgrow_user_data_v1';
     const todayDateStr = new Date().toISOString().split('T')[0];
+    const defaultIconSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2360cdff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>`;
+    const defaultVinylSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><defs><radialGradient id="grooveGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23111115"/><stop offset="25%" stop-color="%231a1a22"/><stop offset="35%" stop-color="%230d0d12"/><stop offset="50%" stop-color="%2322222a"/><stop offset="65%" stop-color="%230f0f14"/><stop offset="80%" stop-color="%231c1c24"/><stop offset="95%" stop-color="%230a0a0d"/><stop offset="100%" stop-color="%23050507"/></radialGradient><linearGradient id="sheen" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.18)"/><stop offset="45%" stop-color="rgba(255,255,255,0.02)"/><stop offset="50%" stop-color="rgba(255,255,255,0.22)"/><stop offset="55%" stop-color="rgba(255,255,255,0.02)"/><stop offset="100%" stop-color="rgba(255,255,255,0.12)"/></linearGradient><radialGradient id="centerLabel" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%231e293b"/><stop offset="70%" stop-color="%230f172a"/><stop offset="100%" stop-color="%23020617"/></radialGradient><linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%2360cdff"/><stop offset="100%" stop-color="%233b82f6"/></linearGradient></defs><circle cx="250" cy="250" r="248" fill="url(%23grooveGrad)" stroke="%232d3748" stroke-width="2"/><circle cx="250" cy="250" r="230" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/><circle cx="250" cy="250" r="210" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2"/><circle cx="250" cy="250" r="190" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5"/><circle cx="250" cy="250" r="170" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/><circle cx="250" cy="250" r="150" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/><circle cx="250" cy="250" r="130" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/><circle cx="250" cy="250" r="248" fill="url(%23sheen)"/><circle cx="250" cy="250" r="95" fill="url(%23centerLabel)" stroke="url(%23goldAccent)" stroke-width="3"/><circle cx="250" cy="250" r="88" fill="none" stroke="rgba(255,255,255,0.15)" stroke-dasharray="4 4" stroke-width="1"/><g transform="translate(250, 215) scale(1.3)" opacity="0.9"><path d="M-6 12 A6 6 0 1 1 -18 12 A6 6 0 1 1 -6 12 M-6 12 L-6 -10 L10 -15 L10 5 A6 6 0 1 1 -2 5 A6 6 0 1 1 10 5 L10 -15 L-6 -10" fill="none" stroke="%2360cdff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></g><text x="250" y="272" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="%23ffffff" text-anchor="middle" letter-spacing="2">FOCUS %26 FLOW</text><text x="250" y="290" font-family="'Segoe UI', sans-serif" font-size="10" font-weight="600" fill="%2360cdff" text-anchor="middle" letter-spacing="1.5">HI-FI VINYL EDITION</text><text x="250" y="306" font-family="'Segoe UI', sans-serif" font-size="8" fill="%2394a3b8" text-anchor="middle" letter-spacing="1">PLAY MUSIC TO SYNC ALBUM ART</text><circle cx="250" cy="250" r="14" fill="%23020617" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/></svg>`;
 
     let userData = {
         selectedMins: 30,
@@ -330,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tickerSetup) tickerSetup.style.display = showTicker ? 'flex' : 'none';
         if (tickerTimer) tickerTimer.style.display = showTicker ? 'flex' : 'none';
 
-        const defaultCover = 'https://music.youtube.com/img/on_platform_logo.svg';
+        const defaultCover = defaultVinylSvg;
         const coverSrc = ytTrackData.image || defaultCover;
         
         if (vinylCoverImg) {
@@ -1021,8 +1023,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.querySelectorAll('.btn-options-trigger, #btn-options').forEach(btn => {
-        btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-options-trigger, #btn-options, #btn-options-progress').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e?.stopPropagation();
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             chkNotificationsToggle.checked = userData.notificationsEnabled;
             applyGifTheme();
             optionsModal.classList.add('active');
@@ -1074,6 +1078,26 @@ document.addEventListener('DOMContentLoaded', () => {
         optionsModal.classList.remove('active');
     });
 
+    // Filter & Sort State for Allowed Applications List
+    let currentAppFilter = 'all'; // 'all', 'allowed', 'disabled'
+    let currentAppSort = 'latest'; // 'latest', 'name'
+
+    // Filter Chips Listeners
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentAppFilter = chip.getAttribute('data-filter') || 'all';
+            renderAppList(cachedAppList);
+        });
+    });
+
+    // Sort Dropdown Selector Listener
+    document.getElementById('app-sort-select')?.addEventListener('change', (e) => {
+        currentAppSort = e.target.value || 'latest';
+        renderAppList(cachedAppList);
+    });
+
     // Search Input Listener
     appSearchInput.addEventListener('input', () => {
         renderAppList(cachedAppList);
@@ -1083,8 +1107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRefreshApps.addEventListener('click', () => {
         sendToCpp({ action: 'getRunningApps' });
     });
-
-    const defaultIconSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2360cdff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>`;
 
     // Clean DOM Node App Whitelist Renderer
     window.renderAppList = function(apps) {
@@ -1105,13 +1127,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchQuery = (appSearchInput.value || '').trim().toLowerCase();
 
         let displayApps = cachedAppList.filter(app => {
+            const isAllowed = allowedItems.some(a => 
+                a.toLowerCase() === app.exeName.toLowerCase() || 
+                (app.title && app.title.toLowerCase().includes(a.toLowerCase()))
+            );
+            if (currentAppFilter === 'allowed' && !isAllowed) return false;
+            if (currentAppFilter === 'disabled' && isAllowed) return false;
+
             if (!searchQuery) return true;
             return (app.title && app.title.toLowerCase().includes(searchQuery)) ||
                    (app.exeName && app.exeName.toLowerCase().includes(searchQuery));
         });
 
+        // Sort by Name (A-Z) or Latest Open
+        if (currentAppSort === 'name') {
+            displayApps.sort((a, b) => {
+                const nameA = (a.title || a.exeName || '').toLowerCase();
+                const nameB = (b.title || b.exeName || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+        }
+
         if (displayApps.length === 0) {
-            appListContainer.innerHTML = `<div style="text-align:center; padding: 20px; font-size: 12px; color: var(--text-muted);">No matching applications or tabs found</div>`;
+            appListContainer.innerHTML = `<div style="text-align:center; padding: 20px; font-size: 12px; color: var(--text-muted);">No matching applications found for filter: "${currentAppFilter}"</div>`;
             return;
         }
 
@@ -1241,22 +1279,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateRandomQuote('focus');
 
-    // Statistics Modal Handlers
-    btnOpenStats?.addEventListener('click', () => {
-        statsModal.classList.add('active');
-        renderStatsDashboard('today');
-    });
-
-    btnCloseStatsModal?.addEventListener('click', () => {
-        statsModal.classList.remove('active');
-    });
-
-    document.querySelectorAll('.stats-tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const range = btn.getAttribute('data-range');
-            renderStatsDashboard(range);
-        });
-    });
+    // Render Statistics Dashboard Modal
+    let activeStatsRange = 'today';
 
     // Helper: Format Seconds to Human readable (e.g. 1h 24m or 45m)
     function formatSecs(secs) {
@@ -1280,10 +1304,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return dates;
     }
 
-    // Render Statistics Dashboard Modal
-    let activeStatsRange = 'today';
+    // Statistics Modal Handlers
+    document.querySelectorAll('#btn-open-stats, .btn-stats-trigger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+            const targetModal = document.getElementById('stats-modal');
+            if (targetModal) {
+                targetModal.classList.add('active');
+                renderStatsDashboard('today');
+            }
+        });
+    });
+
+    btnCloseStatsModal?.addEventListener('click', () => {
+        const targetModal = document.getElementById('stats-modal');
+        if (targetModal) targetModal.classList.remove('active');
+    });
+
+    document.querySelectorAll('.stats-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const range = btn.getAttribute('data-range');
+            renderStatsDashboard(range);
+        });
+    });
     function renderStatsDashboard(range = activeStatsRange) {
         activeStatsRange = range;
+        
+        document.querySelectorAll('.stats-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-range') === range);
+        });
+
         const targetDates = getDateRangeArray(range);
         
         let totalSecs = 0;
@@ -1398,10 +1449,6 @@ document.addEventListener('DOMContentLoaded', () => {
             div.appendChild(barBgDiv);
 
             statsAppListContainer.appendChild(div);
-        });
-
-        document.querySelectorAll('.stats-tab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.getAttribute('data-range') === range);
         });
     }
 

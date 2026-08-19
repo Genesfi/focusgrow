@@ -334,6 +334,28 @@
                         <input type="text" id="app-search-input" placeholder="Search applications or browser tabs...">
                     </div>
 
+                    <!-- App Filter Chips & Sorting Control Toolbar -->
+                    <div class="app-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; margin-bottom: 10px;">
+                        <div class="app-filter-chips" style="display: flex; gap: 4px;">
+                            <button class="filter-chip active" data-filter="all">All</button>
+                            <button class="filter-chip" data-filter="allowed" style="display: inline-flex; align-items: center; gap: 4px;">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Allowed</span>
+                            </button>
+                            <button class="filter-chip" data-filter="disabled" style="display: inline-flex; align-items: center; gap: 4px;">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff2a70" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                                <span>Disabled</span>
+                            </button>
+                        </div>
+                        <div class="app-sort-wrapper" style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 10px; color: var(--text-muted);">Sort:</span>
+                            <select id="app-sort-select" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary); font-size: 11px; padding: 3px 6px; border-radius: 6px; outline: none; cursor: pointer;">
+                                <option value="latest">Latest Open</option>
+                                <option value="name">Name (A-Z)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="app-list" id="app-list-container">
                         <!-- Populated dynamically via JS -->
                     </div>
@@ -348,17 +370,22 @@
             <div class="modal-header">
                 <h3>Edit Daily Focus Goal</h3>
                 <button class="icon-btn modal-close" id="btn-close-goal-modal">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
-            <p class="subtitle">Choose how many hours you plan to focus each day:</p>
-            <div class="goal-grid">
-                <button class="goal-chip" data-hours="1">1 Hour</button>
-                <button class="goal-chip" data-hours="2">2 Hours</button>
-                <button class="goal-chip" data-hours="3">3 Hours</button>
-                <button class="goal-chip" data-hours="4">4 Hours</button>
-                <button class="goal-chip" data-hours="6">6 Hours</button>
-                <button class="goal-chip" data-hours="8">8 Hours</button>
+            <div class="modal-body">
+                <div class="option-section">
+                    <label>Target Focus Hours / Day</label>
+                    <div class="speed-selector" style="margin-top: 8px;">
+                        <button class="goal-chip" data-hours="1">1h</button>
+                        <button class="goal-chip" data-hours="2">2h</button>
+                        <button class="goal-chip" data-hours="3">3h</button>
+                        <button class="goal-chip" data-hours="4">4h</button>
+                        <button class="goal-chip" data-hours="5">5h</button>
+                        <button class="goal-chip" data-hours="6">6h</button>
+                        <button class="goal-chip" data-hours="8">8h</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -367,18 +394,14 @@
     <div class="modal-overlay" id="options-modal">
         <div class="modal-card">
             <div class="modal-header">
-                <h3>Focus Session Options</h3>
+                <h3>Session & Ambient Options</h3>
                 <button class="icon-btn modal-close" id="btn-close-options-modal">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
-            <div class="options-list">
-                <!-- Notifications Toggle -->
+            <div class="modal-body">
                 <div class="option-row">
-                    <div>
-                        <div class="option-title">Session Notifications & Reminders</div>
-                        <div class="option-sub">Alerts for break start, focus start, & 1-min warnings</div>
-                    </div>
+                    <span>Desktop Notifications</span>
                     <label class="switch">
                         <input type="checkbox" id="chk-notifications-toggle" checked>
                         <span class="slider"></span>
@@ -467,6 +490,8 @@
                         <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span id="opacity-label">78%</span></div>
                         <input type="range" id="gif-opacity-slider" min="10" max="100" value="78" style="width: 100%; accent-color: var(--accent-blue);">
                     </div>
+                </div>
+
                 <div class="option-section" style="margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px;">
                     <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Accent Color Theme</label>
                     <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose preset, pick custom color, or extract dynamically from YT Music album art:</div>
