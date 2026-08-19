@@ -115,6 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gifOpacity: 78,
         gifDisplayMode: 'circle', // 'circle' or 'full'
         ambientMode: 'plant', // 'plant', 'custom', or 'ytmusic'
+        accentMode: 'preset', // 'preset', 'custom', or 'ytmusic_dynamic'
+        accentColor: '#60cdff',
         customGifData: '',
         customGifName: '',
         recentGifs: [], // Stores up to 5 recently used custom GIFs: { id, name, data }
@@ -344,6 +346,15 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
         }
 
+        // Dynamic YT Music Album Accent Color Extraction Mode
+        if (userData.accentMode === 'ytmusic_dynamic' && coverSrc) {
+            extractDominantColor(coverSrc, (dynamicHex) => {
+                applyAccentTheme(dynamicHex);
+            });
+        } else if (userData.accentMode === 'custom' || userData.accentMode === 'preset') {
+            applyAccentTheme(userData.accentColor || '#60cdff');
+        }
+
         // Update Play/Pause Media Control Icons (❚❚ vs ▶)
         const isPaused = ytTrackData.isPaused || !ytTrackData.isPlaying;
         document.querySelectorAll('.btn-yt-playpause').forEach(btn => {
@@ -355,6 +366,81 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Dynamic Accent Color Manager & Realtime CSS Variable Applicator
+    function applyAccentTheme(hexColor) {
+        if (!hexColor) return;
+        document.documentElement.style.setProperty('--accent-blue', hexColor);
+        document.documentElement.style.setProperty('--accent-blue-hover', hexColor);
+        const picker = document.getElementById('accent-color-picker');
+        if (picker && hexColor.startsWith('#')) picker.value = hexColor;
+    }
+
+    // Extract Vibrant Dominant Color from Album Cover Canvas
+    function extractDominantColor(imageUrl, callback) {
+        if (!imageUrl) return;
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 32, 32);
+                const data = ctx.getImageData(0, 0, 32, 32).data;
+                let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2];
+                    const max = Math.max(r, g, b);
+                    const min = Math.min(r, g, b);
+                    const saturation = max === 0 ? 0 : (max - min) / max;
+                    if (max > 40 && max < 240 && saturation > 0.15) {
+                        rSum += r; gSum += g; bSum += b;
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    const r = Math.round(rSum / count);
+                    const g = Math.round(gSum / count);
+                    const b = Math.round(bSum / count);
+                    const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                    callback(hex);
+                } else {
+                    callback('#60cdff');
+                }
+            } catch (e) {
+                callback('#60cdff');
+            }
+        };
+        img.onerror = () => callback('#60cdff');
+        img.src = imageUrl;
+    }
+
+    // Synchronize Full-Panel Vinyl Center Point to Exact Center of Timer Clock Ring Dial
+    function syncVinylCenterPosition() {
+        const focusCard = document.getElementById('focus-card');
+        const gaugeContainer = document.querySelector('.gauge-container');
+        const cardVinylDisc = document.querySelector('.card-vinyl-disc');
+        
+        if (!focusCard || !cardVinylDisc) return;
+
+        let centerY = 208;
+        let centerX = focusCard.offsetWidth / 2;
+
+        if (gaugeContainer) {
+            const cardRect = focusCard.getBoundingClientRect();
+            const gaugeRect = gaugeContainer.getBoundingClientRect();
+            if (gaugeRect.height > 0 && cardRect.height > 0) {
+                centerY = (gaugeRect.top + gaugeRect.height / 2) - cardRect.top;
+                centerX = (gaugeRect.left + gaugeRect.width / 2) - cardRect.left;
+            }
+        }
+
+        cardVinylDisc.style.top = `${centerY.toFixed(1)}px`;
+        cardVinylDisc.style.left = `${centerX.toFixed(1)}px`;
+    }
+    window.addEventListener('resize', syncVinylCenterPosition);
 
     // Realtime GIF Theme & Display Mode Renderer
     function applyGifTheme() {
@@ -407,6 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.speed-chip').forEach(chip => {
                 chip.classList.toggle('active', parseInt(chip.getAttribute('data-speed')) === currentSpeed);
             });
+            setTimeout(syncVinylCenterPosition, 10);
 
             document.querySelectorAll('.size-preset-chip').forEach(chip => {
                 chip.classList.toggle('active', parseInt(chip.getAttribute('data-size')) === currentSize);
@@ -651,6 +738,36 @@ document.addEventListener('DOMContentLoaded', () => {
             saveUserData();
             applyGifTheme();
         });
+    });
+
+    // Accent Color Preset Chips Listener
+    document.querySelectorAll('.accent-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const accentVal = chip.getAttribute('data-accent');
+            document.querySelectorAll('.accent-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+
+            if (accentVal === 'ytmusic_dynamic') {
+                userData.accentMode = 'ytmusic_dynamic';
+                saveUserData();
+                updateYtMusicUI();
+            } else {
+                userData.accentMode = 'preset';
+                userData.accentColor = accentVal;
+                saveUserData();
+                applyAccentTheme(accentVal);
+            }
+        });
+    });
+
+    // Custom Color Picker Listener
+    document.getElementById('accent-color-picker')?.addEventListener('input', (e) => {
+        const hex = e.target.value;
+        userData.accentMode = 'custom';
+        userData.accentColor = hex;
+        document.querySelectorAll('.accent-chip').forEach(c => c.classList.remove('active'));
+        saveUserData();
+        applyAccentTheme(hex);
     });
 
     // YT Music Media Control Buttons (Prev, Play/Pause, Next)
@@ -1349,6 +1466,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.body.classList.remove('pip-mode');
         }
+        setTimeout(syncVinylCenterPosition, 10);
+        setTimeout(syncVinylCenterPosition, 50);
         if (titlebarText) titlebarText.textContent = 'FocusGrow';
 
         if (data.formattedTime) {
@@ -1371,15 +1490,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             pauseIcon.style.display = isPaused ? 'none' : 'block';
             playIcon.style.display = isPaused ? 'block' : 'none';
+            setTimeout(syncVinylCenterPosition, 20);
         } else if (activeState === 'resting') {
             setupView.classList.remove('active');
             timerView.classList.add('active');
             activeStatusLabel.textContent = 'RESTING & STEP OUTSIDE';
             focusPeriodTitle.textContent = 'Mandatory Break';
             upNextText.textContent = 'Step away from screen & walk outside';
+            setTimeout(syncVinylCenterPosition, 20);
         } else {
             timerView.classList.remove('active');
             setupView.classList.add('active');
+            setTimeout(syncVinylCenterPosition, 20);
         }
 
         if (data.remainingSec !== undefined && data.maxPeriodSec > 0) {

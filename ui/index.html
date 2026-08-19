@@ -467,6 +467,23 @@
                         <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span id="opacity-label">78%</span></div>
                         <input type="range" id="gif-opacity-slider" min="10" max="100" value="78" style="width: 100%; accent-color: var(--accent-blue);">
                     </div>
+                <div class="option-section" style="margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px;">
+                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Accent Color Theme</label>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose preset, pick custom color, or extract dynamically from YT Music album art:</div>
+                    
+                    <div class="speed-selector" style="margin-bottom: 8px; flex-wrap: wrap;">
+                        <button class="accent-chip active" data-accent="#60cdff" style="border-left: 4px solid #60cdff;">🔷 Blue</button>
+                        <button class="accent-chip" data-accent="#ff2a70" style="border-left: 4px solid #ff2a70;">🌸 Pink</button>
+                        <button class="accent-chip" data-accent="#00e676" style="border-left: 4px solid #00e676;">🌿 Green</button>
+                        <button class="accent-chip" data-accent="#a855f7" style="border-left: 4px solid #a855f7;">🔮 Purple</button>
+                        <button class="accent-chip" data-accent="#f59e0b" style="border-left: 4px solid #f59e0b;">🍊 Orange</button>
+                        <button class="accent-chip" data-accent="ytmusic_dynamic" style="border-left: 4px solid #ff0050;">🎵 Dynamic Album</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                        <span style="font-size: 11px; color: var(--text-muted);">Custom Color Picker:</span>
+                        <input type="color" id="accent-color-picker" value="#60cdff" style="border: none; background: none; width: 32px; height: 32px; cursor: pointer;">
+                    </div>
                 </div>
 
                 <div class="option-row">

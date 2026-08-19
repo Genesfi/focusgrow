@@ -13,13 +13,17 @@
 - **App Whitelist & Guard**: Automatically blocks non-whitelisted applications during active focus periods to eliminate distractions.
 - **Daily Focus Statistics**: Track your daily completed focus minutes against customizable goals with persistent local storage.
 
-### 🎵 2. YouTube Music Vinyl Record Sync (`ytmpx`)
-- **Live Album Art & Metadata Sync**: Connects with Chrome extensions (`ytmpx` & `yt-music-vinyl`) to display active song titles, artist names, and album art on a spinning vinyl record backdrop.
+### 🎵 2. YouTube Music Vinyl Record Sync & Dynamic Accent
+- **Live Album Art & Metadata Sync**: Connects with browser extension to display active song titles, artist names, and album art on a spinning vinyl record backdrop.
 - **Integrated Media Player Controls**:
   - `⏮️` **Previous Track**
   - `⏯️` **Play / Pause (Dynamic Toggle)**
   - `⏭️` **Next Track**
   - Controls YouTube Music directly without switching tabs out of your workflow.
+- **Dynamic Accent Theme & Color Customization**:
+  - 🎨 Preset Accent Color chips (Blue, Pink, Green, Purple, Orange).
+  - 🖌️ Custom HTML5 Color Picker (`<input type="color">`).
+  - 🎵 **Dynamic Album Color Sync**: Automatically extracts prominent vibrant colors from active YouTube Music album art to dynamically color progress rings, buttons, and UI highlights.
 - **Live Vinyl Customization Controls**:
   - 📏 **Real-time Disc Size Slider (`120px` – `850px`)**: Smoothly scale the vinyl record to any diameter with live preview.
   - ⚡ **Rotation Speed Selector**: Choose between `Fast (3s)`, `Normal (6s)`, `Slow (10s)`, or `Relaxed (16s)`.
@@ -32,6 +36,21 @@
 ### 📌 4. Floating PiP (Picture-in-Picture) Mini Widget
 - **Pop-Out Floating Widget**: Switch into a top-most mini window mode to keep your focus timer visible alongside your workspace.
 - **Native Window Resize Boundaries**: Built-in Windows `WM_GETMINMAXINFO` guard prevents window squashing while maintaining fluid responsive layouts.
+
+---
+
+## 🧩 YouTube Music Extension Requirement (`ytmpx-mod`)
+
+To enable **live YouTube Music album art, track titles, and spinning vinyl background sync**, install the companion browser extension:
+
+🔗 **[ytmpx-mod on GitHub](https://github.com/Genesfi/ytmpx-mod)**
+
+### Installation Steps:
+1. Clone or download the repository from [https://github.com/Genesfi/ytmpx-mod](https://github.com/Genesfi/ytmpx-mod).
+2. Open Chrome (or Chromium-based browser like Edge/Brave) and go to `chrome://extensions`.
+3. Enable **Developer mode** in the top-right corner.
+4. Click **Load unpacked** and select the `ytmpx-mod` extension folder.
+5. Open and play music on [YouTube Music](https://music.youtube.com). FocusGrow will automatically sync album art, song titles, media controls, and dynamic accent colors in real-time!
 
 ---
 

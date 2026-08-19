@@ -507,6 +507,13 @@ input[type="number"] {
 
 .gauge-center {
     position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     z-index: 3;
     background: transparent !important;
@@ -1227,6 +1234,14 @@ body.pip-mode .timer-time {
 }
 
 body.pip-mode .gauge-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     width: min(44vw, 30vh);
     height: min(44vw, 30vh);
     max-width: 96px;
@@ -1536,7 +1551,7 @@ body.pip-mode .ytmusic-ticker {
 
 .card-vinyl-disc {
     position: absolute;
-    top: 175px; /* Permanently locked to exact center point of timer clock dial ring */
+    top: 208px; /* Locked to exact center point of timer clock dial ring */
     left: 50%;
     width: var(--vinyl-size, 680px);
     height: var(--vinyl-size, 680px);
@@ -1632,10 +1647,11 @@ body.pip-mode .ytmusic-ticker {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(20, 20, 20, 0.65);
+    background: rgba(20, 20, 20, 0.75);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 0, 80, 0.4);
+    border: 1px solid var(--accent-blue, #60cdff);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     border-radius: 6px;
     padding: 6px 12px;
     margin-bottom: 10px;
@@ -1643,6 +1659,7 @@ body.pip-mode .ytmusic-ticker {
     box-sizing: border-box;
     flex-shrink: 0;
     overflow: hidden;
+    transition: border-color 0.3s ease;
 }
 
 .ytmusic-media-controls {
@@ -1754,13 +1771,41 @@ body.pip-mode .ytmusic-ticker {
     display: inline-block;
     font-size: 11px;
     font-weight: 600;
-    color: #ff6088;
+    color: var(--accent-blue, #60cdff);
     padding-left: 100%;
     animation: tickerMarquee 12s linear infinite;
+    transition: color 0.3s ease;
 }
 
 @keyframes tickerMarquee {
     0% { transform: translateX(0); }
     100% { transform: translateX(-100%); }
+}
+
+/* Accent Color Selector Chips */
+.accent-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.accent-chip:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+}
+
+.accent-chip.active {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
