@@ -194,6 +194,20 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
+    case WM_GETMINMAXINFO:
+        {
+            LPMINMAXINFO lpmmi = (LPMINMAXINFO)lParam;
+            if (lpmmi) {
+                if (g_isPipMode) {
+                    lpmmi->ptMinTrackSize.x = 240; // Minimum width limit for PiP Floating mode
+                    lpmmi->ptMinTrackSize.y = 330; // Minimum height limit for PiP Floating mode
+                } else {
+                    lpmmi->ptMinTrackSize.x = 760; // Minimum width limit for Normal Dashboard mode
+                    lpmmi->ptMinTrackSize.y = 520; // Minimum height limit for Normal Dashboard mode
+                }
+            }
+        }
+        break;
     case WM_SIZE:
         if (g_webController != nullptr) {
             RECT bounds;
