@@ -199,10 +199,41 @@ body {
     gap: 8px;
 }
 
-.picker-value span:first-child {
+/* Hide spin buttons for numeric inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.picker-mins-input {
     font-size: 52px;
     font-weight: 600;
     font-family: 'Segoe UI Variable Display', 'Segoe UI', sans-serif;
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    width: 95px;
+    text-align: center;
+    padding: 0 4px;
+    margin: 0;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.picker-mins-input:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.picker-mins-input:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--accent-blue);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(96, 205, 255, 0.25);
 }
 
 .picker-value .unit {
@@ -257,10 +288,31 @@ body {
     gap: 8px;
 }
 
-.small-picker-box span:first-of-type {
+.small-picker-input {
     font-size: 16px;
     font-weight: 700;
+    font-family: inherit;
     color: var(--accent-blue);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    width: 48px;
+    text-align: center;
+    padding: 2px 4px;
+    margin: 0;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.small-picker-input:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.small-picker-input:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--accent-blue);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(96, 205, 255, 0.25);
 }
 
 .small-picker-box .unit {
@@ -775,6 +827,8 @@ input:checked + .slider:before {
     z-index: 1000;
     align-items: center;
     justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .modal-overlay.active {
@@ -785,22 +839,27 @@ input:checked + .slider:before {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
-    width: 350px;
-    padding: 20px;
+    width: 380px;
+    max-width: 92vw;
+    max-height: calc(100vh - 36px);
+    padding: 18px 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .modal-header h3 {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
 }
 
@@ -831,8 +890,41 @@ input:checked + .slider:before {
 .options-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 6px;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+    padding-right: 4px;
+}
+
+/* Styled custom scrollbar for modal scrollable content */
+.options-list::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar,
+.stats-modal-card::-webkit-scrollbar,
+.stats-app-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.options-list::-webkit-scrollbar-track,
+.modal-card::-webkit-scrollbar-track,
+.stats-modal-card::-webkit-scrollbar-track,
+.stats-app-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.options-list::-webkit-scrollbar-thumb,
+.modal-card::-webkit-scrollbar-thumb,
+.stats-modal-card::-webkit-scrollbar-thumb,
+.stats-app-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+}
+
+.options-list::-webkit-scrollbar-thumb:hover,
+.modal-card::-webkit-scrollbar-thumb:hover,
+.stats-modal-card::-webkit-scrollbar-thumb:hover,
+.stats-app-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue);
 }
 
 .option-row {
@@ -873,20 +965,127 @@ input:checked + .slider:before {
 }
 
 .gif-chip, .gif-mode-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     background: var(--button-sec-bg);
     border: 1px solid var(--card-border);
     color: var(--text-primary);
-    padding: 6px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-size: 11px;
+    font-weight: 500;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
+}
+
+.gif-chip svg, .gif-mode-chip svg {
+    flex-shrink: 0;
+    display: block;
 }
 
 .gif-chip.active, .gif-chip:hover,
 .gif-mode-chip.active, .gif-mode-chip:hover {
     background: var(--button-sec-hover);
     border-color: var(--accent-blue);
+}
+
+/* Recent GIFs Section & Cards */
+.text-link-btn {
+    background: transparent;
+    border: none;
+    color: #ff6b6b;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+
+.text-link-btn:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.recent-gifs-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.recent-gif-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(35, 35, 35, 0.8);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 4px 8px 4px 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    max-width: 140px;
+}
+
+.recent-gif-card:hover {
+    background: rgba(50, 50, 50, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.recent-gif-card.active {
+    background: rgba(96, 205, 255, 0.12);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.recent-gif-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    object-fit: cover;
+    background: #000;
+    flex-shrink: 0;
+}
+
+.recent-gif-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.recent-gif-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-remove-recent {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+
+.recent-gif-card:hover .btn-remove-recent {
+    opacity: 1;
+}
+
+.btn-remove-recent:hover {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.15);
 }
 
 .small-action-btn {

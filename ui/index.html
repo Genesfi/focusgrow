@@ -58,7 +58,7 @@
                     <!-- Focus Time Picker -->
                     <div class="timer-picker-box">
                         <div class="picker-value">
-                            <span id="picker-mins-display">30</span>
+                            <input type="number" id="picker-mins-input" class="picker-mins-input" value="30" min="1" max="480" aria-label="Focus session minutes">
                             <span class="unit">mins focus</span>
                         </div>
                         <div class="picker-controls">
@@ -78,7 +78,7 @@
                             <button id="btn-period-down" class="small-btn">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
-                            <span id="picker-period-display">25</span> <span class="unit">mins</span>
+                            <input type="number" id="picker-period-input" class="small-picker-input" value="25" min="1" max="120" aria-label="Focus period length"> <span class="unit">mins</span>
                             <button id="btn-period-up" class="small-btn">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
@@ -92,7 +92,7 @@
                             <button id="btn-break-down" class="small-btn">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
-                            <span id="picker-break-display">5</span> <span class="unit">mins</span>
+                            <input type="number" id="picker-break-input" class="small-picker-input" value="5" min="1" max="60" aria-label="Break duration"> <span class="unit">mins</span>
                             <button id="btn-break-up" class="small-btn">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
@@ -343,6 +343,15 @@
                         <input type="file" id="gif-file-input" accept="image/gif,image/webp,image/png,image/jpeg" style="display:none;">
                     </div>
 
+                    <!-- Recent GIFs History List (Max 5 items) -->
+                    <div id="recent-gifs-section" style="margin-top: 10px; display: none;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>Recent GIFs (Max 5):</span>
+                            <button id="btn-clear-recent-gifs" class="text-link-btn">Clear history</button>
+                        </div>
+                        <div class="recent-gifs-grid" id="recent-gifs-container"></div>
+                    </div>
+
                     <!-- GIF Display Style Selector (Circle Inner vs Full Panel) -->
                     <div id="gif-style-section" style="margin-top: 10px; display: none;">
                         <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">GIF Display Style:</div>
@@ -359,11 +368,11 @@
                     </div>
 
                     <!-- GIF Preview Thumbnail -->
-                    <div id="gif-preview-wrapper" style="display:none; margin-top: 12px; text-align: center;">
-                        <div id="gif-preview-container" style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 88px; height: 88px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
+                    <div id="gif-preview-wrapper" style="display:none; margin-top: 8px; text-align: center;">
+                        <div id="gif-preview-container" style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 72px; height: 72px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
                             <img id="gif-preview-img" src="" alt="preview" style="width:100%; height:100%; object-fit:cover;">
                         </div>
-                        <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 6px;"></div>
+                        <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 4px;"></div>
                     </div>
 
                     <!-- Realtime Opacity Slider -->

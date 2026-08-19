@@ -5,15 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const setupView = document.getElementById('setup-view');
     const timerView = document.getElementById('timer-view');
     
-    const pickerMinsDisplay = document.getElementById('picker-mins-display');
+    const pickerMinsInput = document.getElementById('picker-mins-input') || document.getElementById('picker-mins-display');
     const btnPickerUp = document.getElementById('btn-picker-up');
     const btnPickerDown = document.getElementById('btn-picker-down');
 
-    const pickerBreakDisplay = document.getElementById('picker-break-display');
+    const pickerBreakInput = document.getElementById('picker-break-input') || document.getElementById('picker-break-display');
     const btnBreakUp = document.getElementById('btn-break-up');
     const btnBreakDown = document.getElementById('btn-break-down');
 
-    const pickerPeriodDisplay = document.getElementById('picker-period-display');
+    const pickerPeriodInput = document.getElementById('picker-period-input') || document.getElementById('picker-period-display');
     const btnPeriodUp = document.getElementById('btn-period-up');
     const btnPeriodDown = document.getElementById('btn-period-down');
 
@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gifDisplayMode: 'circle', // 'circle' or 'full'
         customGifData: '',
         customGifName: '',
+        recentGifs: [], // Stores up to 5 recently used custom GIFs: { id, name, data }
         allowedItems: ['code.exe', 'devenv.exe', 'idea64.exe', 'studio64.exe', 'notepad.exe', 'afterfx.exe']
     };
 
@@ -232,7 +233,93 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Render Recent GIFs History (Max 5 items)
+    function renderRecentGifs() {
+        const recentGifsSection = document.getElementById('recent-gifs-section');
+        const recentGifsContainer = document.getElementById('recent-gifs-container');
+        if (!recentGifsSection || !recentGifsContainer) return;
+
+        userData.recentGifs = userData.recentGifs || [];
+        
+        // Auto-add current active GIF to recent list if not present
+        if (userData.customGifData && userData.customGifData.length > 50) {
+            const exists = userData.recentGifs.some(g => g.data === userData.customGifData);
+            if (!exists) {
+                userData.recentGifs.unshift({
+                    id: Date.now().toString(),
+                    name: userData.customGifName || 'Custom GIF',
+                    data: userData.customGifData
+                });
+                if (userData.recentGifs.length > 5) {
+                    userData.recentGifs = userData.recentGifs.slice(0, 5);
+                }
+                saveUserData();
+            }
+        }
+
+        if (userData.recentGifs.length === 0) {
+            recentGifsSection.style.display = 'none';
+            return;
+        }
+
+        recentGifsSection.style.display = 'block';
+        recentGifsContainer.innerHTML = '';
+
+        userData.recentGifs.forEach((gif, index) => {
+            const isActive = (userData.customGifData === gif.data);
+            const card = document.createElement('div');
+            card.className = `recent-gif-card ${isActive ? 'active' : ''}`;
+            card.title = gif.name;
+
+            card.innerHTML = `
+                <img class="recent-gif-thumb" src="${gif.data}" alt="thumb">
+                <div class="recent-gif-info">
+                    <span class="recent-gif-title">${gif.name}</span>
+                </div>
+                <button class="btn-remove-recent" title="Remove from history">&times;</button>
+            `;
+
+            // Click card to switch to this GIF
+            card.addEventListener('click', (e) => {
+                if (e.target.classList.contains('btn-remove-recent')) return;
+                userData.customGifData = gif.data;
+                userData.customGifName = gif.name;
+                saveUserData();
+                applyGifTheme();
+                renderRecentGifs();
+            });
+
+            // Click remove button
+            card.querySelector('.btn-remove-recent')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userData.recentGifs.splice(index, 1);
+                if (isActive) {
+                    if (userData.recentGifs.length > 0) {
+                        userData.customGifData = userData.recentGifs[0].data;
+                        userData.customGifName = userData.recentGifs[0].name;
+                    } else {
+                        userData.customGifData = '';
+                        userData.customGifName = '';
+                    }
+                }
+                saveUserData();
+                applyGifTheme();
+                renderRecentGifs();
+            });
+
+            recentGifsContainer.appendChild(card);
+        });
+    }
+
     applyGifTheme();
+    renderRecentGifs();
+
+    // Clear Recent GIFs Button Listener
+    document.getElementById('btn-clear-recent-gifs')?.addEventListener('click', () => {
+        userData.recentGifs = [];
+        saveUserData();
+        renderRecentGifs();
+    });
 
     // File Upload Handler
     btnSelectCustomGif.addEventListener('click', () => {
@@ -245,12 +332,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reader = new FileReader();
         reader.onload = (evt) => {
-            userData.customGifData = evt.target.result;
-            userData.customGifName = file.name;
+            const newData = evt.target.result;
+            const newName = file.name;
+
+            userData.customGifData = newData;
+            userData.customGifName = newName;
             userData.gifOpacity = userData.gifOpacity || 78;
             userData.gifDisplayMode = userData.gifDisplayMode || 'circle';
+
+            userData.recentGifs = userData.recentGifs || [];
+            userData.recentGifs = userData.recentGifs.filter(g => g.data !== newData);
+            userData.recentGifs.unshift({
+                id: Date.now().toString(),
+                name: newName,
+                data: newData
+            });
+            if (userData.recentGifs.length > 5) {
+                userData.recentGifs = userData.recentGifs.slice(0, 5);
+            }
+
             saveUserData();
             applyGifTheme();
+            renderRecentGifs();
         };
         reader.readAsDataURL(file);
     });
@@ -283,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userData.customGifName = '';
         saveUserData();
         applyGifTheme();
+        renderRecentGifs();
     });
 
     // Generate Gauge Radial Ticks
@@ -314,9 +418,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Time Picker Controls
     function updatePickerDisplay() {
-        pickerMinsDisplay.textContent = selectedMins;
-        if (pickerPeriodDisplay) pickerPeriodDisplay.textContent = selectedPeriodMins;
-        pickerBreakDisplay.textContent = selectedBreakMins;
+        if (pickerMinsInput && document.activeElement !== pickerMinsInput) {
+            pickerMinsInput.value = selectedMins;
+        }
+        if (pickerPeriodInput && document.activeElement !== pickerPeriodInput) {
+            pickerPeriodInput.value = selectedPeriodMins;
+        }
+        if (pickerBreakInput && document.activeElement !== pickerBreakInput) {
+            pickerBreakInput.value = selectedBreakMins;
+        }
 
         const periods = Math.ceil(selectedMins / selectedPeriodMins);
         const breaks = (periods > 1 && !chkSkipBreaks.checked) ? (periods - 1) : 0;
@@ -332,6 +442,72 @@ document.addEventListener('DOMContentLoaded', () => {
         userData.selectedBreakMins = selectedBreakMins;
         saveUserData();
     }
+
+    // Direct Typing & Keyboard Interaction Event Handlers
+    [pickerMinsInput, pickerPeriodInput, pickerBreakInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener('focus', () => input.select());
+    });
+
+    pickerMinsInput?.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (!isNaN(val) && val > 0) {
+            selectedMins = Math.min(val, 480);
+            updatePickerDisplay();
+        }
+    });
+
+    pickerMinsInput?.addEventListener('blur', () => {
+        let val = parseInt(pickerMinsInput.value);
+        if (isNaN(val) || val < 1) selectedMins = 1;
+        else selectedMins = Math.min(val, 480);
+        pickerMinsInput.value = selectedMins;
+        updatePickerDisplay();
+    });
+
+    pickerMinsInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') pickerMinsInput.blur();
+    });
+
+    pickerPeriodInput?.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (!isNaN(val) && val > 0) {
+            selectedPeriodMins = Math.min(val, 120);
+            updatePickerDisplay();
+        }
+    });
+
+    pickerPeriodInput?.addEventListener('blur', () => {
+        let val = parseInt(pickerPeriodInput.value);
+        if (isNaN(val) || val < 1) selectedPeriodMins = 1;
+        else selectedPeriodMins = Math.min(val, 120);
+        pickerPeriodInput.value = selectedPeriodMins;
+        updatePickerDisplay();
+    });
+
+    pickerPeriodInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') pickerPeriodInput.blur();
+    });
+
+    pickerBreakInput?.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (!isNaN(val) && val > 0) {
+            selectedBreakMins = Math.min(val, 60);
+            updatePickerDisplay();
+        }
+    });
+
+    pickerBreakInput?.addEventListener('blur', () => {
+        let val = parseInt(pickerBreakInput.value);
+        if (isNaN(val) || val < 1) selectedBreakMins = 1;
+        else selectedBreakMins = Math.min(val, 60);
+        pickerBreakInput.value = selectedBreakMins;
+        updatePickerDisplay();
+    });
+
+    pickerBreakInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') pickerBreakInput.blur();
+    });
 
     chkSkipBreaks?.addEventListener('change', () => {
         updatePickerDisplay();
@@ -416,7 +592,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modals & Settings Options
     btnEditGoal.addEventListener('click', () => goalModal.classList.add('active'));
-    btnCloseGoalModal.addEventListener('click', () => goalModal.classList.remove('active'));
+    btnCloseGoalModal.addEventListener('click', () => {
+        saveUserData();
+        goalModal.classList.remove('active');
+    });
 
     document.querySelectorAll('.goal-chip').forEach(chip => {
         chip.addEventListener('click', () => {
@@ -433,7 +612,30 @@ document.addEventListener('DOMContentLoaded', () => {
         applyGifTheme();
         optionsModal.classList.add('active');
     });
-    btnCloseOptionsModal.addEventListener('click', () => optionsModal.classList.remove('active'));
+    btnCloseOptionsModal.addEventListener('click', () => {
+        saveUserData();
+        optionsModal.classList.remove('active');
+    });
+
+    // Save & Close Modal when clicking outside the modal content card (on the backdrop overlay)
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('mousedown', (e) => {
+            if (e.target === overlay) {
+                saveUserData();
+                overlay.classList.remove('active');
+            }
+        });
+    });
+
+    // Save & Close Modal when pressing the Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(overlay => {
+                saveUserData();
+                overlay.classList.remove('active');
+            });
+        }
+    });
 
     chkNotificationsToggle.addEventListener('change', (e) => {
         userData.notificationsEnabled = e.target.checked;
