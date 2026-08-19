@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusGrow</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Custom Win11 Frameless Titlebar -->
+        <header class="titlebar" id="app-titlebar">
+            <div class="brand">
+                <!-- FocusGrow Screenshot 2 Smooth Plant App Logo Icon -->
+                <img src="icon.png" class="brand-icon-img" width="20" height="20" alt="logo">
+                <span id="titlebar-text">FocusGrow</span>
+            </div>
+            <div class="window-controls">
+                <button id="btn-min" title="Minimize">
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="5.5" width="10" height="1.2" rx="0.6"/></svg>
+                </button>
+                <button id="btn-max" title="Maximize">
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="9" height="9" rx="1"/></svg>
+                </button>
+                <button id="btn-close" class="close" title="Close">
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="dashboard">
+            <!-- Left Panel: Focus Period / Setup -->
+            <section class="card focus-card" id="focus-card">
+                <!-- Full Card Background GIF (Full Panel Fit Mode) -->
+                <div class="card-gif-backdrop" id="card-gif-container">
+                    <img id="card-gif-img" src="" alt="full card gif">
+                </div>
+
+                <!-- SETUP VIEW -->
+                <div id="setup-view" class="view-content active">
+                    <div class="card-header">
+                        <h2>Get ready to focus</h2>
+                        <div class="header-actions">
+                            <button class="icon-btn btn-pip-toggle" title="Pop out floating timer">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                            </button>
+                            <button class="icon-btn" id="btn-options" title="Session Options">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="subtitle">
+                        We'll block unallowed applications during each session. For longer sessions, we'll enforce short breaks so you can recharge.
+                    </p>
+
+                    <!-- Focus Time Picker -->
+                    <div class="timer-picker-box">
+                        <div class="picker-value">
+                            <span id="picker-mins-display">30</span>
+                            <span class="unit">mins focus</span>
+                        </div>
+                        <div class="picker-controls">
+                            <button id="btn-picker-up" class="arrow-btn">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                            </button>
+                            <button id="btn-picker-down" class="arrow-btn">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Focus Period Length Picker -->
+                    <div class="setting-row">
+                        <span class="setting-label">Focus period length</span>
+                        <div class="small-picker-box">
+                            <button id="btn-period-down" class="small-btn">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <span id="picker-period-display">25</span> <span class="unit">mins</span>
+                            <button id="btn-period-up" class="small-btn">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Break Time Picker -->
+                    <div class="setting-row">
+                        <span class="setting-label">Break duration</span>
+                        <div class="small-picker-box">
+                            <button id="btn-break-down" class="small-btn">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <span id="picker-break-display">5</span> <span class="unit">mins</span>
+                            <button id="btn-break-up" class="small-btn">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="breaks-summary">
+                        <span id="breaks-count-text">You'll have 1 break (5 mins)</span>
+                    </div>
+
+                    <div class="checkbox-row">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="chk-skip-breaks">
+                            <span class="checkmark"></span>
+                            <span>Skip breaks</span>
+                        </label>
+                    </div>
+
+                    <button id="btn-start-focus" class="accent-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <span>Start focus session</span>
+                    </button>
+                </div>
+
+                <!-- ACTIVE TIMER VIEW -->
+                <div id="timer-view" class="view-content">
+                    <div class="card-header">
+                        <h2 id="focus-period-title">Focus period (1 of 1)</h2>
+                        <button class="icon-btn btn-pip-toggle" title="Expand / Restore window">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Circular Progress Gauge Dial -->
+                    <div class="gauge-container">
+                        <!-- Circle Inner GIF Backdrop -->
+                        <div class="gauge-gif-backdrop" id="gauge-gif-container">
+                            <img id="gauge-gif-img" src="" alt="focus ambient gif">
+                        </div>
+
+                        <!-- Realtime Dynamic Plant Growth SVG (Matching Screenshot 2 - Soft Rounded Leaves) -->
+                        <div class="plant-growth-container" id="plant-growth-container">
+                            <svg class="plant-growth-svg" viewBox="0 0 100 120">
+                                <!-- Pot & Soil Mound -->
+                                <rect x="30" y="90" width="40" height="8" rx="4" fill="#60a5fa"/>
+                                <path d="M34 98 L66 98 C64 112, 36 112, 34 98 Z" fill="#60a5fa"/>
+                                <ellipse cx="50" cy="90" rx="17" ry="3" fill="#78350f"/>
+                                
+                                <!-- Main Stem -->
+                                <path id="plant-stem" d="M50 90 L50 32" fill="none" stroke="#047857" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="60" style="transition: stroke-dashoffset 0.5s linear;"/>
+
+                                <!-- Leaf Pair 1 (Bottom) - Soft Rounded Leaves -->
+                                <g id="leaf-pair-1" class="plant-leaf-group">
+                                    <rect x="28" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(-15 37 80)"/>
+                                    <rect x="54" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(15 63 80)"/>
+                                </g>
+
+                                <!-- Leaf Pair 2 (Middle) - Soft Rounded Leaves -->
+                                <g id="leaf-pair-2" class="plant-leaf-group">
+                                    <rect x="26" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(-20 35 64)"/>
+                                    <rect x="56" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(20 65 64)"/>
+                                </g>
+
+                                <!-- Leaf Pair 3 (Top) - Soft Rounded Leaves -->
+                                <g id="leaf-pair-3" class="plant-leaf-group">
+                                    <rect x="28" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(-15 37 48)"/>
+                                    <rect x="54" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(15 63 48)"/>
+                                </g>
+
+                                <!-- Top Golden Flower Bud -->
+                                <g id="plant-top-bud" class="plant-leaf-group">
+                                    <circle cx="50" cy="24" r="6" fill="#fbbf24"/>
+                                    <rect x="42" y="27" width="16" height="10" rx="5" fill="#34d399"/>
+                                </g>
+                            </svg>
+                        </div>
+
+                        <svg class="gauge-svg" viewBox="0 0 200 200">
+                            <g class="gauge-ticks" id="gauge-ticks"></g>
+                            <circle class="gauge-bg" cx="100" cy="100" r="76"></circle>
+                            <circle class="gauge-progress" id="gauge-progress-bar" cx="100" cy="100" r="76"></circle>
+                        </svg>
+                        <div class="gauge-center">
+                            <div class="timer-time" id="active-timer-display">30:00</div>
+                            <div class="timer-label" id="active-status-label">MINUTES REMAINING</div>
+                        </div>
+                    </div>
+
+                    <!-- Control Buttons -->
+                    <div class="timer-action-bar">
+                        <button id="btn-pause" class="circle-btn accent">
+                            <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+                        <button id="btn-stop" class="circle-btn secondary" title="End Session">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="4" y="4" width="16" height="16"></rect>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="up-next-info">
+                        <span id="up-next-text">Up next: 5 min break</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel Stack: Daily Progress & App Whitelist -->
+            <div class="right-stack" id="right-stack-panel">
+                <!-- Daily Progress Card -->
+                <section class="card progress-card">
+                    <div class="card-header">
+                        <h2>Daily progress</h2>
+                        <button class="icon-btn" id="btn-edit-goal" title="Edit Daily Goal">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="progress-body">
+                        <!-- Left Stats -->
+                        <div class="stat-col">
+                            <div class="stat-label">Yesterday</div>
+                            <div class="stat-value" id="stat-yesterday">0.0</div>
+                            <div class="stat-unit">hours</div>
+                        </div>
+
+                        <!-- Center Goal Donut -->
+                        <div class="goal-donut-container">
+                            <svg class="donut-svg" viewBox="0 0 120 120">
+                                <circle class="donut-bg" cx="60" cy="60" r="48"></circle>
+                                <circle class="donut-fill" id="goal-donut-fill" cx="60" cy="60" r="48"></circle>
+                            </svg>
+                            <div class="donut-center">
+                                <div class="donut-label">Daily goal</div>
+                                <div class="donut-value" id="stat-goal-hours">1</div>
+                                <div class="donut-unit">hour</div>
+                            </div>
+                        </div>
+
+                        <!-- Right Stats -->
+                        <div class="stat-col">
+                            <div class="stat-label">Streak</div>
+                            <div class="stat-value" id="stat-streak">0</div>
+                            <div class="stat-unit">days</div>
+                        </div>
+                    </div>
+
+                    <div class="completed-footer">
+                        Completed: <span id="stat-completed-mins">0</span> minutes
+                    </div>
+                </section>
+
+                <!-- App & Tab Whitelist Card -->
+                <section class="card whitelist-card">
+                    <div class="card-header">
+                        <h2>Allowed Applications & Tabs</h2>
+                        <button class="icon-btn" id="btn-refresh-apps" title="Refresh Applications">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        </button>
+                    </div>
+                    <p class="subtitle">Only checked applications or browser tabs will be accessible during focus sessions.</p>
+                    
+                    <!-- Search Input -->
+                    <div class="search-box">
+                        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="app-search-input" placeholder="Search applications or browser tabs...">
+                    </div>
+
+                    <div class="app-list" id="app-list-container">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Daily Goal Modal -->
+    <div class="modal-overlay" id="goal-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Edit Daily Focus Goal</h3>
+                <button class="icon-btn modal-close" id="btn-close-goal-modal">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <p class="subtitle">Choose how many hours you plan to focus each day:</p>
+            <div class="goal-grid">
+                <button class="goal-chip" data-hours="1">1 Hour</button>
+                <button class="goal-chip" data-hours="2">2 Hours</button>
+                <button class="goal-chip" data-hours="3">3 Hours</button>
+                <button class="goal-chip" data-hours="4">4 Hours</button>
+                <button class="goal-chip" data-hours="6">6 Hours</button>
+                <button class="goal-chip" data-hours="8">8 Hours</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Options & Settings Modal -->
+    <div class="modal-overlay" id="options-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Focus Session Options</h3>
+                <button class="icon-btn modal-close" id="btn-close-options-modal">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="options-list">
+                <!-- Notifications Toggle -->
+                <div class="option-row">
+                    <div>
+                        <div class="option-title">Session Notifications & Reminders</div>
+                        <div class="option-sub">Alerts for break start, focus start, & 1-min warnings</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-notifications-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Timer Ambient GIF Selection & Style Options -->
+                <div class="option-column">
+                    <div class="option-title">Timer Ambient GIF Background</div>
+                    <div class="option-sub">Upload a GIF or image from your computer (Default: FocusGrow Plant Sprout):</div>
+                    <div class="gif-selector">
+                        <button class="gif-chip active" data-gif="none">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M12 6v6l4 2"/></svg>
+                            <span>Default Plant Growth</span>
+                        </button>
+                        <button class="gif-chip" id="btn-select-custom-gif">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            <span>Custom GIF File…</span>
+                        </button>
+                        <input type="file" id="gif-file-input" accept="image/gif,image/webp,image/png,image/jpeg" style="display:none;">
+                    </div>
+
+                    <!-- GIF Display Style Selector (Circle Inner vs Full Panel) -->
+                    <div id="gif-style-section" style="margin-top: 10px; display: none;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">GIF Display Style:</div>
+                        <div class="gif-selector">
+                            <button class="gif-mode-chip active" data-mode="circle">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>
+                                <span>Circle Inner Ring</span>
+                            </button>
+                            <button class="gif-mode-chip" data-mode="full">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+                                <span>Full Panel Fill</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- GIF Preview Thumbnail -->
+                    <div id="gif-preview-wrapper" style="display:none; margin-top: 12px; text-align: center;">
+                        <div id="gif-preview-container" style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 88px; height: 88px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
+                            <img id="gif-preview-img" src="" alt="preview" style="width:100%; height:100%; object-fit:cover;">
+                        </div>
+                        <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 6px;"></div>
+                    </div>
+
+                    <!-- Realtime Opacity Slider -->
+                    <div id="gif-opacity-row" style="display: none; margin-top: 10px;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span id="opacity-label">78%</span></div>
+                        <input type="range" id="gif-opacity-slider" min="10" max="100" value="78" style="width: 100%; accent-color: var(--accent-blue);">
+                    </div>
+                </div>
+
+                <div class="option-row">
+                    <span>Reset Today's Progress</span>
+                    <button class="small-action-btn" id="btn-reset-progress">Reset</button>
+                </div>
+                <div class="option-row">
+                    <span>Clear App Whitelist</span>
+                    <button class="small-action-btn" id="btn-clear-whitelist">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

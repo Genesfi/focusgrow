@@ -1,0 +1,4 @@
+#include <windows.h>
+
+// 101 is standard IDI_APPICON
+101 ICON "app.ico"
