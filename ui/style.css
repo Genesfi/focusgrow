@@ -509,22 +509,41 @@ input[type="number"] {
     position: absolute;
     text-align: center;
     z-index: 3;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
 }
 
 .timer-time {
-    font-size: 46px;
-    font-weight: 600;
+    font-size: 42px;
+    font-weight: 800;
     font-family: 'Segoe UI Variable Display', 'Segoe UI', sans-serif;
-    color: var(--text-primary);
-    text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+    color: #ffffff !important;
+    text-shadow: 
+        -1.5px -1.5px 0 #000,  
+         1.5px -1.5px 0 #000,
+        -1.5px  1.5px 0 #000,
+         1.5px  1.5px 0 #000,
+         0 4px 14px rgba(0, 0, 0, 0.95), 
+         0 0 24px rgba(0, 0, 0, 0.9) !important;
+    line-height: 1;
 }
 
 .timer-label {
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-    font-weight: 600;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    color: #ffffff !important;
+    font-weight: 800;
+    text-shadow: 
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000,
+         0 2px 8px rgba(0, 0, 0, 0.95) !important;
+    margin-top: 2px;
 }
 
 .timer-action-bar {
@@ -1204,7 +1223,14 @@ body.pip-mode .gauge-bg {
 }
 
 body.pip-mode .timer-time {
-    font-size: clamp(18px, 7vh, 44px);
+    font-size: clamp(18px, 7vh, 38px);
+}
+
+body.pip-mode .gauge-center {
+    width: min(44vw, 30vh);
+    height: min(44vw, 30vh);
+    max-width: 96px;
+    max-height: 96px;
 }
 
 body.pip-mode .timer-label {
@@ -1589,6 +1615,14 @@ body.pip-mode .ytmusic-ticker {
 @keyframes spinVinyl {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Subtitle & Header High Contrast Shadows */
+#focus-period-title,
+#up-next-text,
+.card-header h2,
+.subtitle {
+    text-shadow: -1px -1px 0 rgba(0,0,0,0.8), 1px -1px 0 rgba(0,0,0,0.8), -1px 1px 0 rgba(0,0,0,0.8), 1px 1px 0 rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.9);
 }
 
 /* Marquee Ticker for Live YT Music Playing Info & Media Controls */

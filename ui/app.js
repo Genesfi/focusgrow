@@ -900,13 +900,16 @@ document.addEventListener('DOMContentLoaded', () => {
             saveUserData();
             updateStatsUI();
             goalModal.classList.remove('active');
+            goalModal.classList.add('active');
         });
     });
 
-    btnOptions.addEventListener('click', () => {
-        chkNotificationsToggle.checked = userData.notificationsEnabled;
-        applyGifTheme();
-        optionsModal.classList.add('active');
+    document.querySelectorAll('.btn-options-trigger, #btn-options').forEach(btn => {
+        btn.addEventListener('click', () => {
+            chkNotificationsToggle.checked = userData.notificationsEnabled;
+            applyGifTheme();
+            optionsModal.classList.add('active');
+        });
     });
     btnCloseOptionsModal.addEventListener('click', () => {
         saveUserData();
@@ -969,6 +972,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clean DOM Node App Whitelist Renderer
     window.renderAppList = function(apps) {
         if (apps) cachedAppList = apps;
+        if (cachedAppList && Array.isArray(cachedAppList)) {
+            userData.appIconMap = userData.appIconMap || {};
+            cachedAppList.forEach(a => {
+                if (a.exeName && a.icon && a.icon.length > 30) {
+                    userData.appIconMap[a.exeName.toLowerCase()] = a.icon;
+                }
+            });
+            saveUserData();
+        }
         detectYtMusicFromBrowserTabs(cachedAppList);
         if (!appListContainer) return;
         appListContainer.innerHTML = '';
@@ -1219,20 +1231,55 @@ document.addEventListener('DOMContentLoaded', () => {
             const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
             const relativePercent = Math.round((item.secs / maxAppSecs) * 100);
 
+            // Lookup real extracted icon from userData.appIconMap or cachedAppList
+            const lowerExe = item.exe.toLowerCase();
+            let appIcon = (userData.appIconMap && userData.appIconMap[lowerExe]) || '';
+            if (!appIcon && cachedAppList && cachedAppList.length > 0) {
+                const found = cachedAppList.find(a => a.exeName && a.exeName.toLowerCase() === lowerExe);
+                if (found && found.icon && found.icon.length > 30) appIcon = found.icon;
+            }
+            if (!appIcon) appIcon = defaultIconSvg;
+
             const div = document.createElement('div');
             div.className = 'stats-app-item';
-            div.innerHTML = `
-                <div class="stats-app-top">
-                    <div class="stats-app-name">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff" stroke-width="2" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-                        <span>${item.exe}</span>
-                    </div>
-                    <div class="stats-app-time">${formatSecs(item.secs)} (${percent}%)</div>
-                </div>
-                <div class="stats-app-bar-bg">
-                    <div class="stats-app-bar-fill" style="width: ${relativePercent}%;"></div>
-                </div>
-            `;
+
+            const topDiv = document.createElement('div');
+            topDiv.className = 'stats-app-top';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'stats-app-name';
+
+            const imgNode = document.createElement('img');
+            imgNode.className = 'stats-app-icon';
+            imgNode.style.cssText = 'width: 16px; height: 16px; object-fit: contain; vertical-align: -3px; margin-right: 8px; border-radius: 3px;';
+            imgNode.src = appIcon || defaultIconSvg;
+            imgNode.onerror = () => { imgNode.src = defaultIconSvg; };
+
+            const spanNode = document.createElement('span');
+            spanNode.textContent = item.exe;
+
+            nameDiv.appendChild(imgNode);
+            nameDiv.appendChild(spanNode);
+
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'stats-app-time';
+            timeDiv.textContent = `${formatSecs(item.secs)} (${percent}%)`;
+
+            topDiv.appendChild(nameDiv);
+            topDiv.appendChild(timeDiv);
+
+            const barBgDiv = document.createElement('div');
+            barBgDiv.className = 'stats-app-bar-bg';
+
+            const barFillDiv = document.createElement('div');
+            barFillDiv.className = 'stats-app-bar-fill';
+            barFillDiv.style.width = `${relativePercent}%`;
+
+            barBgDiv.appendChild(barFillDiv);
+
+            div.appendChild(topDiv);
+            div.appendChild(barBgDiv);
+
             statsAppListContainer.appendChild(div);
         });
 
