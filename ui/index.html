@@ -33,9 +33,15 @@
         <main class="dashboard">
             <!-- Left Panel: Focus Period / Setup -->
             <section class="card focus-card" id="focus-card">
-                <!-- Full Card Background GIF (Full Panel Fit Mode) -->
+                <!-- Full Card Background GIF & Vinyl Backdrop -->
                 <div class="card-gif-backdrop" id="card-gif-container">
                     <img id="card-gif-img" src="" alt="full card gif">
+                </div>
+                <div class="card-vinyl-backdrop" id="card-vinyl-container" style="display: none;">
+                    <div class="card-vinyl-disc">
+                        <img id="card-vinyl-cover-img" class="vinyl-cover-img" src="" alt="Album Cover">
+                        <div class="vinyl-spindle-glass"></div>
+                    </div>
                 </div>
 
                 <!-- SETUP VIEW -->
@@ -54,6 +60,14 @@
                     <p class="subtitle">
                         We'll block unallowed applications during each session. For longer sessions, we'll enforce short breaks so you can recharge.
                     </p>
+
+                    <!-- Live YT Music Marquee Ticker (Setup View) -->
+                    <div class="ytmusic-ticker" id="ytmusic-ticker-setup" style="display: none;">
+                        <span class="ticker-icon">🎵</span>
+                        <div class="ticker-content">
+                            <span class="ticker-text" id="ticker-text-setup">Not playing — YT Music</span>
+                        </div>
+                    </div>
 
                     <!-- Focus Time Picker -->
                     <div class="timer-picker-box">
@@ -135,6 +149,14 @@
                             <img id="gauge-gif-img" src="" alt="focus ambient gif">
                         </div>
 
+                        <!-- YT Music Vinyl Record Spinning Disc Backdrop (Circle Mode) -->
+                        <div class="vinyl-disc-container" id="vinyl-disc-container" style="display: none;">
+                            <div class="vinyl-disc">
+                                <img id="vinyl-cover-img" class="vinyl-cover-img" src="" alt="Album Cover">
+                                <div class="vinyl-spindle-glass"></div>
+                            </div>
+                        </div>
+
                         <!-- Realtime Dynamic Plant Growth SVG (Matching Screenshot 2 - Soft Rounded Leaves) -->
                         <div class="plant-growth-container" id="plant-growth-container">
                             <svg class="plant-growth-svg" viewBox="0 0 100 120">
@@ -179,7 +201,7 @@
                         </svg>
                         <div class="gauge-center">
                             <div class="timer-time" id="active-timer-display">30:00</div>
-                            <div class="timer-label" id="active-status-label">MINUTES REMAINING</div>
+                            <div class="timer-label" id="active-status-label">REMAINING</div>
                         </div>
                     </div>
 
@@ -203,6 +225,14 @@
 
                     <div class="up-next-info">
                         <span id="up-next-text">Up next: 5 min break</span>
+                    </div>
+
+                    <!-- Live YT Music Marquee Ticker (Timer View) -->
+                    <div class="ytmusic-ticker" id="ytmusic-ticker-timer" style="display: none; margin-top: 8px;">
+                        <span class="ticker-icon">🎵</span>
+                        <div class="ticker-content">
+                            <span class="ticker-text" id="ticker-text-timer">Not playing — YT Music</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -336,6 +366,10 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M12 6v6l4 2"/></svg>
                             <span>Default Plant Growth</span>
                         </button>
+                        <button class="gif-chip" data-gif="ytmusic" id="btn-select-ytmusic-gif">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff0050" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                            <span>YT Music Vinyl</span>
+                        </button>
                         <button class="gif-chip" id="btn-select-custom-gif">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                             <span>Custom GIF File…</span>
@@ -364,6 +398,17 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
                                 <span>Full Panel Fill</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Vinyl Record Rotation Speed Setting -->
+                    <div id="vinyl-speed-section" style="margin-top: 10px; display: none;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Vinyl Rotation Speed:</div>
+                        <div class="speed-selector">
+                            <button class="speed-chip" data-speed="3">⚡ Fast (3s)</button>
+                            <button class="speed-chip active" data-speed="6">🎵 Normal (6s)</button>
+                            <button class="speed-chip" data-speed="10">🐢 Slow (10s)</button>
+                            <button class="speed-chip" data-speed="16">🌙 Relaxed (16s)</button>
                         </div>
                     </div>
 

@@ -114,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationsEnabled: true,
         gifOpacity: 78,
         gifDisplayMode: 'circle', // 'circle' or 'full'
+        ambientMode: 'plant', // 'plant', 'custom', or 'ytmusic'
         customGifData: '',
         customGifName: '',
         recentGifs: [], // Stores up to 5 recently used custom GIFs: { id, name, data }
@@ -174,29 +175,234 @@ document.addEventListener('DOMContentLoaded', () => {
         sendToCpp({ action: 'notify', title: title, body: body });
     }
 
+    // --- YTMPX WebSocket Realtime Sync ---
+    let ytmpxSocket = null;
+    let ytTrackData = {
+        title: '',
+        author: '',
+        image: '',
+        isPlaying: false
+    };
+
+    function connectYtmpxWebSocket() {
+        if (ytmpxSocket && (ytmpxSocket.readyState === WebSocket.OPEN || ytmpxSocket.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        try {
+            ytmpxSocket = new WebSocket('ws://localhost:8765');
+
+            ytmpxSocket.onopen = () => {
+                console.log('[YTMPX] Connected to ws://localhost:8765');
+            };
+
+            ytmpxSocket.onmessage = (evt) => {
+                try {
+                    const data = JSON.parse(evt.data);
+                    if (data && data.metadata) {
+                        ytTrackData.title = data.metadata.title || '';
+                        ytTrackData.author = data.metadata.author || '';
+                        ytTrackData.image = data.metadata.image || '';
+
+                        if (data.event === 'track' || data.event === 'resume') {
+                            ytTrackData.isPlaying = true;
+                        } else if (data.event === 'pause') {
+                            ytTrackData.isPlaying = false;
+                        }
+
+                        updateYtMusicUI();
+                    }
+                } catch (err) {
+                    console.error('[YTMPX] Error parsing message:', err);
+                }
+            };
+
+            ytmpxSocket.onclose = () => {
+                setTimeout(connectYtmpxWebSocket, 3000);
+            };
+
+            ytmpxSocket.onerror = () => {
+                ytmpxSocket.close();
+            };
+        } catch (e) {
+            setTimeout(connectYtmpxWebSocket, 3000);
+        }
+    }
+
+    connectYtmpxWebSocket();
+
+    let lastFetchedTrackKey = '';
+
+    function fetchAlbumArtFromiTunes(title, author) {
+        if (!title) return;
+        const trackKey = `${title}-${author}`;
+        if (lastFetchedTrackKey === trackKey) return;
+        lastFetchedTrackKey = trackKey;
+
+        // Clean parentheticals like (feat. Aizawa), [MV], etc.
+        const cleanTitle = title.replace(/\([^\)]+\)/g, '').replace(/\[[^\]]+\]/g, '').split(/\s*[\-\|]\s*/)[0].trim();
+        const cleanAuthor = (author && author !== 'YouTube Music') 
+            ? author.replace(/\([^\)]+\)/g, '').replace(/\[[^\]]+\]/g, '').split(/\s*[\-\|]\s*/)[0].trim() 
+            : '';
+
+        const searchQueries = [
+            `${cleanTitle} ${cleanAuthor}`,
+            cleanTitle,
+            cleanAuthor
+        ].filter(q => q && q.length > 0);
+
+        function tryNextQuery(index) {
+            if (index >= searchQueries.length) return;
+            const q = encodeURIComponent(searchQueries[index]);
+            fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=1`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+                        const hdCover = data.results[0].artworkUrl100.replace('100x100bb', '600x600bb');
+                        ytTrackData.image = hdCover;
+                        updateYtMusicUI();
+                    } else {
+                        tryNextQuery(index + 1);
+                    }
+                })
+                .catch(() => tryNextQuery(index + 1));
+        }
+
+        tryNextQuery(0);
+    }
+
+    function detectYtMusicFromBrowserTabs(apps) {
+        if (!apps || !Array.isArray(apps)) return;
+
+        const ytApp = apps.find(app => {
+            if (!app.title) return false;
+            const t = app.title.toLowerCase();
+            return t.includes('youtube music') || t.includes('yt music');
+        });
+
+        if (ytApp && ytApp.title) {
+            let rawTitle = ytApp.title;
+            rawTitle = rawTitle.replace(/\s*[\-\|]\s*YouTube Music/gi, '');
+            rawTitle = rawTitle.replace(/^YouTube Music\s*[\-\|]\s*/gi, '');
+
+            if (rawTitle.trim()) {
+                const parts = rawTitle.split(/\s*[\-\|]\s*/);
+                if (parts.length >= 2) {
+                    ytTrackData.title = parts[0].trim();
+                    ytTrackData.author = parts[1].trim();
+                } else {
+                    ytTrackData.title = rawTitle.trim();
+                    ytTrackData.author = 'YouTube Music';
+                }
+                ytTrackData.isPlaying = true;
+                if (!ytTrackData.image) {
+                    fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
+                }
+                updateYtMusicUI();
+            }
+        }
+    }
+
+    function updateYtMusicUI() {
+        const textSetup = document.getElementById('ticker-text-setup');
+        const textTimer = document.getElementById('ticker-text-timer');
+        const tickerSetup = document.getElementById('ytmusic-ticker-setup');
+        const tickerTimer = document.getElementById('ytmusic-ticker-timer');
+
+        const vinylCoverImg = document.getElementById('vinyl-cover-img');
+        const cardVinylCoverImg = document.getElementById('card-vinyl-cover-img');
+        const vinylDisc = document.getElementById('vinyl-disc');
+        const cardVinylDisc = document.getElementById('card-vinyl-disc');
+
+        const isYtMode = (userData.ambientMode === 'ytmusic');
+        const hasTrack = (ytTrackData.title || ytTrackData.author);
+
+        const trackString = hasTrack 
+            ? `${ytTrackData.title} — ${ytTrackData.author}` 
+            : 'Not playing — YT Music';
+
+        if (textSetup) textSetup.textContent = trackString;
+        if (textTimer) textTimer.textContent = trackString;
+
+        const showTicker = isYtMode || hasTrack;
+        if (tickerSetup) tickerSetup.style.display = showTicker ? 'flex' : 'none';
+        if (tickerTimer) tickerTimer.style.display = showTicker ? 'flex' : 'none';
+
+        const defaultCover = 'https://music.youtube.com/img/on_platform_logo.svg';
+        const coverSrc = ytTrackData.image || defaultCover;
+        
+        if (vinylCoverImg) {
+            if (vinylCoverImg.src !== coverSrc) vinylCoverImg.src = coverSrc;
+            vinylCoverImg.classList.toggle('paused', !ytTrackData.isPlaying);
+        }
+        if (cardVinylCoverImg) {
+            if (cardVinylCoverImg.src !== coverSrc) cardVinylCoverImg.src = coverSrc;
+            cardVinylCoverImg.classList.toggle('paused', !ytTrackData.isPlaying);
+        }
+
+        if (!ytTrackData.image && ytTrackData.title) {
+            fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
+        }
+    }
+
     // Realtime GIF Theme & Display Mode Renderer
     function applyGifTheme() {
         const opacity = (userData.gifOpacity || 78) / 100;
         const isFullMode = (userData.gifDisplayMode === 'full');
         const plantGrowthContainer = document.getElementById('plant-growth-container');
         const defaultChip = document.querySelector('.gif-chip[data-gif="none"]');
+        const ytMusicChip = document.querySelector('.gif-chip[data-gif="ytmusic"]');
 
-        if (userData.customGifData && userData.customGifData.length > 50) {
-            if (plantGrowthContainer) plantGrowthContainer.style.display = 'none';
+        const vinylDiscContainer = document.getElementById('vinyl-disc-container');
+        const cardVinylContainer = document.getElementById('card-vinyl-container');
+        const vinylSpeedSection = document.getElementById('vinyl-speed-section');
 
-            if (defaultChip) defaultChip.classList.remove('active');
+        const currentSpeed = userData.vinylSpeed || 6;
+        document.documentElement.style.setProperty('--vinyl-speed', `${currentSpeed}s`);
+
+        // Reset visibility
+        if (gaugeGifContainer) gaugeGifContainer.style.display = 'none';
+        if (cardGifContainer) cardGifContainer.style.display = 'none';
+        if (vinylDiscContainer) vinylDiscContainer.style.display = 'none';
+        if (cardVinylContainer) cardVinylContainer.style.display = 'none';
+        if (plantGrowthContainer) plantGrowthContainer.style.display = 'none';
+
+        if (defaultChip) defaultChip.classList.remove('active');
+        if (ytMusicChip) ytMusicChip.classList.remove('active');
+        if (btnSelectCustomGif) btnSelectCustomGif.classList.remove('active');
+
+        if (userData.ambientMode === 'ytmusic') {
+            if (ytMusicChip) ytMusicChip.classList.add('active');
+
+            if (isFullMode) {
+                if (cardVinylContainer) cardVinylContainer.style.display = 'block';
+            } else {
+                if (vinylDiscContainer) vinylDiscContainer.style.display = 'block';
+            }
+
+            if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'none';
+            if (gifStyleSection) gifStyleSection.style.display = 'block';
+            if (vinylSpeedSection) vinylSpeedSection.style.display = 'block';
+            if (gifOpacityRow) gifOpacityRow.style.display = 'none';
+            if (customGifNameDisplay) customGifNameDisplay.textContent = '';
+
+            document.querySelectorAll('.speed-chip').forEach(chip => {
+                chip.classList.toggle('active', parseInt(chip.getAttribute('data-speed')) === currentSpeed);
+            });
+
+            updateYtMusicUI();
+
+        } else if (userData.ambientMode === 'custom' && userData.customGifData && userData.customGifData.length > 50) {
             if (btnSelectCustomGif) btnSelectCustomGif.classList.add('active');
 
             if (isFullMode) {
                 cardGifImg.src = userData.customGifData;
                 cardGifImg.style.opacity = opacity;
                 cardGifContainer.style.display = 'block';
-                gaugeGifContainer.style.display = 'none';
             } else {
                 gaugeGifImg.src = userData.customGifData;
                 gaugeGifImg.style.opacity = opacity;
                 gaugeGifContainer.style.display = 'block';
-                cardGifContainer.style.display = 'none';
             }
 
             // Sync modal preview thumbnail & controls
@@ -210,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'block';
             if (customGifNameDisplay) customGifNameDisplay.textContent = userData.customGifName || 'Custom GIF';
             if (gifStyleSection) gifStyleSection.style.display = 'block';
+            if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
             if (gifOpacityRow) gifOpacityRow.style.display = 'block';
             if (gifOpacitySlider) gifOpacitySlider.value = userData.gifOpacity || 78;
             if (opacityLabel) opacityLabel.textContent = `${userData.gifOpacity || 78}%`;
@@ -219,17 +426,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             if (defaultChip) defaultChip.classList.add('active');
-            if (btnSelectCustomGif) btnSelectCustomGif.classList.remove('active');
-
-            gaugeGifContainer.style.display = 'none';
-            cardGifContainer.style.display = 'none';
-            gaugeGifImg.src = '';
-            cardGifImg.src = '';
             if (plantGrowthContainer) plantGrowthContainer.style.display = 'flex';
             if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'none';
             if (gifStyleSection) gifStyleSection.style.display = 'none';
+            if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
             if (gifOpacityRow) gifOpacityRow.style.display = 'none';
             if (customGifNameDisplay) customGifNameDisplay.textContent = '';
+            updateYtMusicUI();
         }
     }
 
@@ -282,6 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Click card to switch to this GIF
             card.addEventListener('click', (e) => {
                 if (e.target.classList.contains('btn-remove-recent')) return;
+                userData.ambientMode = 'custom';
                 userData.customGifData = gif.data;
                 userData.customGifName = gif.name;
                 saveUserData();
@@ -295,9 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 userData.recentGifs.splice(index, 1);
                 if (isActive) {
                     if (userData.recentGifs.length > 0) {
+                        userData.ambientMode = 'custom';
                         userData.customGifData = userData.recentGifs[0].data;
                         userData.customGifName = userData.recentGifs[0].name;
                     } else {
+                        userData.ambientMode = 'plant';
                         userData.customGifData = '';
                         userData.customGifName = '';
                     }
@@ -321,6 +527,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderRecentGifs();
     });
 
+    // YT Music Vinyl Preset Button
+    document.querySelector('.gif-chip[data-gif="ytmusic"]')?.addEventListener('click', () => {
+        userData.ambientMode = 'ytmusic';
+        saveUserData();
+        applyGifTheme();
+        renderRecentGifs();
+    });
+
     // File Upload Handler
     btnSelectCustomGif.addEventListener('click', () => {
         gifFileInput.click();
@@ -335,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const newData = evt.target.result;
             const newName = file.name;
 
+            userData.ambientMode = 'custom';
             userData.customGifData = newData;
             userData.customGifName = newName;
             userData.gifOpacity = userData.gifOpacity || 78;
@@ -380,8 +595,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Vinyl Rotation Speed Selector Switcher
+    document.querySelectorAll('.speed-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            userData.vinylSpeed = parseInt(chip.getAttribute('data-speed')) || 6;
+            saveUserData();
+            applyGifTheme();
+        });
+    });
+
     // None GIF Preset Button
     document.querySelector('.gif-chip[data-gif="none"]')?.addEventListener('click', () => {
+        userData.ambientMode = 'plant';
         userData.customGifData = '';
         userData.customGifName = '';
         saveUserData();
@@ -673,6 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clean DOM Node App Whitelist Renderer
     window.renderAppList = function(apps) {
         if (apps) cachedAppList = apps;
+        detectYtMusicFromBrowserTabs(cachedAppList);
         if (!appListContainer) return;
         appListContainer.innerHTML = '';
 
@@ -1021,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeState === 'focusing') {
             setupView.classList.remove('active');
             timerView.classList.add('active');
-            activeStatusLabel.textContent = isPaused ? 'PAUSED' : 'MINUTES REMAINING';
+            activeStatusLabel.textContent = isPaused ? 'PAUSED' : 'REMAINING';
             focusPeriodTitle.textContent = `Focus period (${data.currentPeriod || 1} of ${data.totalPeriods || 1})`;
             upNextText.textContent = `Up next: ${selectedBreakMins} min break`;
             
@@ -1091,4 +1317,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePickerDisplay();
     updateStatsUI();
     sendToCpp({ action: 'getRunningApps' });
+    
+    // Auto-poll running browser apps every 4 seconds to sync YouTube Music track titles
+    setInterval(() => {
+        sendToCpp({ action: 'getRunningApps' });
+    }, 4000);
 });
