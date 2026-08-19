@@ -63,7 +63,20 @@
 
                     <!-- Live YT Music Marquee Ticker (Setup View) -->
                     <div class="ytmusic-ticker" id="ytmusic-ticker-setup" style="display: none;">
-                        <span class="ticker-icon">🎵</span>
+                        <div class="ytmusic-media-controls">
+                            <button class="media-control-btn btn-yt-prev" title="Previous Track (YT Music)">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            </button>
+                            <button class="media-control-btn btn-yt-playpause" title="Play/Pause (YT Music)">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <path class="icon-pause-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                    <path class="icon-play-path" d="M8 5v14l11-7z" style="display: none;"/>
+                                </svg>
+                            </button>
+                            <button class="media-control-btn btn-yt-next" title="Next Track (YT Music)">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            </button>
+                        </div>
                         <div class="ticker-content">
                             <span class="ticker-text" id="ticker-text-setup">Not playing — YT Music</span>
                         </div>
@@ -229,7 +242,20 @@
 
                     <!-- Live YT Music Marquee Ticker (Timer View) -->
                     <div class="ytmusic-ticker" id="ytmusic-ticker-timer" style="display: none; margin-top: 8px;">
-                        <span class="ticker-icon">🎵</span>
+                        <div class="ytmusic-media-controls">
+                            <button class="media-control-btn btn-yt-prev" title="Previous Track (YT Music)">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            </button>
+                            <button class="media-control-btn btn-yt-playpause" title="Play/Pause (YT Music)">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <path class="icon-pause-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                    <path class="icon-play-path" d="M8 5v14l11-7z" style="display: none;"/>
+                                </svg>
+                            </button>
+                            <button class="media-control-btn btn-yt-next" title="Next Track (YT Music)">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            </button>
+                        </div>
                         <div class="ticker-content">
                             <span class="ticker-text" id="ticker-text-timer">Not playing — YT Music</span>
                         </div>

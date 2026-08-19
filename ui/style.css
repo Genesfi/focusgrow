@@ -1123,23 +1123,25 @@ body.pip-mode #timer-view {
     width: 100%;
     height: 100%;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: 2px;
 }
 
 body.pip-mode #timer-view .card-header {
     width: 100%;
-    margin-bottom: 2px;
+    margin-bottom: 0px;
+    flex-shrink: 0;
 }
 
 body.pip-mode #timer-view .card-header h2 {
-    font-size: clamp(11px, 2.8vh, 14px);
+    font-size: clamp(11px, 2.5vh, 13px);
     font-weight: 600;
 }
 
 body.pip-mode .dashboard {
     grid-template-columns: 1fr;
-    padding: 6px;
+    padding: 4px 6px;
     gap: 0;
     height: calc(100vh - 34px);
 }
@@ -1149,15 +1151,16 @@ body.pip-mode #right-stack-panel {
 }
 
 body.pip-mode .card {
-    padding: 8px 12px;
+    padding: 4px 8px;
     box-shadow: none;
     background: transparent;
     border: none;
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
+    justify-content: flex-start;
     align-items: center;
+    gap: 2px;
 }
 
 body.pip-mode .view-content {
@@ -1165,19 +1168,21 @@ body.pip-mode .view-content {
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
+    justify-content: flex-start;
     align-items: center;
+    gap: 2px;
 }
 
 body.pip-mode .gauge-container {
-    width: min(75vw, 52vh);
-    height: min(75vw, 52vh);
-    min-width: 120px;
-    min-height: 120px;
-    max-width: 320px;
-    max-height: 320px;
-    margin: 4px auto;
-    flex-shrink: 0;
+    width: min(70vw, 46vh);
+    height: min(70vw, 46vh);
+    min-width: 80px;
+    min-height: 80px;
+    max-width: 240px;
+    max-height: 240px;
+    margin: 2px auto;
+    flex: 1 1 auto; /* Dynamically grows and shrinks to fill available space! */
+    flex-shrink: 1;
 }
 
 body.pip-mode .gauge-gif-backdrop {
@@ -1199,30 +1204,38 @@ body.pip-mode .gauge-bg {
 }
 
 body.pip-mode .timer-time {
-    font-size: clamp(24px, 9vh, 56px);
+    font-size: clamp(18px, 7vh, 44px);
 }
 
 body.pip-mode .timer-label {
-    font-size: clamp(8px, 2vh, 12px);
+    font-size: clamp(8px, 1.6vh, 11px);
     letter-spacing: 0.5px;
 }
 
 body.pip-mode .timer-action-bar {
-    margin-bottom: 4px;
-    gap: 16px;
+    margin-bottom: 2px;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 body.pip-mode .circle-btn {
-    width: clamp(40px, 10vh, 56px);
-    height: clamp(40px, 10vh, 56px);
+    width: clamp(32px, 7vh, 46px);
+    height: clamp(32px, 7vh, 46px);
 }
 
 body.pip-mode .up-next-info {
-    font-size: clamp(10px, 2.5vh, 13px);
+    font-size: clamp(9px, 1.8vh, 11px);
+    margin-bottom: 2px;
+    flex-shrink: 0;
 }
 
-body.pip-mode .card-header h2 {
-    font-size: 13px;
+body.pip-mode .ytmusic-ticker {
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+    padding: 3px 6px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    width: 100% !important;
 }
 
 /* Motivational & Wisdom Quote Banner */
@@ -1578,13 +1591,17 @@ body.pip-mode .card-header h2 {
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-/* Marquee Ticker for Live YT Music Playing Info */
+/* Marquee Ticker for Live YT Music Playing Info & Media Controls */
 .ytmusic-ticker {
+    position: relative;
+    z-index: 20; /* Ensures ticker bar sits ON TOP of vinyl record backdrop! */
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 0, 80, 0.12);
-    border: 1px solid rgba(255, 0, 80, 0.3);
+    background: rgba(20, 20, 20, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 0, 80, 0.4);
     border-radius: 6px;
     padding: 6px 12px;
     margin-bottom: 10px;
@@ -1592,6 +1609,38 @@ body.pip-mode .card-header h2 {
     box-sizing: border-box;
     flex-shrink: 0;
     overflow: hidden;
+}
+
+.ytmusic-media-controls {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.media-control-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.media-control-btn:hover {
+    background: #ff0050;
+    border-color: #ff6088;
+    transform: scale(1.15);
+}
+
+.media-control-btn:active {
+    transform: scale(0.95);
 }
 
 /* Vinyl Speed Selector Chips */

@@ -96,8 +96,8 @@ void SendRunningAppsToUi() {
 void TogglePipMode() {
     g_isPipMode = !g_isPipMode;
     if (g_isPipMode) {
-        // Set Floating Mini Widget Mode (260 x 340, TOPMOST)
-        SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, 260, 340, SWP_NOMOVE | SWP_SHOWWINDOW);
+        // Set Floating Mini Widget Mode (270 x 400, TOPMOST)
+        SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, 270, 400, SWP_NOMOVE | SWP_SHOWWINDOW);
     } else {
         // Restore Normal Dashboard Mode (960 x 660, NOTOPMOST)
         SetWindowPos(g_hWnd, HWND_NOTOPMOST, 0, 0, 960, 660, SWP_NOMOVE | SWP_SHOWWINDOW);
@@ -156,6 +156,15 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         if (g_isPipMode) TogglePipMode();
     } else if (msg.find(L"\"action\":\"getRunningApps\"") != std::wstring::npos) {
         SendRunningAppsToUi();
+    } else if (msg.find(L"\"action\":\"mediaNext\"") != std::wstring::npos) {
+        keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0);
+        keybd_event(VK_MEDIA_NEXT_TRACK, 0, KEYEVENTF_KEYUP, 0);
+    } else if (msg.find(L"\"action\":\"mediaPrev\"") != std::wstring::npos) {
+        keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0);
+        keybd_event(VK_MEDIA_PREV_TRACK, 0, KEYEVENTF_KEYUP, 0);
+    } else if (msg.find(L"\"action\":\"mediaPlayPause\"") != std::wstring::npos) {
+        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
     } else if (msg.find(L"\"action\":\"togglePip\"") != std::wstring::npos) {
         TogglePipMode();
     } else if (msg.find(L"\"action\":\"startDrag\"") != std::wstring::npos) {
@@ -199,8 +208,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             LPMINMAXINFO lpmmi = (LPMINMAXINFO)lParam;
             if (lpmmi) {
                 if (g_isPipMode) {
-                    lpmmi->ptMinTrackSize.x = 240; // Minimum width limit for PiP Floating mode
-                    lpmmi->ptMinTrackSize.y = 330; // Minimum height limit for PiP Floating mode
+                    lpmmi->ptMinTrackSize.x = 220; // Minimum width limit for PiP Floating mode
+                    lpmmi->ptMinTrackSize.y = 280; // Minimum height limit for PiP Floating mode
                 } else {
                     lpmmi->ptMinTrackSize.x = 760; // Minimum width limit for Normal Dashboard mode
                     lpmmi->ptMinTrackSize.y = 520; // Minimum height limit for Normal Dashboard mode

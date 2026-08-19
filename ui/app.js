@@ -343,6 +343,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!ytTrackData.image && ytTrackData.title) {
             fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
         }
+
+        // Update Play/Pause Media Control Icons (❚❚ vs ▶)
+        const isPaused = ytTrackData.isPaused || !ytTrackData.isPlaying;
+        document.querySelectorAll('.btn-yt-playpause').forEach(btn => {
+            const pausePath = btn.querySelector('.icon-pause-path');
+            const playPath = btn.querySelector('.icon-play-path');
+            if (pausePath && playPath) {
+                pausePath.style.display = isPaused ? 'none' : 'block';
+                playPath.style.display = isPaused ? 'block' : 'none';
+            }
+        });
     }
 
     // Realtime GIF Theme & Display Mode Renderer
@@ -639,6 +650,28 @@ document.addEventListener('DOMContentLoaded', () => {
             userData.vinylSize = parseInt(chip.getAttribute('data-size')) || 340;
             saveUserData();
             applyGifTheme();
+        });
+    });
+
+    // YT Music Media Control Buttons (Prev, Play/Pause, Next)
+    document.querySelectorAll('.btn-yt-prev').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sendToCpp({ action: 'mediaPrev' });
+        });
+    });
+    document.querySelectorAll('.btn-yt-playpause').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            ytTrackData.isPaused = !ytTrackData.isPaused;
+            updateYtMusicUI();
+            sendToCpp({ action: 'mediaPlayPause' });
+        });
+    });
+    document.querySelectorAll('.btn-yt-next').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sendToCpp({ action: 'mediaNext' });
         });
     });
 
