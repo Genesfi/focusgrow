@@ -1464,52 +1464,53 @@ body.pip-mode .card-header h2 {
    YT MUSIC VINYL DISC & MARQUEE TICKER STYLES
    ======================================================== */
 
-/* Circle Inner Ring Vinyl Disc Container */
+/* Circle Mode: Dynamic Vinyl Size Centered on Gauge Clock */
 .vinyl-disc-container {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 154px;
-    height: 154px;
+    width: var(--vinyl-size, 340px);
+    height: var(--vinyl-size, 340px);
     border-radius: 50%;
     overflow: hidden;
     z-index: 1;
     background: rgba(20, 20, 20, 0.4);
     backdrop-filter: blur(8px);
     border: 2px solid rgba(0, 0, 0, 0.85);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.1);
     pointer-events: none;
+    transition: width 0.05s ease-out, height 0.05s ease-out;
 }
 
-/* Full Panel Fit Outer Vinyl Disc Backdrop (Centered to Gauge Clock Circle Dial) */
-.card-vinyl-container {
+/* Full Panel Card Vinyl Disc Backdrop (Dynamic Vinyl Size up to 850px) */
+.card-vinyl-backdrop {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 340px;
-    height: 340px;
-    border-radius: 50%;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 12px;
     overflow: hidden;
-    z-index: 0;
     pointer-events: none;
+    z-index: 1;
     display: none;
     opacity: 0.85;
 }
 
 .card-vinyl-disc {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    top: 175px; /* Permanently locked to exact center point of timer clock dial ring */
+    left: 50%;
+    width: var(--vinyl-size, 680px);
+    height: var(--vinyl-size, 680px);
     border-radius: 50%;
     background: rgba(20, 20, 20, 0.4);
     backdrop-filter: blur(8px);
     border: 2px solid rgba(0, 0, 0, 0.85);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.1);
-    position: relative;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: width 0.05s ease-out, height 0.05s ease-out;
 }
 
 .vinyl-disc {
@@ -1617,6 +1618,29 @@ body.pip-mode .card-header h2 {
 }
 
 .speed-chip.active {
+    background: rgba(255, 0, 80, 0.18);
+    border-color: #ff0050;
+    color: #ff6088;
+    font-weight: 600;
+}
+
+.size-preset-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.size-preset-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.size-preset-chip.active {
     background: rgba(255, 0, 80, 0.18);
     border-color: #ff0050;
     color: #ff6088;

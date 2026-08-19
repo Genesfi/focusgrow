@@ -410,6 +410,20 @@
                             <button class="speed-chip" data-speed="10">🐢 Slow (10s)</button>
                             <button class="speed-chip" data-speed="16">🌙 Relaxed (16s)</button>
                         </div>
+
+                        <!-- Realtime Vinyl Size Slider & Presets -->
+                        <div style="margin-top: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <span style="font-size: 11px; color: var(--text-muted);">Vinyl Disc Size:</span>
+                                <span style="font-size: 11px; font-weight: 600; color: #ff6088;" id="vinyl-size-label">340px</span>
+                            </div>
+                            <input type="range" id="vinyl-size-slider" min="120" max="850" step="10" value="340" class="custom-range" style="width: 100%;">
+                            <div class="speed-selector" style="margin-top: 6px;">
+                                <button class="size-preset-chip" data-size="150">🔘 Small (150px)</button>
+                                <button class="size-preset-chip active" data-size="340">🎯 Medium (340px)</button>
+                                <button class="size-preset-chip" data-size="680">🔳 Full Panel (680px)</button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- GIF Preview Thumbnail -->

@@ -358,7 +358,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const vinylSpeedSection = document.getElementById('vinyl-speed-section');
 
         const currentSpeed = userData.vinylSpeed || 6;
+        const currentSize = userData.vinylSize || 340;
         document.documentElement.style.setProperty('--vinyl-speed', `${currentSpeed}s`);
+        document.documentElement.style.setProperty('--vinyl-size', `${currentSize}px`);
+
+        const vinylSizeSlider = document.getElementById('vinyl-size-slider');
+        const vinylSizeLabel = document.getElementById('vinyl-size-label');
+        if (vinylSizeSlider) vinylSizeSlider.value = currentSize;
+        if (vinylSizeLabel) vinylSizeLabel.textContent = `${currentSize}px`;
 
         // Reset visibility
         if (gaugeGifContainer) gaugeGifContainer.style.display = 'none';
@@ -388,6 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.querySelectorAll('.speed-chip').forEach(chip => {
                 chip.classList.toggle('active', parseInt(chip.getAttribute('data-speed')) === currentSpeed);
+            });
+
+            document.querySelectorAll('.size-preset-chip').forEach(chip => {
+                chip.classList.toggle('active', parseInt(chip.getAttribute('data-size')) === currentSize);
+            });
+
+            document.querySelectorAll('.gif-mode-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.getAttribute('data-mode') === (userData.gifDisplayMode || 'circle'));
             });
 
             updateYtMusicUI();
@@ -599,6 +614,29 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.speed-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             userData.vinylSpeed = parseInt(chip.getAttribute('data-speed')) || 6;
+            saveUserData();
+            applyGifTheme();
+        });
+    });
+
+    // Realtime Vinyl Disc Size Slider Listener
+    document.getElementById('vinyl-size-slider')?.addEventListener('input', (e) => {
+        userData.vinylSize = parseInt(e.target.value);
+        document.documentElement.style.setProperty('--vinyl-size', `${userData.vinylSize}px`);
+        const label = document.getElementById('vinyl-size-label');
+        if (label) label.textContent = `${userData.vinylSize}px`;
+        
+        document.querySelectorAll('.size-preset-chip').forEach(chip => {
+            chip.classList.toggle('active', parseInt(chip.getAttribute('data-size')) === userData.vinylSize);
+        });
+
+        saveUserData();
+    });
+
+    // Vinyl Size Preset Chips Switcher
+    document.querySelectorAll('.size-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            userData.vinylSize = parseInt(chip.getAttribute('data-size')) || 340;
             saveUserData();
             applyGifTheme();
         });
