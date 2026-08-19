@@ -12,6 +12,8 @@
 #include "FocusEngine.hpp"
 #include "AppDetector.hpp"
 
+#include <shobjidl.h>
+
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
@@ -229,6 +231,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             g_focusEngine->TickOneSecond();
         }
         break;
+    case WM_SETTEXT:
+        // Intercept any title change (e.g. from WebView2/Chromium URL changes)
+        // and force window title to permanently remain "FocusGrow" for Taskbar Thumbnail & Alt+Tab
+        return DefWindowProcW(hWnd, WM_SETTEXT, wParam, (LPARAM)L"FocusGrow");
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -239,6 +245,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    SetCurrentProcessExplicitAppUserModelID(L"Genesfi.FocusGrow.App.v1");
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
@@ -265,13 +272,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     int yPos = (screenHeight - windowHeight) / 2;
 
     g_hWnd = CreateWindowExW(
-        WS_EX_APPWINDOW, L"FocusGrowAppWindow", L"FocusGrow - Time Focus & Rest Guard",
+        WS_EX_APPWINDOW, L"FocusGrowAppWindow", L"FocusGrow",
         WS_POPUP | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
         xPos, yPos, windowWidth, windowHeight,
         NULL, NULL, hInstance, NULL
     );
 
     if (!g_hWnd) return 0;
+    SetWindowTextW(g_hWnd, L"FocusGrow");
 
     if (hAppIcon) {
         SendMessage(g_hWnd, WM_SETICON, ICON_BIG, (LPARAM)hAppIcon);
@@ -357,8 +365,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                         g_webView->add_NavigationCompleted(
                             Callback<ICoreWebView2NavigationCompletedEventHandler>(
                                 [](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+                                    SetWindowTextW(g_hWnd, L"FocusGrow");
                                     PostStateToUi();
                                     SendRunningAppsToUi();
+                                    return S_OK;
+                                }).Get(), nullptr);
+
+                        g_webView->add_DocumentTitleChanged(
+                            Callback<ICoreWebView2DocumentTitleChangedEventHandler>(
+                                [](ICoreWebView2* sender, IUnknown* args) -> HRESULT {
+                                    SetWindowTextW(g_hWnd, L"FocusGrow");
                                     return S_OK;
                                 }).Get(), nullptr);
 
