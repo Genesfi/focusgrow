@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 280px;
+      padding: 14px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .logo-badge {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin: 12px 0 6px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .status-row:last-child {
+      margin-bottom: 0;
+    }
+    .label {
+      color: #94a3b8;
+    }
+    .val {
+      font-weight: 600;
+    }
+    .val-connected {
+      color: #10b981;
+    }
+    .val-disconnected {
+      color: #f43f5e;
+    }
+    .domain-tag {
+      background: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #38bdf8;
+      font-family: monospace;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    input[type="number"] {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 6px;
+      width: 40px;
+      font-size: 12px;
+    }
+    .btn-save {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      border-radius: 4px;
+      padding: 6px;
+      width: 100%;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .btn-save:hover {
+      background: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-badge">FG</div>
+    <div>
+      <div class="title">FocusGrow Sync</div>
+      <div class="subtitle">Global Focus & Anti-Doomscroll</div>
+    </div>
+  </div>
+
+  <div class="section-title">Status</div>
+  <div class="card">
+    <div class="status-row">
+      <span class="label">PC App:</span>
+      <span class="val val-disconnected" id="conn-status">Checking...</span>
+    </div>
+    <div class="status-row">
+      <span class="label">Current Site:</span>
+      <span class="domain-tag" id="active-domain">-</span>
+    </div>
+  </div>
+
+  <div class="section-title">Restrict Mode (Anti-Doomscroll)</div>
+  <div class="card">
+    <div class="input-group">
+      <span class="label">Max Scroll Time:</span>
+      <div>
+        <input type="number" id="doom-limit" value="5" min="1">
+        <span class="label" style="font-size: 10px;">mins</span>
+      </div>
+    </div>
+    <div class="input-group">
+      <span class="label">Cooldown:</span>
+      <div>
+        <input type="number" id="doom-cooldown" value="30" min="1">
+        <span class="label" style="font-size: 10px;">mins</span>
+      </div>
+    </div>
+    <button class="btn-save" id="btn-save-settings">SAVE & SYNC TO CLOUD</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

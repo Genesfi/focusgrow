@@ -607,6 +607,7 @@ input[type="number"] {
 }
 
 .up-next-info {
+    margin-top: auto;
     text-align: center;
     font-size: 13px;
     color: var(--text-secondary);
@@ -1052,15 +1053,121 @@ input:checked + .slider:before {
     transition: background 0.15s, border-color 0.15s;
 }
 
-.gif-chip svg, .gif-mode-chip svg {
+.gif-chip svg, .gif-mode-chip svg, .ring-theme-chip svg {
     flex-shrink: 0;
     display: block;
 }
 
 .gif-chip.active, .gif-chip:hover,
-.gif-mode-chip.active, .gif-mode-chip:hover {
+.gif-mode-chip.active, .gif-mode-chip:hover,
+.ring-theme-chip.active, .ring-theme-chip:hover {
     background: var(--button-sec-hover);
     border-color: var(--accent-blue);
+}
+
+.ring-theme-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--button-sec-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+/* ========================================================
+   TIMER RING THEME VARIANTS
+   ======================================================== */
+
+.theme-layer {
+    transition: opacity 0.5s ease;
+    transform: rotate(90deg);
+    transform-origin: center;
+}
+
+/* 1. Classic (Default) - No special class needed, uses base .gauge-progress */
+
+/* 2. Hourglass Style - Periodic 360 Flip */
+@keyframes hourglass-flip {
+    0% { transform: rotate(90deg); }
+    80% { transform: rotate(90deg); } /* Wait 4s */
+    100% { transform: rotate(450deg); } /* Flip 360 in 1s */
+}
+
+.gauge-svg.theme-hourglass .layer-hourglass {
+    animation: hourglass-flip 5s infinite cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: 100px 100px;
+}
+
+.gauge-svg.theme-hourglass .gauge-progress,
+.gauge-svg.theme-hourglass .gauge-bg,
+.gauge-svg.theme-hourglass #gauge-ticks {
+    display: none;
+}
+
+/* 3. Liquid Wave Style */
+.gauge-svg.theme-wave .gauge-progress,
+.gauge-svg.theme-wave .gauge-bg,
+.gauge-svg.theme-wave #gauge-ticks {
+    display: none;
+}
+
+/* 4. Minimal Blocks Style */
+.gauge-svg.theme-blocks .gauge-progress,
+.gauge-svg.theme-blocks .gauge-bg {
+    mask: url(#mask-blocks);
+    -webkit-mask: url(#mask-blocks);
+}
+
+/* 5. Dot Matrix Style */
+.gauge-svg.theme-dots .gauge-progress,
+.gauge-svg.theme-dots .gauge-bg {
+    mask: url(#mask-dots);
+    -webkit-mask: url(#mask-dots);
+}
+
+/* 6. Thin Orbit Style */
+.gauge-svg.theme-orbit .gauge-progress,
+.gauge-svg.theme-orbit .gauge-bg {
+    stroke-width: 2;
+}
+
+#liquid-wave-path, .liquid-wave {
+    fill: var(--accent-blue);
+    filter: drop-shadow(0 0 10px var(--accent-blue));
+}
+
+@keyframes wave-drift {
+    from { transform: translateX(-100px); } /* Matches the 100px period of the SVG path */
+    to { transform: translateX(0px); }
+}
+
+@keyframes wave-drift-slow {
+    from { transform: translateX(0px); }
+    to { transform: translateX(-100px); }
+}
+
+.wave-front {
+    animation: wave-drift 3s infinite linear;
+}
+
+.wave-back {
+    animation: wave-drift-slow 5s infinite linear;
+}
+
+#sand-top, #sand-bottom, #sand-stream {
+    fill: var(--accent-blue);
+    filter: drop-shadow(0 0 12px var(--accent-blue));
+}
+
+#orbit-particle {
+    filter: drop-shadow(0 0 5px var(--accent-blue));
 }
 
 /* Recent GIFs Section & Cards */
@@ -1958,5 +2065,26 @@ body.pip-mode .ytmusic-ticker {
     .dashboard {
         overflow-y: auto;
     }
+}
+
+/* Stealth Mode (Hidden Timer Text) */
+#timer-text-wrapper {
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    will-change: opacity;
+}
+
+body.stealth-active #timer-text-wrapper {
+    opacity: 0;
+}
+
+.gauge-center {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* Vinyl Spindle Hiding */
+body.hide-vinyl-spindle .vinyl-spindle-glass {
+    display: none !important;
 }
 

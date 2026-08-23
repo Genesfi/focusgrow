@@ -23,6 +23,13 @@ struct FocusStats {
     int streakDays = 0;
 };
 
+struct RestrictedSite {
+    std::wstring domain;
+    int maxPassesPerSession = 2;
+    int usedPassesThisSession = 0;
+    int passRemainingSec = 0;
+};
+
 class FocusEngine {
 private:
     SessionState m_state = SessionState::Idle;
@@ -39,6 +46,11 @@ private:
     std::vector<std::wstring> m_systemWhitelist = {
         L"FocusGrow.exe",
         L"explorer.exe",
+        L"msedgewebview2.exe",
+        L"Photos.exe",
+        L"Microsoft.Photos.exe",
+        L"OpenWith.exe",
+        L"PickerHost.exe",
         L"SnippingTool.exe",
         L"ScreenClippingHost.exe",
         L"ScreenSketch.exe",
@@ -50,14 +62,24 @@ private:
         L"TextInputHost.exe"
     };
 
-    std::vector<std::wstring> m_whitelist = {
-        L"code.exe",
-        L"devenv.exe",
-        L"idea64.exe",
-        L"studio64.exe",
-        L"notepad.exe",
-        L"afterfx.exe"
+    std::vector<std::wstring> m_blacklist = {
+        L"facebook.exe",
+        L"tiktok.exe",
+        L"instagram.exe"
     };
+
+    std::vector<RestrictedSite> m_restrictedSites = {
+        { L"facebook.com", 2, 0, 0 },
+        { L"youtube.com", 2, 0, 0 },
+        { L"instagram.com", 2, 0, 0 },
+        { L"tiktok.com", 2, 0, 0 },
+        { L"twitter.com", 2, 0, 0 },
+        { L"x.com", 2, 0, 0 },
+        { L"reddit.com", 2, 0, 0 }
+    };
+
+    std::wstring m_activeDomain = L"";
+    std::wstring m_activeUrl = L"";
 
     HWINEVENTHOOK m_hEventHook = nullptr;
     OverlayWindow m_overlay;
@@ -98,6 +120,9 @@ public:
         m_hInstance = hInstance;
         m_mainHwnd = mainHwnd;
         m_overlay.Create(hInstance);
+        m_overlay.SetPassCallback([this](const std::wstring& domain, int minutes) {
+            this->GrantTemporaryPass(domain, minutes);
+        });
         StartMonitoring();
     }
 
@@ -126,32 +151,156 @@ public:
         }
     }
 
-    void SetWhitelist(const std::vector<std::wstring>& list) {
-        m_whitelist = list;
+    void SetBlacklist(const std::vector<std::wstring>& list) {
+        m_blacklist = list;
     }
 
-    const std::vector<std::wstring>& GetWhitelist() const {
-        return m_whitelist;
+    const std::vector<std::wstring>& GetBlacklist() const {
+        return m_blacklist;
+    }
+
+    void SetRestrictedSites(const std::vector<RestrictedSite>& sites) {
+        m_restrictedSites = sites;
+    }
+
+    const std::vector<RestrictedSite>& GetRestrictedSites() const {
+        return m_restrictedSites;
+    }
+
+    void ResetSessionPasses() {
+        for (auto& site : m_restrictedSites) {
+            site.usedPassesThisSession = 0;
+            site.passRemainingSec = 0;
+        }
+    }
+
+    bool IsDomainBlocked(const std::wstring& domain, RestrictedSite* outSiteInfo = nullptr) const {
+        if (domain.empty() || m_state != SessionState::Focusing || m_isPaused) return false;
+
+        std::wstring lowerDomain = domain;
+        std::transform(lowerDomain.begin(), lowerDomain.end(), lowerDomain.begin(), ::tolower);
+
+        // Explicitly Allow YouTube Music (music.youtube.com)
+        // Also allow common titles for YouTube Music Desktop apps
+        if (lowerDomain.find(L"music.youtube.com") != std::wstring::npos ||
+            lowerDomain.find(L"youtube music") != std::wstring::npos) {
+            return false;
+        }
+
+        for (const auto& site : m_restrictedSites) {
+            std::wstring lowerSite = site.domain;
+            std::transform(lowerSite.begin(), lowerSite.end(), lowerSite.begin(), ::tolower);
+
+            // Suffix-based domain match: youtube.com matches youtube.com and m.youtube.com
+            // but we must ensure we don't accidentally match subdomains we want to allow (handled above)
+            bool matches = (lowerDomain == lowerSite) || (lowerDomain.size() > lowerSite.size() &&
+                           lowerDomain.compare(lowerDomain.size() - lowerSite.size() - 1, 1, L".") == 0 &&
+                           lowerDomain.compare(lowerDomain.size() - lowerSite.size(), lowerSite.size(), lowerSite) == 0);
+
+            if (!lowerSite.empty() && matches) {
+                if (site.passRemainingSec > 0) {
+                    return false; // Active pass! Allowed!
+                }
+                if (outSiteInfo) *outSiteInfo = site;
+                return true; // Restricted and no active pass -> Blocked!
+            }
+        }
+        return false;
+    }
+
+    void GrantTemporaryPass(const std::wstring& domain, int minutes) {
+        std::wstring lowerDomain = domain;
+        std::transform(lowerDomain.begin(), lowerDomain.end(), lowerDomain.begin(), ::tolower);
+
+        for (auto& site : m_restrictedSites) {
+            std::wstring lowerSite = site.domain;
+            std::transform(lowerSite.begin(), lowerSite.end(), lowerSite.begin(), ::tolower);
+
+            if (!lowerSite.empty() && lowerDomain.find(lowerSite) != std::wstring::npos) {
+                // VALIDASI KETAT: Jika sudah pakai 2 jatah, TOLAK mentah-mentah
+                if (site.usedPassesThisSession < site.maxPassesPerSession) {
+                    site.usedPassesThisSession++;
+                    site.passRemainingSec = minutes * 60;
+                    m_overlay.Hide();
+                    NotifyState();
+                    OutputDebugStringW(L"[FocusGrow] Pass GRANTED\n");
+                } else {
+                    OutputDebugStringW(L"[FocusGrow] Pass DENIED: Limit reached\n");
+                }
+                break;
+            }
+        }
+    }
+
+    bool IsBrowserApp(const std::wstring& exeName) const {
+        if (exeName.empty()) return false;
+        std::wstring lowerExe = exeName;
+        std::transform(lowerExe.begin(), lowerExe.end(), lowerExe.begin(), ::tolower);
+        return (lowerExe == L"chrome.exe" || lowerExe == L"msedge.exe" || lowerExe == L"firefox.exe" || 
+                lowerExe == L"opera.exe" || lowerExe == L"brave.exe" || lowerExe == L"vivaldi.exe" ||
+                lowerExe == L"arc.exe" || lowerExe == L"thorium.exe" || lowerExe == L"librewolf.exe" ||
+                lowerExe == L"waterfox.exe" || lowerExe == L"whale.exe");
+    }
+
+    void UpdateActiveTabUrl(const std::wstring& url, const std::wstring& domain, const std::wstring& title) {
+        m_activeUrl = url;
+        m_activeDomain = domain;
+
+        if (m_state == SessionState::Focusing && !m_isPaused) {
+            // We no longer trigger the native black overlay from here for browsers.
+            // The browser extension handles the blocking UI (blocked.html) inside the tab.
+            // This prevents the "double" blocking screen issue.
+            
+            RestrictedSite siteInfo;
+            if (!IsDomainBlocked(domain, &siteInfo)) {
+                if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
+                    m_overlay.Hide();
+                }
+            }
+        }
     }
 
     bool IsAppAllowed(const std::wstring& exeName, const std::wstring& windowTitle) const {
         if (exeName.empty() && windowTitle.empty()) return true;
 
+        std::wstring lowerExe = exeName;
+        std::transform(lowerExe.begin(), lowerExe.end(), lowerExe.begin(), ::tolower);
+        std::wstring lowerTitle = windowTitle;
+        std::transform(lowerTitle.begin(), lowerTitle.end(), lowerTitle.begin(), ::tolower);
+
+        // Explicitly Allow YouTube Music Desktop apps or windows
+        if (lowerExe.find(L"youtube music") != std::wstring::npos ||
+            lowerTitle.find(L"youtube music") != std::wstring::npos) {
+            return true;
+        }
+
+        // System apps are ALWAYS allowed
         for (const auto& sysApp : m_systemWhitelist) {
             if (!exeName.empty() && _wcsicmp(sysApp.c_str(), exeName.c_str()) == 0) {
                 return true;
             }
         }
 
-        for (const auto& item : m_whitelist) {
-            if (!exeName.empty() && _wcsicmp(item.c_str(), exeName.c_str()) == 0) {
-                return true;
+        // Browsers are allowed as apps (URL blocking is separate)
+        if (IsBrowserApp(exeName)) {
+            return true;
+        }
+
+        // NEW BLACKLIST LOGIC: If the app is in the blacklist, it's NOT allowed.
+        // If it's NOT in the blacklist, it's allowed!
+        for (const auto& item : m_blacklist) {
+            std::wstring lowerItem = item;
+            std::transform(lowerItem.begin(), lowerItem.end(), lowerItem.begin(), ::tolower);
+
+            if (!exeName.empty() && lowerExe == lowerItem) {
+                return false; // BLOCKED
             }
-            if (!windowTitle.empty() && wcsstr(windowTitle.c_str(), item.c_str()) != nullptr) {
-                return true;
+            if (!windowTitle.empty() && lowerTitle.find(lowerItem) != std::wstring::npos) {
+                return false; // BLOCKED
             }
         }
-        return false;
+
+        return true; // Everything else is ALLOWED
     }
 
     void StartSession(int totalFocusMinutes, int focusChunkMinutes, int breakMinutes, bool skipBreaks) {
@@ -168,6 +317,8 @@ public:
         m_currentPeriod = 1;
 
         m_remainingSec = m_singlePeriodSec; // Starts counting down from user's selected period length!
+
+        ResetSessionPasses();
 
         m_state = SessionState::Focusing;
         m_isPaused = false;
@@ -187,12 +338,24 @@ public:
         m_state = SessionState::Idle;
         m_isPaused = false;
         m_remainingSec = 0;
+        ResetSessionPasses();
         m_overlay.Hide();
         NotifyState();
     }
 
     void TickOneSecond() {
         if (m_state == SessionState::Idle || m_isPaused) return;
+
+        // Tick temporary site passes
+        for (auto& site : m_restrictedSites) {
+            if (site.passRemainingSec > 0) {
+                site.passRemainingSec--;
+                if (site.passRemainingSec == 0) {
+                    HWND hwndForeground = GetForegroundWindow();
+                    if (hwndForeground) OnForegroundWindowChanged(hwndForeground);
+                }
+            }
+        }
 
         if (m_remainingSec > 0) {
             m_remainingSec--;
@@ -223,6 +386,7 @@ public:
                 m_currentPeriod++;
                 m_state = SessionState::Focusing;
                 m_remainingSec = m_singlePeriodSec;
+                ResetSessionPasses();
                 m_overlay.Hide();
             }
         }
@@ -260,9 +424,32 @@ public:
             GetWindowTextW(hwndForeground, wtitleBuf, 512);
             std::wstring windowTitle(wtitleBuf);
 
+            // Step 1: If active foreground app is NOT a browser and IS allowed (e.g., explorer.exe, code.exe, notepad.exe): HIDE OVERLAY IMMEDIATELY!
+            if (!IsBrowserApp(exeName) && IsAppAllowed(exeName, windowTitle)) {
+                if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
+                    m_overlay.Hide();
+                }
+                return;
+            }
+
+            // Coordination Fix:
+            // IF the foreground app IS a browser, we let the Extension handle the blocking
+            // inside the tab (the extension shows its own blocked.html).
+            // We HIDE the native black overlay entirely for browsers to avoid "double UI".
+            if (IsBrowserApp(exeName)) {
+                if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
+                    m_overlay.Hide();
+                }
+                return;
+            }
+
+            // Step 3: Check general non-whitelisted apps (e.g. Games, Desktop Apps)
             if (!exeName.empty() || !windowTitle.empty()) {
                 if (!IsAppAllowed(exeName, windowTitle)) {
-                    m_overlay.ShowOnMonitor(OverlayMode::FocusBlock, GetFormattedTime(), hwndForeground);
+                    RestrictedSite siteInfo;
+                    IsDomainBlocked(windowTitle, &siteInfo);
+                    int passesRemaining = siteInfo.domain.empty() ? 0 : max(0, siteInfo.maxPassesPerSession - siteInfo.usedPassesThisSession);
+                    m_overlay.ShowOnMonitor(OverlayMode::FocusBlock, GetFormattedTime(), hwndForeground, siteInfo.domain, passesRemaining);
                 } else {
                     if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
                         m_overlay.Hide();
@@ -310,8 +497,22 @@ public:
            << L"\"dailyGoalHours\":" << (m_stats.totalGoalMinutes / 60) << L","
            << L"\"yesterdayHours\":" << (m_stats.yesterdayHoursX10 / 10.0) << L","
            << L"\"streakDays\":" << m_stats.streakDays << L","
-           << L"\"activeExe\":\"" << activeExe << L"\""
-           << L"}";
+           << L"\"activeExe\":\"" << activeExe << L"\","
+           << L"\"activeDomain\":\"" << m_activeDomain << L"\",";
+        ss << L"\"activePasses\":[";
+        bool firstPass = true;
+        for (const auto& site : m_restrictedSites) {
+            int passesLeft = max(0, site.maxPassesPerSession - site.usedPassesThisSession);
+            if (site.passRemainingSec > 0 || passesLeft >= 0) { // Kirim info pass sisa juga
+                if (!firstPass) ss << L",";
+                ss << L"{\"domain\":\"" << site.domain
+                   << L"\",\"remainingSec\":" << site.passRemainingSec
+                   << L",\"passesLeft\":" << passesLeft << L"}";
+                firstPass = false;
+            }
+        }
+        ss << L"]";
+        ss << L"}";
         return ss.str();
     }
 

@@ -1,3 +1,5 @@
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <dwmapi.h>
 #include <gdiplus.h>
@@ -7,6 +9,7 @@
 #include <memory>
 #include <filesystem>
 #include <sstream>
+#include <thread>
 
 #include "../packages/WebView2/build/native/include/WebView2.h"
 #include "FocusEngine.hpp"
@@ -21,6 +24,7 @@
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 using namespace Microsoft::WRL;
 
@@ -46,8 +50,8 @@ std::wstring EscapeJsonString(const std::wstring& input) {
     return ss.str();
 }
 
-void ParseAndSetWhitelist(const std::wstring& msg) {
-    size_t pos = msg.find(L"\"whitelist\":[");
+void ParseAndSetBlacklist(const std::wstring& msg) {
+    size_t pos = msg.find(L"\"blacklist\":[");
     if (pos == std::wstring::npos) return;
     size_t endPos = msg.find(L"]", pos);
     if (endPos == std::wstring::npos) return;
@@ -66,7 +70,7 @@ void ParseAndSetWhitelist(const std::wstring& msg) {
         }
     }
     if (g_focusEngine) {
-        g_focusEngine->SetWhitelist(list);
+        g_focusEngine->SetBlacklist(list);
     }
 }
 
@@ -95,11 +99,13 @@ void SendRunningAppsToUi() {
     g_webView->PostWebMessageAsJson(ss.str().c_str());
 }
 
-void TogglePipMode() {
+void TogglePipMode(int width = 0, int height = 0) {
     g_isPipMode = !g_isPipMode;
     if (g_isPipMode) {
-        // Set Floating Mini Widget Mode (270 x 400, TOPMOST)
-        SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, 270, 400, SWP_NOMOVE | SWP_SHOWWINDOW);
+        // Use provided dimensions if valid, otherwise fallback to defaults
+        int w = (width > 100) ? width : 270;
+        int h = (height > 100) ? height : 400;
+        SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, SWP_NOMOVE | SWP_SHOWWINDOW);
     } else {
         // Restore Normal Dashboard Mode (960 x 660, NOTOPMOST)
         SetWindowPos(g_hWnd, HWND_NOTOPMOST, 0, 0, 960, 660, SWP_NOMOVE | SWP_SHOWWINDOW);
@@ -126,6 +132,214 @@ void ShowWindowsToastNotification(const std::wstring& title, const std::wstring&
     MessageBeep(MB_ICONASTERISK);
 }
 
+void StartTabSyncHttpServer() {
+    std::thread([]() {
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) return;
+
+        SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (listenSocket == INVALID_SOCKET) {
+            WSACleanup();
+            return;
+        }
+
+        BOOL reuse = TRUE;
+        setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse));
+
+        sockaddr_in serverAddr = {};
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_addr.s_addr = INADDR_ANY; // IZINKAN koneksi dari HP (WiFi), bukan cuma 127.0.0.1
+        serverAddr.sin_port = htons(8766);
+
+        if (bind(listenSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+            closesocket(listenSocket);
+            WSACleanup();
+            return;
+        }
+
+        if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
+            closesocket(listenSocket);
+            WSACleanup();
+            return;
+        }
+
+        while (true) {
+            SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+            if (clientSocket == INVALID_SOCKET) break;
+
+            char buffer[2048] = { 0 };
+            int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+            if (bytesReceived > 0) {
+                std::string req(buffer, bytesReceived);
+
+                if (req.find("OPTIONS") == 0) {
+                    std::string resp = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nContent-Length: 0\r\n\r\n";
+                    send(clientSocket, resp.c_str(), (int)resp.length(), 0);
+                    closesocket(clientSocket);
+                    continue;
+                }
+
+                std::wstring domain = L"";
+                std::wstring url = L"";
+                std::wstring title = L"";
+
+                size_t dPos = req.find("\"domain\":\"");
+                if (dPos != std::string::npos) {
+                    size_t dEnd = req.find("\"", dPos + 10);
+                    if (dEnd != std::string::npos) {
+                        std::string dStr = req.substr(dPos + 10, dEnd - (dPos + 10));
+                        domain = std::wstring(dStr.begin(), dStr.end());
+                    }
+                }
+
+                size_t uPos = req.find("\"url\":\"");
+                if (uPos != std::string::npos) {
+                    size_t uEnd = req.find("\"", uPos + 7);
+                    if (uEnd != std::string::npos) {
+                        std::string uStr = req.substr(uPos + 7, uEnd - (uPos + 7));
+                        url = std::wstring(uStr.begin(), uStr.end());
+                    }
+                }
+
+                std::string statusStr = "ok";
+                int remainingSec = 0;
+
+                if (req.find("GET /state") != std::string::npos) {
+                    if (g_focusEngine) {
+                        std::wstring stateJson = g_focusEngine->GetStateJson();
+                        std::string bodyStr(stateJson.begin(), stateJson.end());
+                        std::stringstream resp;
+                        resp << "HTTP/1.1 200 OK\r\n"
+                             << "Access-Control-Allow-Origin: *\r\n"
+                             << "Content-Type: application/json\r\n"
+                             << "Content-Length: " << bodyStr.length() << "\r\n\r\n"
+                             << bodyStr;
+                        std::string respStr = resp.str();
+                        send(clientSocket, respStr.c_str(), (int)respStr.length(), 0);
+                        closesocket(clientSocket);
+                        continue;
+                    }
+                }
+
+                if (req.find("POST /grant") != std::string::npos) {
+                    // Cari data grantPass di body
+                    size_t actPos = req.find("\"action\":\"grantPass\"");
+                    if (actPos != std::string::npos) {
+                        std::wstring domain = L"";
+                        int mins = 5;
+
+                        size_t dPos = req.find("\"domain\":\"");
+                        if (dPos != std::string::npos) {
+                            size_t dEnd = req.find("\"", dPos + 10);
+                            if (dEnd != std::string::npos) {
+                                std::string dStr = req.substr(dPos + 10, dEnd - (dPos + 10));
+                                domain = std::wstring(dStr.begin(), dStr.end());
+                            }
+                        }
+
+                        size_t mPos = req.find("\"minutes\":");
+                        if (mPos != std::string::npos) {
+                            mins = atoi(req.c_str() + mPos + 10);
+                        }
+
+                        if (g_focusEngine && !domain.empty()) {
+                            g_focusEngine->GrantTemporaryPass(domain, mins);
+                        }
+
+                        std::string resp = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 0\r\n\r\n";
+                        send(clientSocket, resp.c_str(), (int)resp.length(), 0);
+                        closesocket(clientSocket);
+                        continue;
+                    }
+                }
+
+                if (g_focusEngine) {
+                    // Check if extension is requesting a pass grant
+                    if (req.find("\"grantPass\":true") != std::string::npos) {
+                        int pMins = 5;
+                        size_t mPos = req.find("\"minutes\":");
+                        if (mPos != std::string::npos) {
+                            pMins = atoi(req.c_str() + mPos + 10);
+                        }
+                        if (!domain.empty()) {
+                            g_focusEngine->GrantTemporaryPass(domain, pMins);
+                        }
+                    }
+
+                    if (!domain.empty()) {
+                        g_focusEngine->UpdateActiveTabUrl(url, domain, title);
+                    }
+                    RestrictedSite siteInfo;
+                    if (g_focusEngine->IsDomainBlocked(domain, &siteInfo)) {
+                        statusStr = "blocked";
+                    } else {
+                        std::wstring lowerDomain = domain;
+                        std::transform(lowerDomain.begin(), lowerDomain.end(), lowerDomain.begin(), ::tolower);
+                        for (const auto& site : g_focusEngine->GetRestrictedSites()) {
+                            std::wstring lowerSite = site.domain;
+                            std::transform(lowerSite.begin(), lowerSite.end(), lowerSite.begin(), ::tolower);
+                            if (!lowerSite.empty() && lowerDomain.find(lowerSite) != std::wstring::npos && site.passRemainingSec > 0) {
+                                statusStr = "pass_active";
+                                remainingSec = site.passRemainingSec;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                std::stringstream respJson;
+                respJson << "{\"status\":\"" << statusStr << "\",\"remainingSec\":" << remainingSec << "}";
+                std::string bodyStr = respJson.str();
+
+                std::stringstream resp;
+                resp << "HTTP/1.1 200 OK\r\n"
+                     << "Access-Control-Allow-Origin: *\r\n"
+                     << "Content-Type: application/json\r\n"
+                     << "Content-Length: " << bodyStr.length() << "\r\n\r\n"
+                     << bodyStr;
+
+                std::string respStr = resp.str();
+                send(clientSocket, respStr.c_str(), (int)respStr.length(), 0);
+            }
+            closesocket(clientSocket);
+        }
+
+        closesocket(listenSocket);
+        WSACleanup();
+    }).detach();
+}
+
+void ParseAndSetRestrictedSites(const std::wstring& msg) {
+    size_t pos = msg.find(L"\"restrictedSites\":[");
+    if (pos == std::wstring::npos) return;
+    size_t endPos = msg.find(L"]", pos);
+    if (endPos == std::wstring::npos) return;
+
+    std::wstring arrStr = msg.substr(pos + 19, endPos - (pos + 19));
+    std::vector<RestrictedSite> list;
+
+    std::wstringstream ss(arrStr);
+    std::wstring item;
+    while (std::getline(ss, item, L',')) {
+        size_t q1 = item.find(L'"');
+        size_t q2 = item.rfind(L'"');
+        if (q1 != std::wstring::npos && q2 != std::wstring::npos && q2 > q1) {
+            std::wstring clean = item.substr(q1 + 1, q2 - q1 - 1);
+            if (!clean.empty()) {
+                RestrictedSite s;
+                s.domain = clean;
+                s.maxPassesPerSession = 2;
+                s.usedPassesThisSession = 0;
+                s.passRemainingSec = 0;
+                list.push_back(s);
+            }
+        }
+    }
+    if (g_focusEngine) {
+        g_focusEngine->SetRestrictedSites(list);
+    }
+}
+
 void ProcessWebMessage(PCWSTR jsonMessage) {
     std::wstring msg(jsonMessage);
 
@@ -147,10 +361,27 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         pos = msg.find(L"\"skipBreaks\":true");
         if (pos != std::wstring::npos) skipBreaks = true;
 
-        ParseAndSetWhitelist(msg);
+        ParseAndSetBlacklist(msg);
+        ParseAndSetRestrictedSites(msg);
         g_focusEngine->StartSession(mins, chunkMins, breakMins, skipBreaks);
-    } else if (msg.find(L"\"action\":\"setWhitelist\"") != std::wstring::npos) {
-        ParseAndSetWhitelist(msg);
+    } else if (msg.find(L"\"action\":\"setBlacklist\"") != std::wstring::npos) {
+        ParseAndSetBlacklist(msg);
+    } else if (msg.find(L"\"action\":\"setRestrictedSites\"") != std::wstring::npos) {
+        ParseAndSetRestrictedSites(msg);
+    } else if (msg.find(L"\"action\":\"grantPass\"") != std::wstring::npos) {
+        std::wstring domain = L"";
+        int mins = 5;
+        size_t dPos = msg.find(L"\"domain\":\"");
+        if (dPos != std::wstring::npos) {
+            size_t dEnd = msg.find(L"\"", dPos + 10);
+            if (dEnd != std::wstring::npos) domain = msg.substr(dPos + 10, dEnd - (dPos + 10));
+        }
+        size_t mPos = msg.find(L"\"minutes\":");
+        if (mPos != std::wstring::npos) mins = _wtoi(msg.c_str() + mPos + 10);
+
+        if (g_focusEngine && !domain.empty()) {
+            g_focusEngine->GrantTemporaryPass(domain, mins);
+        }
     } else if (msg.find(L"\"action\":\"pauseSession\"") != std::wstring::npos) {
         g_focusEngine->PauseSession();
     } else if (msg.find(L"\"action\":\"stopSession\"") != std::wstring::npos) {
@@ -168,7 +399,12 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
         keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
     } else if (msg.find(L"\"action\":\"togglePip\"") != std::wstring::npos) {
-        TogglePipMode();
+        int w = 0, h = 0;
+        size_t wPos = msg.find(L"\"width\":");
+        if (wPos != std::wstring::npos) w = _wtoi(msg.c_str() + wPos + 8);
+        size_t hPos = msg.find(L"\"height\":");
+        if (hPos != std::wstring::npos) h = _wtoi(msg.c_str() + hPos + 9);
+        TogglePipMode(w, h);
     } else if (msg.find(L"\"action\":\"startDrag\"") != std::wstring::npos) {
         ReleaseCapture();
         PostMessage(g_hWnd, WM_SYSCOMMAND, SC_MOVE | 0x0002, 0);
@@ -210,8 +446,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             LPMINMAXINFO lpmmi = (LPMINMAXINFO)lParam;
             if (lpmmi) {
                 if (g_isPipMode) {
-                    lpmmi->ptMinTrackSize.x = 220; // Minimum width limit for PiP Floating mode
-                    lpmmi->ptMinTrackSize.y = 280; // Minimum height limit for PiP Floating mode
+                    lpmmi->ptMinTrackSize.x = 160; // Restored to a usable small width
+                    lpmmi->ptMinTrackSize.y = 220; // Restored to a usable small height
                 } else {
                     lpmmi->ptMinTrackSize.x = 760; // Minimum width limit for Normal Dashboard mode
                     lpmmi->ptMinTrackSize.y = 520; // Minimum height limit for Normal Dashboard mode
@@ -299,6 +535,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     g_focusEngine = std::make_unique<FocusEngine>();
     g_focusEngine->Init(hInstance, g_hWnd);
+    StartTabSyncHttpServer();
     g_focusEngine->SetStateCallback([](const std::wstring& jsonState) {
         PostStateToUi();
     });

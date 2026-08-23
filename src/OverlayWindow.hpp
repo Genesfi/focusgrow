@@ -15,6 +15,9 @@ private:
     OverlayMode m_mode = OverlayMode::None;
     std::wstring m_timerText = L"00:00";
     std::wstring m_currentQuote = L"";
+    std::wstring m_blockedDomain = L"";
+    int m_passesAvailable = 0;
+    std::function<void(const std::wstring& domain, int minutes)> m_onPassRequested;
 
     std::wstring GetRandomQuote(OverlayMode mode) {
         static const std::vector<std::wstring> focusQuotes = {
@@ -97,6 +100,9 @@ private:
 
             if (m_mode == OverlayMode::RestBreak) {
                 DrawTextW(hdc, L"TIME TO REST & TAKE A BREAK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            } else if (!m_blockedDomain.empty()) {
+                std::wstring mainTitle = L"RESTRICTED SITE: " + m_blockedDomain;
+                DrawTextW(hdc, mainTitle.c_str(), -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             } else {
                 DrawTextW(hdc, L"STAY FOCUSED ON YOUR WORK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             }
@@ -122,13 +128,19 @@ private:
 
             RECT rcSub = rc;
             rcSub.top = centerY - 10;
-            rcSub.bottom = rcSub.top + 60;
+            rcSub.bottom = rcSub.top + 80;
 
             std::wstring subText;
             if (m_mode == OverlayMode::RestBreak) {
                 subText = L"Step away from your screen. Stand up, stretch your body, get a drink, and enjoy fresh air!\nWork applications are locked until your break finishes.";
+            } else if (!m_blockedDomain.empty()) {
+                if (m_passesAvailable > 0) {
+                    subText = L"Website " + m_blockedDomain + L" is restricted during focus mode.\nEmergency Pass available for this session! Press shortcut keys:\n[1] 5 Min Pass   |   [2] 10 Min Pass   |   [3] 15 Min Pass   |   [Esc] Close";
+                } else {
+                    subText = L"Website " + m_blockedDomain + L" is restricted during focus mode.\nPasses for this session have been fully used. Focus on your goal!\nPress [Esc] or switch tabs to return to work.";
+                }
             } else {
-                subText = L"This application is not on your allowed focus whitelist.\nSwitch back to your work app or enable it in FocusGrow allowed list.";
+                subText = L"This application is not on your allowed focus whitelist.\nSwitch back to your work app or enable it in FocusGrow allowed list.\nPress [Esc] to dismiss overlay.";
             }
             DrawTextW(hdc, subText.c_str(), -1, &rcSub, DT_CENTER | DT_WORDBREAK);
 
@@ -140,7 +152,7 @@ private:
                 SetTextColor(hdc, (m_mode == OverlayMode::RestBreak) ? RGB(167, 243, 208) : RGB(186, 230, 253));
 
                 RECT rcQuote = rc;
-                rcQuote.top = centerY + 80;
+                rcQuote.top = centerY + 90;
                 rcQuote.bottom = rcQuote.top + 100;
                 rcQuote.left += 60;
                 rcQuote.right -= 60;
@@ -160,8 +172,21 @@ private:
         case WM_ERASEBKGND:
             return 1;
         case WM_KEYDOWN:
-            if (wParam == VK_ESCAPE && m_mode == OverlayMode::FocusBlock) {
-                Hide();
+            if (m_mode == OverlayMode::FocusBlock) {
+                if (wParam == VK_ESCAPE) {
+                    Hide();
+                } else if (!m_blockedDomain.empty() && m_passesAvailable > 0 && m_onPassRequested) {
+                    if (wParam == '1' || wParam == VK_NUMPAD1) {
+                        m_onPassRequested(m_blockedDomain, 5);
+                        Hide();
+                    } else if (wParam == '2' || wParam == VK_NUMPAD2) {
+                        m_onPassRequested(m_blockedDomain, 10);
+                        Hide();
+                    } else if (wParam == '3' || wParam == VK_NUMPAD3) {
+                        m_onPassRequested(m_blockedDomain, 15);
+                        Hide();
+                    }
+                }
             }
             return 0;
         }
@@ -170,6 +195,10 @@ private:
 
 public:
     OverlayWindow() {}
+
+    void SetPassCallback(std::function<void(const std::wstring& domain, int minutes)> callback) {
+        m_onPassRequested = callback;
+    }
 
     void Create(HINSTANCE hInstance) {
         WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
@@ -192,9 +221,11 @@ public:
         SetLayeredWindowAttributes(m_hwnd, 0, 242, LWA_ALPHA);
     }
 
-    void ShowOnMonitor(OverlayMode mode, const std::wstring& timerText, HWND targetHwnd = nullptr) {
+    void ShowOnMonitor(OverlayMode mode, const std::wstring& timerText, HWND targetHwnd = nullptr, const std::wstring& blockedDomain = L"", int passesAvailable = 0) {
         m_mode = mode;
         m_timerText = timerText;
+        m_blockedDomain = blockedDomain;
+        m_passesAvailable = passesAvailable;
         m_currentQuote = GetRandomQuote(mode);
         if (!m_hwnd) return;
 
@@ -235,6 +266,8 @@ public:
         if (m_hwnd) {
             ShowWindow(m_hwnd, SW_HIDE);
             m_mode = OverlayMode::None;
+            m_blockedDomain = L"";
+            m_passesAvailable = 0;
         }
     }
 

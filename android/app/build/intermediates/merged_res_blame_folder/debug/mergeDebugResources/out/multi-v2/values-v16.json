@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.genesfi.focusgrow.app-mergeDebugResources-42:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Gusti N\\.gradle\\caches\\transforms-4\\c3881d7049ba77c0a323b0de4d0ec4fe\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        }
+    ]
+}

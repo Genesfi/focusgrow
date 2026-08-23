@@ -207,13 +207,89 @@
                         </div>
 
                         <svg class="gauge-svg" viewBox="0 0 200 200">
+                            <!-- Theme Definitions (Clips, Masks) -->
+                            <defs>
+                                <!-- Liquid Wave Clip: Contained within the gauge circle -->
+                                <clipPath id="gauge-circle-clip">
+                                    <circle cx="100" cy="100" r="76" />
+                                </clipPath>
+
+                                <!-- Hourglass Top Clip -->
+                                <clipPath id="clip-hourglass-top">
+                                    <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z" />
+                                </clipPath>
+
+                                <!-- Hourglass Bottom Clip -->
+                                <clipPath id="clip-hourglass-bottom">
+                                    <path d="M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z" />
+                                </clipPath>
+
+                                <!-- Dot Matrix Mask -->
+                                <mask id="mask-dots">
+                                    <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="8" stroke-dasharray="0 10" stroke-linecap="round" />
+                                </mask>
+
+                                <!-- Minimal Blocks Mask -->
+                                <mask id="mask-blocks">
+                                    <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="12" stroke-dasharray="35 5" />
+                                </mask>
+                            </defs>
+
                             <g class="gauge-ticks" id="gauge-ticks"></g>
+
+                            <!-- Base background for most themes -->
                             <circle class="gauge-bg" cx="100" cy="100" r="76"></circle>
+
+                            <!-- Theme Layers -->
+                            <!-- 1. Liquid Wave Layer (Overhaul V5 - Seamless Loop) -->
+                            <g class="theme-layer layer-wave" style="display: none;" clip-path="url(#gauge-circle-clip)">
+                                <circle cx="100" cy="100" r="76" fill="var(--accent-blue)" opacity="0.1" />
+                                <g id="wave-level-group" style="transition: transform 1s linear;">
+                                    <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
+                                    <path class="liquid-wave wave-back" d="M -100 100 Q -75 80 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.4" />
+                                    <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
+                                </g>
+                            </g>
+
+                            <!-- 2. Hourglass Layer (Overhaul V5 - Dual Sand Wave) -->
+                            <g class="theme-layer layer-hourglass" style="display: none;">
+                                <!-- Top and Bottom Caps -->
+                                <rect x="45" y="35" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
+                                <rect x="45" y="160" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
+
+                                <!-- Main Frame -->
+                                <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
+                                    fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+
+                                <!-- Top Sand (Draining) -->
+                                <g clip-path="url(#clip-hourglass-top)">
+                                    <g id="sand-top-level-group" style="transition: transform 1s linear;">
+                                        <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.9" />
+                                    </g>
+                                </g>
+
+                                <!-- Bottom Sand (Filling) -->
+                                <g clip-path="url(#clip-hourglass-bottom)">
+                                    <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
+                                        <path class="liquid-wave wave-front" d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
+                                    </g>
+                                </g>
+
+                                <!-- Falling Stream -->
+                                <rect id="sand-stream" x="98.5" y="98" width="3" height="5" fill="var(--accent-blue)" opacity="1" style="display: none;" />
+                            </g>
+
+                            <!-- Progress Bars (used by Classic, Dots, Blocks, Orbit) -->
                             <circle class="gauge-progress" id="gauge-progress-bar" cx="100" cy="100" r="76"></circle>
+
+                            <!-- Orbit Particle -->
+                            <circle id="orbit-particle" cx="100" cy="24" r="5" fill="var(--accent-blue)" style="display: none; transition: transform 0.5s linear; transform-origin: 100px 100px;" />
                         </svg>
-                        <div class="gauge-center">
-                            <div class="timer-time" id="active-timer-display">30:00</div>
-                            <div class="timer-label" id="active-status-label">REMAINING</div>
+                        <div class="gauge-center" id="gauge-clickable-area" title="Click to hide/show timer digits">
+                            <div id="timer-text-wrapper">
+                                <div class="timer-time" id="active-timer-display">30:00</div>
+                                <div class="timer-label" id="active-status-label">REMAINING</div>
+                            </div>
                         </div>
                     </div>
 
@@ -315,49 +391,79 @@
                     </div>
                 </section>
 
-                <!-- App & Tab Whitelist Card -->
-                <section class="card whitelist-card">
-                    <div class="card-header">
-                        <h2>Allowed Applications & Tabs</h2>
-                        <button class="icon-btn" id="btn-refresh-apps" title="Refresh Applications">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                        </button>
-                    </div>
-                    <p class="subtitle">Only checked applications or browser tabs will be accessible during focus sessions.</p>
-                    
-                    <!-- Search Input -->
-                    <div class="search-box">
-                        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" id="app-search-input" placeholder="Search applications or browser tabs...">
-                    </div>
-
-                    <!-- App Filter Chips & Sorting Control Toolbar -->
-                    <div class="app-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; margin-bottom: 10px;">
-                        <div class="app-filter-chips" style="display: flex; gap: 4px;">
-                            <button class="filter-chip active" data-filter="all">All</button>
-                            <button class="filter-chip" data-filter="allowed" style="display: inline-flex; align-items: center; gap: 4px;">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                <span>Allowed</span>
+                <!-- Protection & Focus Guard Tabbed Card -->
+                <section class="card protection-card" style="flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; z-index: 1;">
+                    <!-- Segmented Tab Header -->
+                    <div class="protection-tab-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 10px; position: relative; z-index: 10;">
+                        <div class="protection-tabs" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); position: relative; z-index: 20;">
+                            <button class="guard-tab-btn active" id="tab-btn-apps" data-tab="apps" style="background: var(--accent-blue); color: #000; border: none; font-weight: 700; padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; position: relative; z-index: 30;">
+                                <span>🚫 Blocked Apps</span>
                             </button>
-                            <button class="filter-chip" data-filter="disabled" style="display: inline-flex; align-items: center; gap: 4px;">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff2a70" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
-                                <span>Disabled</span>
+                            <button class="guard-tab-btn" id="tab-btn-sites" data-tab="sites" style="background: transparent; color: var(--text-secondary); border: none; font-weight: 600; padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; position: relative; z-index: 30;">
+                                <span>🌐 Restricted Sites</span>
                             </button>
                         </div>
-                        <div class="app-sort-wrapper" style="display: flex; align-items: center; gap: 4px;">
-                            <span style="font-size: 10px; color: var(--text-muted);">Sort:</span>
-                            <select id="app-sort-select" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary); font-size: 11px; padding: 3px 6px; border-radius: 6px; outline: none; cursor: pointer;">
-                                <option value="latest">Latest Open</option>
-                                <option value="name">Name (A-Z)</option>
-                            </select>
+                        <div class="tab-header-right" style="display: flex; align-items: center; gap: 8px;">
+                            <span id="ext-status-badge" style="font-size: 10px; padding: 2px 8px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600;">Extension Sync</span>
+                            <button class="icon-btn" id="btn-refresh-apps" title="Refresh Applications">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="app-list" id="app-list-container">
-                        <!-- Populated dynamically via JS -->
+                    <!-- Tab 1: Blocked Apps Content -->
+                    <div class="tab-content active" id="tab-content-apps" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                        <p class="subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Checked applications or browser tabs will be blocked during focus sessions. Unchecked apps will remain accessible.</p>
+
+                        <!-- Search Input -->
+                        <div class="search-box">
+                            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" id="app-search-input" placeholder="Search applications or browser tabs...">
+                        </div>
+
+                        <!-- App Filter Chips & Sorting Control Toolbar -->
+                        <div class="app-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+                            <div class="app-filter-chips" style="display: flex; gap: 4px;">
+                                <button class="filter-chip active" data-filter="all">All</button>
+                                <button class="filter-chip" data-filter="blocked" style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff2a70" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                                    <span>Blocked</span>
+                                </button>
+                                <button class="filter-chip" data-filter="unblocked" style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <span>Accessible</span>
+                                </button>
+                            </div>
+                            <div class="app-sort-wrapper" style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 10px; color: var(--text-muted);">Sort:</span>
+                                <select id="app-sort-select" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary); font-size: 11px; padding: 3px 6px; border-radius: 6px; outline: none; cursor: pointer;">
+                                    <option value="latest">Latest Open</option>
+                                    <option value="name">Name (A-Z)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="app-list" id="app-list-container" style="flex: 1; min-height: 190px; max-height: 250px; overflow-y: auto;">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Restricted Websites Content -->
+                    <div class="tab-content" id="tab-content-sites" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+                        <p class="subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Websites locked during focus sessions. Allows 2 temporary passes (5m / 10m / 15m) per focus period.</p>
+                        
+                        <div class="site-input-row" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <input type="text" id="restricted-site-input" placeholder="Enter domain (e.g. facebook.com, youtube.com, tiktok.com)..." style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 8px; outline: none;">
+                            <button class="small-action-btn" id="btn-add-restricted-site" style="background: var(--accent-blue); color: #000; font-weight: 600; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer;">+ Add Domain</button>
+                        </div>
+
+                        <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Active Restricted Domains:</div>
+                        <div class="restricted-site-tags" id="restricted-sites-container" style="display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; max-height: 200px; padding: 4px;">
+                            <!-- Dynamic website chips populated via JS -->
+                        </div>
                     </div>
                 </section>
             </div>
@@ -475,6 +581,15 @@
                                 <button class="size-preset-chip" data-size="680">🔳 Full Panel (680px)</button>
                             </div>
                         </div>
+
+                        <!-- Center Spindle Toggle -->
+                        <div class="option-row" style="margin-top: 10px; background: none; padding: 0;">
+                            <span style="font-size: 11px; color: var(--text-muted);">Show Center Spindle (White Disc)</span>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-vinyl-spindle-toggle" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- GIF Preview Thumbnail -->
@@ -489,6 +604,20 @@
                     <div id="gif-opacity-row" style="display: none; margin-top: 10px;">
                         <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span id="opacity-label">78%</span></div>
                         <input type="range" id="gif-opacity-slider" min="10" max="100" value="78" style="width: 100%; accent-color: var(--accent-blue);">
+                    </div>
+
+                    <!-- Timer Ring Visual Themes -->
+                    <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+                        <div class="option-title">Timer Ring Theme</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose a visual style for the focus timer:</div>
+                        <div class="gif-selector">
+                            <button class="ring-theme-chip active" data-theme="classic">⭕ Classic</button>
+                            <button class="ring-theme-chip" data-theme="hourglass">⏳ Hourglass</button>
+                            <button class="ring-theme-chip" data-theme="wave">🌊 Liquid Wave</button>
+                            <button class="ring-theme-chip" data-theme="blocks">📊 Blocks</button>
+                            <button class="ring-theme-chip" data-theme="dots">💬 Dots</button>
+                            <button class="ring-theme-chip" data-theme="orbit">💫 Orbit</button>
+                        </div>
                     </div>
                 </div>
 
@@ -516,7 +645,7 @@
                     <button class="small-action-btn" id="btn-reset-progress">Reset</button>
                 </div>
                 <div class="option-row">
-                    <span>Clear App Whitelist</span>
+                    <span>Clear Blocked Apps List</span>
                     <button class="small-action-btn" id="btn-clear-whitelist">Clear</button>
                 </div>
             </div>

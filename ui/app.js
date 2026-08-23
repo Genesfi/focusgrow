@@ -88,9 +88,31 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDragArea(document.getElementById('app-titlebar'));
     setupDragArea(document.querySelector('.titlebar'));
 
-    // PIP Floating Widget Toggle & Restore Buttons
+    let isInitializingPip = false;
+
     document.querySelectorAll('.btn-pip-toggle, #btn-pip-restore').forEach(btn => {
-        btn.addEventListener('click', () => sendToCpp({ action: 'togglePip' }));
+        btn.addEventListener('click', () => {
+            const isCurrentlyPip = document.body.classList.contains('pip-mode');
+
+            const isEnteringPip = !isCurrentlyPip;
+            const targetW = isEnteringPip ? (userData.pipWidth || 280) : undefined;
+            const targetH = isEnteringPip ? (userData.pipHeight || 400) : undefined;
+
+            if (isEnteringPip) {
+                console.log(`[PIP] Entering PIP with target size: ${targetW}x${targetH}`);
+                // Enable cooldown to prevent capturing initial window snap
+                isInitializingPip = true;
+                setTimeout(() => { isInitializingPip = false; }, 1000); // 1s cooldown
+            } else {
+                console.log(`[PIP] Exiting PIP. Keeping last manual resize: ${userData.pipWidth}x${userData.pipHeight}`);
+            }
+
+            sendToCpp({
+                action: 'togglePip',
+                width: targetW,
+                height: targetH
+            });
+        });
     });
 
     // Request Notification Permissions
@@ -122,7 +144,13 @@ document.addEventListener('DOMContentLoaded', () => {
         customGifData: '',
         customGifName: '',
         recentGifs: [], // Stores up to 5 recently used custom GIFs: { id, name, data }
-        allowedItems: ['code.exe', 'devenv.exe', 'idea64.exe', 'studio64.exe', 'notepad.exe', 'afterfx.exe']
+        blockedApps: ['facebook.exe', 'tiktok.exe', 'instagram.exe'],
+        restrictedSites: ['facebook.com', 'youtube.com', 'instagram.com', 'tiktok.com', 'twitter.com', 'x.com', 'reddit.com'],
+        pipWidth: 280,
+        pipHeight: 400,
+        timerTheme: 'classic', // 'classic', 'hourglass', 'wave', 'blocks', 'dots', 'orbit'
+        isStealthMode: false,
+        showVinylSpindle: true
     };
 
     function loadUserData() {
@@ -163,10 +191,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadUserData();
 
+    // Migrate or initialize blockedApps
+    if (!userData.blockedApps) {
+        userData.blockedApps = [];
+        saveUserData();
+    }
+
     let selectedMins = userData.selectedMins || 30;
     let selectedPeriodMins = userData.selectedPeriodMins || 25;
     let selectedBreakMins = userData.selectedBreakMins || 5;
-    let allowedItems = userData.allowedItems || [];
+    let blockedApps = userData.blockedApps || [];
     let isPaused = false;
     let activeState = 'idle';
     let previousState = 'idle';
@@ -181,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- YTMPX WebSocket Realtime Sync ---
     let ytmpxSocket = null;
+    let isUsingExtension = false; // Flag to prioritize extension data over browser tab titles
     let ytTrackData = {
         title: '',
         author: '',
@@ -198,15 +233,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ytmpxSocket.onopen = () => {
                 console.log('[YTMPX] Connected to ws://localhost:8765');
+                isUsingExtension = true;
             };
 
             ytmpxSocket.onmessage = (evt) => {
                 try {
                     const data = JSON.parse(evt.data);
                     if (data && data.metadata) {
+                        isUsingExtension = true; // Confirmed working extension
                         ytTrackData.title = data.metadata.title || '';
                         ytTrackData.author = data.metadata.author || '';
-                        ytTrackData.image = data.metadata.image || '';
+
+                        console.log(`[YTMPX] Track Update: ${ytTrackData.title} — ${ytTrackData.author}`);
+
+                        // PRIORITIZE image from extension metadata
+                        if (data.metadata.image) {
+                            ytTrackData.image = data.metadata.image;
+                        }
 
                         if (data.event === 'track' || data.event === 'resume') {
                             ytTrackData.isPlaying = true;
@@ -222,13 +265,16 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             ytmpxSocket.onclose = () => {
+                isUsingExtension = false;
                 setTimeout(connectYtmpxWebSocket, 3000);
             };
 
             ytmpxSocket.onerror = () => {
+                isUsingExtension = false;
                 ytmpxSocket.close();
             };
         } catch (e) {
+            isUsingExtension = false;
             setTimeout(connectYtmpxWebSocket, 3000);
         }
     }
@@ -238,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFetchedTrackKey = '';
 
     function fetchAlbumArtFromiTunes(title, author) {
-        if (!title) return;
+        if (!title || title.toLowerCase() === 'youtube music' || title.toLowerCase() === 'yt music') return;
         const trackKey = `${title}-${author}`;
         if (lastFetchedTrackKey === trackKey) return;
         lastFetchedTrackKey = trackKey;
@@ -257,6 +303,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function tryNextQuery(index) {
             if (index >= searchQueries.length) return;
+            // Skip fetch if not on a server (CORS issues in some WebView2 environments)
+            if (window.location.protocol === 'file:') {
+                console.warn('[iTunes] Skip fetch on file:// to avoid CORS. Use WebSocket metadata if available.');
+                return;
+            }
             const q = encodeURIComponent(searchQueries[index]);
             fetch(`https://itunes.apple.com/search?term=${q}&media=music&limit=1`)
                 .then(res => res.json())
@@ -269,40 +320,70 @@ document.addEventListener('DOMContentLoaded', () => {
                         tryNextQuery(index + 1);
                     }
                 })
-                .catch(() => tryNextQuery(index + 1));
+                .catch(err => {
+                    console.error('[iTunes] Fetch error:', err);
+                    tryNextQuery(index + 1);
+                });
         }
 
         tryNextQuery(0);
     }
 
     function detectYtMusicFromBrowserTabs(apps) {
+        if (isUsingExtension) return; // Skip backup detection if high-quality extension is active
         if (!apps || !Array.isArray(apps)) return;
 
-        const ytApp = apps.find(app => {
+        // Find all potential YouTube Music/YouTube tabs
+        const ytApps = apps.filter(app => {
             if (!app.title) return false;
             const t = app.title.toLowerCase();
+            // ONLY target YouTube Music or YT Music tabs
             return t.includes('youtube music') || t.includes('yt music');
         });
 
-        if (ytApp && ytApp.title) {
-            let rawTitle = ytApp.title;
-            rawTitle = rawTitle.replace(/\s*[\-\|]\s*YouTube Music/gi, '');
-            rawTitle = rawTitle.replace(/^YouTube Music\s*[\-\|]\s*/gi, '');
+        if (ytApps.length > 0) {
+            // Prefer a tab that looks like a track (has a separator) over a generic one
+            const ytApp = ytApps.find(app => app.title.includes(' - ') || app.title.includes(' | ')) || ytApps[0];
 
-            if (rawTitle.trim()) {
-                const parts = rawTitle.split(/\s*[\-\|]\s*/);
+            let rawTitle = ytApp.title;
+            let cleaned = rawTitle.replace(/\s*[\-\|]\s*YouTube Music/gi, '')
+                                 .replace(/^YouTube Music\s*[\-\|]\s*/gi, '')
+                                 .replace(/\s*[\-\|]\s*YouTube/gi, '')
+                                 .trim();
+
+            // If the title is JUST a generic app name, it's likely just the home page or paused without track info
+            const isGeneric = !cleaned ||
+                              cleaned.toLowerCase() === 'youtube music' ||
+                              cleaned.toLowerCase() === 'yt music' ||
+                              cleaned.toLowerCase() === 'youtube';
+
+            if (!isGeneric) {
+                const parts = cleaned.split(/\s*[\-\|]\s*/);
+                let newTitle = '';
+                let newAuthor = '';
                 if (parts.length >= 2) {
-                    ytTrackData.title = parts[0].trim();
-                    ytTrackData.author = parts[1].trim();
+                    newTitle = parts[0].trim();
+                    newAuthor = parts[1].trim();
                 } else {
-                    ytTrackData.title = rawTitle.trim();
-                    ytTrackData.author = 'YouTube Music';
+                    newTitle = cleaned;
+                    newAuthor = 'YouTube Music';
                 }
-                ytTrackData.isPlaying = true;
-                if (!ytTrackData.image) {
-                    fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
+
+                // Update if the track changed OR if we were previously "not playing"
+                if (ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor || !ytTrackData.isPlaying) {
+                    const trackChanged = ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor;
+                    ytTrackData.title = newTitle;
+                    ytTrackData.author = newAuthor;
+                    ytTrackData.isPlaying = true;
+
+                    console.log(`[Backup] Track Update from Tab: ${ytTrackData.title} — ${ytTrackData.author}`);
+
+                    // ALWAYS try to fetch art if we don't have it, especially when track changes
+                    if (trackChanged || !ytTrackData.image) {
+                        fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
+                    }
+                    updateYtMusicUI();
                 }
-                updateYtMusicUI();
             }
         }
     }
@@ -317,56 +398,79 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardVinylCoverImg = document.getElementById('card-vinyl-cover-img');
         const vinylDisc = document.getElementById('vinyl-disc');
         const cardVinylDisc = document.getElementById('card-vinyl-disc');
+        const cardVinylContainer = document.getElementById('card-vinyl-container');
 
         const isYtMode = (userData.ambientMode === 'ytmusic');
         const hasTrack = (ytTrackData.title || ytTrackData.author);
 
-        const trackString = hasTrack 
+        const trackString = (hasTrack)
             ? `${ytTrackData.title} — ${ytTrackData.author}` 
             : 'Not playing — YT Music';
 
         if (textSetup) textSetup.textContent = trackString;
         if (textTimer) textTimer.textContent = trackString;
 
+        // FORCE SHOW ticker and album elements if we have track info OR in YT mode
         const showTicker = isYtMode || hasTrack;
         if (tickerSetup) tickerSetup.style.display = showTicker ? 'flex' : 'none';
         if (tickerTimer) tickerTimer.style.display = showTicker ? 'flex' : 'none';
 
-        const defaultCover = defaultVinylSvg;
-        const coverSrc = ytTrackData.image || defaultCover;
-        
-        if (vinylCoverImg) {
-            if (vinylCoverImg.src !== coverSrc) vinylCoverImg.src = coverSrc;
-            vinylCoverImg.classList.toggle('paused', !ytTrackData.isPlaying);
-        }
-        if (cardVinylCoverImg) {
-            if (cardVinylCoverImg.src !== coverSrc) cardVinylCoverImg.src = coverSrc;
-            cardVinylCoverImg.classList.toggle('paused', !ytTrackData.isPlaying);
+        // ONLY SHOW vinyl container if in YT Music ambient mode AND a track is detected
+        if (cardVinylContainer) {
+            if (isYtMode && hasTrack) {
+                cardVinylContainer.style.display = 'block';
+                cardVinylContainer.style.opacity = '1';
+                cardVinylContainer.style.visibility = 'visible';
+            } else if (!isYtMode) {
+                cardVinylContainer.style.display = 'none';
+            }
         }
 
+        const defaultCover = defaultVinylSvg;
+        // Keep the image if it exists
+        const coverSrc = (ytTrackData.image) ? ytTrackData.image : defaultCover;
+        
+        // Sync vinyl animation state with actual playback
+        const isActuallyPlaying = ytTrackData.isPlaying;
+        if (vinylCoverImg) {
+            vinylCoverImg.src = coverSrc;
+            vinylCoverImg.classList.toggle('paused', !isActuallyPlaying);
+        }
+        if (cardVinylCoverImg) {
+            cardVinylCoverImg.src = coverSrc;
+            cardVinylCoverImg.classList.toggle('paused', !isActuallyPlaying);
+        }
+
+        // Sync media control icons with isActuallyPlaying
+        document.querySelectorAll('.btn-yt-playpause').forEach(btn => {
+            const pausePath = btn.querySelector('.icon-pause-path');
+            const playPath = btn.querySelector('.icon-play-path');
+            if (pausePath && playPath) {
+                pausePath.style.display = !isActuallyPlaying ? 'none' : 'block';
+                playPath.style.display = !isActuallyPlaying ? 'block' : 'none';
+            }
+        });
+
+        // If no image, keep trying to fetch it
         if (!ytTrackData.image && ytTrackData.title) {
             fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
         }
 
         // Dynamic YT Music Album Accent Color Extraction Mode
-        if (userData.accentMode === 'ytmusic_dynamic' && coverSrc) {
-            extractDominantColor(coverSrc, (dynamicHex) => {
-                applyAccentTheme(dynamicHex);
-            });
+        if (userData.accentMode === 'ytmusic_dynamic') {
+            // Keep dynamic color if we have a track, even if paused
+            if (hasTrack && coverSrc && coverSrc !== defaultCover) {
+                extractDominantColor(coverSrc, (dynamicHex) => {
+                    applyAccentTheme(dynamicHex);
+                });
+            } else if (!hasTrack) {
+                // Only revert to default blue if no music is detected at all
+                applyAccentTheme('#60cdff');
+            }
         } else if (userData.accentMode === 'custom' || userData.accentMode === 'preset') {
             applyAccentTheme(userData.accentColor || '#60cdff');
         }
 
-        // Update Play/Pause Media Control Icons (❚❚ vs ▶)
-        const isPaused = ytTrackData.isPaused || !ytTrackData.isPlaying;
-        document.querySelectorAll('.btn-yt-playpause').forEach(btn => {
-            const pausePath = btn.querySelector('.icon-pause-path');
-            const playPath = btn.querySelector('.icon-play-path');
-            if (pausePath && playPath) {
-                pausePath.style.display = isPaused ? 'none' : 'block';
-                playPath.style.display = isPaused ? 'block' : 'none';
-            }
-        });
     }
 
     // Dynamic Accent Color Manager & Realtime CSS Variable Applicator
@@ -442,7 +546,144 @@ document.addEventListener('DOMContentLoaded', () => {
         cardVinylDisc.style.top = `${centerY.toFixed(1)}px`;
         cardVinylDisc.style.left = `${centerX.toFixed(1)}px`;
     }
-    window.addEventListener('resize', syncVinylCenterPosition);
+    window.addEventListener('resize', () => {
+        syncVinylCenterPosition();
+
+        // BUG FIX: Prevent saving PIP size when transition is happening or if window is huge (Dashboard size)
+        if (document.body.classList.contains('pip-mode') && !isInitializingPip) {
+            const w = document.documentElement.clientWidth;
+            const h = document.documentElement.clientHeight;
+
+            // Only save if it's a valid small size (threshold is 600px to distinguish from Dashboard)
+            if (w > 120 && h > 120 && w < 600 && h < 600) {
+                userData.pipWidth = w;
+                userData.pipHeight = h;
+                saveUserData();
+                console.log(`[PIP] Manual Resize Saved: ${w}x${h}`);
+            } else {
+                console.log(`[PIP] Resize Ignored (Transition or too large): ${w}x${h}`);
+            }
+        }
+    });
+
+    // Use ResizeObserver for more reliable centering during layout changes (like PIP toggle)
+    const gaugeContainerForObserve = document.querySelector('.gauge-container');
+    if (gaugeContainerForObserve) {
+        const ro = new ResizeObserver(() => {
+            requestAnimationFrame(syncVinylCenterPosition);
+        });
+        ro.observe(gaugeContainerForObserve);
+    }
+
+    // Realtime GIF Theme & Display Mode Renderer
+    function applyTimerTheme() {
+        const gaugeSvg = document.querySelector('.gauge-svg');
+        if (!gaugeSvg) return;
+
+        // Apply Stealth Mode class to body for global text hiding
+        document.body.classList.toggle('stealth-active', !!userData.isStealthMode);
+
+        // Clean up classes
+        gaugeSvg.classList.remove('theme-hourglass', 'theme-wave', 'theme-blocks', 'theme-dots', 'theme-orbit');
+
+        // Hide all layers
+        document.querySelectorAll('.theme-layer').forEach(layer => layer.style.display = 'none');
+        const orbitParticle = document.getElementById('orbit-particle');
+        if (orbitParticle) orbitParticle.style.display = 'none';
+
+        const theme = userData.timerTheme || 'classic';
+        if (theme !== 'classic') {
+            gaugeSvg.classList.add(`theme-${theme}`);
+        }
+
+        if (theme === 'wave') {
+            const layer = document.querySelector('.layer-wave');
+            if (layer) layer.style.display = 'block';
+        } else if (theme === 'hourglass') {
+            const layer = document.querySelector('.layer-hourglass');
+            if (layer) layer.style.display = 'block';
+        } else if (theme === 'orbit') {
+            if (orbitParticle) orbitParticle.style.display = 'block';
+        }
+
+        // Update chips
+        document.querySelectorAll('.ring-theme-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.getAttribute('data-theme') === theme);
+        });
+    }
+
+    // Timer Ring Theme Switcher
+    document.querySelectorAll('.ring-theme-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            userData.timerTheme = chip.getAttribute('data-theme') || 'classic';
+            saveUserData();
+            applyTimerTheme();
+            // Trigger a refresh of the current progress
+            if (lastRatio !== undefined) updateVisualProgress(lastRatio);
+        });
+    });
+
+    // Stealth Mode Click Listener (Toggle visibility of digits)
+    document.getElementById('gauge-clickable-area')?.addEventListener('click', () => {
+        userData.isStealthMode = !userData.isStealthMode;
+        saveUserData();
+        document.body.classList.toggle('stealth-active', !!userData.isStealthMode);
+        console.log(`[Stealth] Timer digits hidden: ${userData.isStealthMode}`);
+    });
+
+    let lastRatio = 1.0;
+
+    function updateVisualProgress(ratio) {
+        lastRatio = ratio;
+        const theme = userData.timerTheme || 'classic';
+        const progressRatio = Math.max(0, Math.min(1.0, 1 - ratio));
+
+        // Update standard circle progress
+        if (gaugeProgressBar) {
+            const offset = 477.5 * (1 - ratio);
+            gaugeProgressBar.style.strokeDashoffset = offset;
+        }
+
+        // Theme Specific Logic
+        if (theme === 'wave') {
+            const levelGroup = document.getElementById('wave-level-group');
+            if (levelGroup) {
+                // Precise math: Bottom of circle is Y=176, Top is Y=24. Total Range = 152px.
+                // Baseline (group origin) is at Y=100.
+                // Empty: translateY(76), Full: translateY(-76)
+                const translateY = 76 - (152 * progressRatio);
+                levelGroup.style.transform = `translateY(${translateY}px)`;
+            }
+        } else if (theme === 'hourglass') {
+            const topGroup = document.getElementById('sand-top-level-group');
+            const bottomGroup = document.getElementById('sand-bottom-level-group');
+            const sandStream = document.getElementById('sand-stream');
+
+            if (topGroup && bottomGroup) {
+                // Top chamber: Drains from full (y=40) to empty (y=100)
+                // Path baseline is at 100. Translate from -60 to 0.
+                const topY = -60 + (60 * progressRatio);
+                topGroup.style.transform = `translateY(${topY}px)`;
+
+                // Bottom chamber: Fills from empty (y=160) to full (y=100)
+                // Path baseline is at 100. Translate from 60 to 0.
+                const bottomY = 60 - (60 * progressRatio);
+                bottomGroup.style.transform = `translateY(${bottomY}px)`;
+
+                if (sandStream) {
+                    const isFlowing = activeState === 'focusing' && !isPaused && ratio > 0;
+                    sandStream.style.display = isFlowing ? 'block' : 'none';
+                }
+            }
+        } else if (theme === 'orbit') {
+            const particle = document.getElementById('orbit-particle');
+            if (particle) {
+                const angle = progressRatio * 360;
+                particle.style.transform = `rotate(${angle}deg)`;
+                particle.style.display = 'block';
+            }
+        }
+    }
 
     // Realtime GIF Theme & Display Mode Renderer
     function applyGifTheme() {
@@ -456,6 +697,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardVinylContainer = document.getElementById('card-vinyl-container');
         const vinylSpeedSection = document.getElementById('vinyl-speed-section');
 
+        // Apply Spindle Visibility
+        document.body.classList.toggle('hide-vinyl-spindle', !userData.showVinylSpindle);
+        const chkSpindle = document.getElementById('chk-vinyl-spindle-toggle');
+        if (chkSpindle) chkSpindle.checked = !!userData.showVinylSpindle;
+
         const currentSpeed = userData.vinylSpeed || 6;
         const currentSize = userData.vinylSize || 340;
         document.documentElement.style.setProperty('--vinyl-speed', `${currentSpeed}s`);
@@ -466,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vinylSizeSlider) vinylSizeSlider.value = currentSize;
         if (vinylSizeLabel) vinylSizeLabel.textContent = `${currentSize}px`;
 
-        // Reset visibility
+        // Reset visibility: hide all ambient containers by default
         if (gaugeGifContainer) gaugeGifContainer.style.display = 'none';
         if (cardGifContainer) cardGifContainer.style.display = 'none';
         if (vinylDiscContainer) vinylDiscContainer.style.display = 'none';
@@ -633,6 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     applyGifTheme();
+    applyTimerTheme();
     renderRecentGifs();
 
     // Clear Recent GIFs Button Listener
@@ -710,6 +957,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Center Spindle Toggle Listener
+    document.getElementById('chk-vinyl-spindle-toggle')?.addEventListener('change', (e) => {
+        userData.showVinylSpindle = e.target.checked;
+        saveUserData();
+        document.body.classList.toggle('hide-vinyl-spindle', !userData.showVinylSpindle);
+    });
+
     // Vinyl Rotation Speed Selector Switcher
     document.querySelectorAll('.speed-chip').forEach(chip => {
         chip.addEventListener('click', () => {
@@ -776,21 +1030,42 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-yt-prev').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            sendToCpp({ action: 'mediaPrev' });
+            console.log('[Media] Prev clicked');
+            if (ytmpxSocket && ytmpxSocket.readyState === WebSocket.OPEN) {
+                console.log('[YTMPX] Sending prev command');
+                ytmpxSocket.send(JSON.stringify({ command: 'prev' }));
+            } else {
+                console.log('[Media] WS not open, falling back to C++');
+                sendToCpp({ action: 'mediaPrev' });
+            }
         });
     });
     document.querySelectorAll('.btn-yt-playpause').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            ytTrackData.isPaused = !ytTrackData.isPaused;
-            updateYtMusicUI();
-            sendToCpp({ action: 'mediaPlayPause' });
+            console.log('[Media] PlayPause clicked');
+            if (ytmpxSocket && ytmpxSocket.readyState === WebSocket.OPEN) {
+                console.log('[YTMPX] Sending playPause command');
+                ytmpxSocket.send(JSON.stringify({ command: 'playPause' }));
+            } else {
+                console.log('[Media] WS not open, falling back to C++');
+                ytTrackData.isPaused = !ytTrackData.isPaused;
+                updateYtMusicUI();
+                sendToCpp({ action: 'mediaPlayPause' });
+            }
         });
     });
     document.querySelectorAll('.btn-yt-next').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            sendToCpp({ action: 'mediaNext' });
+            console.log('[Media] Next clicked');
+            if (ytmpxSocket && ytmpxSocket.readyState === WebSocket.OPEN) {
+                console.log('[YTMPX] Sending next command');
+                ytmpxSocket.send(JSON.stringify({ command: 'next' }));
+            } else {
+                console.log('[Media] WS not open, falling back to C++');
+                sendToCpp({ action: 'mediaNext' });
+            }
         });
     });
 
@@ -977,6 +1252,116 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Protection Card Segmented Tab Switching
+    document.querySelectorAll('.guard-tab-btn').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+            const targetTab = btn.getAttribute('data-tab');
+            console.log('Tab switch triggered:', targetTab);
+
+            document.querySelectorAll('.guard-tab-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = 'transparent';
+                b.style.color = 'var(--text-secondary)';
+                b.style.fontWeight = '600';
+            });
+            btn.classList.add('active');
+            btn.style.background = 'var(--accent-blue)';
+            btn.style.color = '#000';
+            btn.style.fontWeight = '700';
+
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+                content.classList.remove('active');
+            });
+
+            const activeContent = document.getElementById(`tab-content-${targetTab}`);
+            if (activeContent) {
+                activeContent.style.display = 'flex';
+                activeContent.classList.add('active');
+            }
+        });
+    });
+
+    // Restricted Websites UI Manager
+    const restrictedSiteInput = document.getElementById('restricted-site-input');
+    const btnAddRestrictedSite = document.getElementById('btn-add-restricted-site');
+    const restrictedSitesContainer = document.getElementById('restricted-sites-container');
+
+    function cleanDomain(input) {
+        if (!input) return '';
+        let d = input.trim().toLowerCase();
+        d = d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim();
+        return d;
+    }
+
+    // Sync restricted sites list to Chrome extension via runtime message
+    function syncRestrictedSitesToExtension(sites) {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({ type: 'UPDATE_RESTRICTED_SITES', sites: sites });
+            }
+        } catch (e) {
+            // Extension not available (e.g. standalone mode)
+        }
+    }
+
+    function renderRestrictedSites() {
+        if (!restrictedSitesContainer) return;
+        restrictedSitesContainer.innerHTML = '';
+
+        userData.restrictedSites = userData.restrictedSites || ['facebook.com', 'youtube.com', 'instagram.com', 'tiktok.com', 'twitter.com', 'x.com', 'reddit.com'];
+
+        userData.restrictedSites.forEach((domain, idx) => {
+            const chip = document.createElement('div');
+            chip.className = 'restricted-site-chip';
+            chip.style.cssText = 'background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #60cdff; font-size: 11px; padding: 4px 10px; border-radius: 14px; display: inline-flex; align-items: center; gap: 6px; font-family: monospace;';
+
+            chip.innerHTML = `
+                <span>${domain}</span>
+                <span class="btn-remove-site" style="cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; margin-left: 2px;" title="Remove domain">&times;</span>
+            `;
+
+            chip.querySelector('.btn-remove-site').addEventListener('click', (e) => {
+                e.stopPropagation();
+                userData.restrictedSites.splice(idx, 1);
+                saveUserData();
+                renderRestrictedSites();
+                syncRestrictedSitesToExtension(userData.restrictedSites);
+                sendToCpp({ action: 'setRestrictedSites', restrictedSites: userData.restrictedSites });
+            });
+
+            restrictedSitesContainer.appendChild(chip);
+        });
+    }
+
+    function handleAddRestrictedSite() {
+        if (!restrictedSiteInput) return;
+        const domain = cleanDomain(restrictedSiteInput.value);
+        if (!domain) return;
+
+        userData.restrictedSites = userData.restrictedSites || [];
+        if (!userData.restrictedSites.includes(domain)) {
+            userData.restrictedSites.push(domain);
+            saveUserData();
+            renderRestrictedSites();
+            syncRestrictedSitesToExtension(userData.restrictedSites);
+            sendToCpp({ action: 'setRestrictedSites', restrictedSites: userData.restrictedSites });
+        }
+        restrictedSiteInput.value = '';
+    }
+
+    if (btnAddRestrictedSite) btnAddRestrictedSite.addEventListener('click', handleAddRestrictedSite);
+    if (restrictedSiteInput) {
+        restrictedSiteInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleAddRestrictedSite();
+        });
+    }
+
+    renderRestrictedSites();
+    syncRestrictedSitesToExtension(userData.restrictedSites || []);
+    sendToCpp({ action: 'setBlacklist', blacklist: blockedApps || [] });
+    sendToCpp({ action: 'setRestrictedSites', restrictedSites: userData.restrictedSites || [] });
+
     // Start Focus Session
     btnStartFocus.addEventListener('click', () => {
         const skipBreaks = chkSkipBreaks.checked;
@@ -987,7 +1372,8 @@ document.addEventListener('DOMContentLoaded', () => {
             focusChunkMinutes: selectedPeriodMins,
             breakMinutes: selectedBreakMins,
             skipBreaks: skipBreaks,
-            whitelist: allowedItems
+            blacklist: blockedApps,
+            restrictedSites: userData.restrictedSites || []
         });
 
         setupView.classList.remove('active');
@@ -1070,16 +1456,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     btnClearWhitelist.addEventListener('click', () => {
-        allowedItems = ['FocusGrow.exe', 'explorer.exe'];
-        userData.allowedItems = allowedItems;
+        blockedApps = [];
+        userData.blockedApps = blockedApps;
         saveUserData();
-        sendToCpp({ action: 'setWhitelist', whitelist: allowedItems });
+        sendToCpp({ action: 'setBlacklist', blacklist: blockedApps });
         renderAppList(cachedAppList);
         optionsModal.classList.remove('active');
     });
 
-    // Filter & Sort State for Allowed Applications List
-    let currentAppFilter = 'all'; // 'all', 'allowed', 'disabled'
+    // Filter & Sort State for Blocked Applications List
+    let currentAppFilter = 'all'; // 'all', 'blocked', 'unblocked'
     let currentAppSort = 'latest'; // 'latest', 'name'
 
     // Filter Chips Listeners
@@ -1127,12 +1513,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchQuery = (appSearchInput.value || '').trim().toLowerCase();
 
         let displayApps = cachedAppList.filter(app => {
-            const isAllowed = allowedItems.some(a => 
-                a.toLowerCase() === app.exeName.toLowerCase() || 
-                (app.title && app.title.toLowerCase().includes(a.toLowerCase()))
+            const isBlocked = blockedApps.some(a =>
+                a.toLowerCase() === app.exeName.toLowerCase()
             );
-            if (currentAppFilter === 'allowed' && !isAllowed) return false;
-            if (currentAppFilter === 'disabled' && isAllowed) return false;
+            if (currentAppFilter === 'blocked' && !isBlocked) return false;
+            if (currentAppFilter === 'unblocked' && isBlocked) return false;
 
             if (!searchQuery) return true;
             return (app.title && app.title.toLowerCase().includes(searchQuery)) ||
@@ -1181,9 +1566,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const chk = document.createElement('input');
             chk.type = 'checkbox';
-            chk.checked = allowedItems.some(a => 
-                a.toLowerCase() === app.exeName.toLowerCase() || 
-                (app.title && app.title.toLowerCase().includes(a.toLowerCase()))
+            chk.checked = blockedApps.some(a =>
+                a.toLowerCase() === app.exeName.toLowerCase()
             );
 
             const sliderSpan = document.createElement('span');
@@ -1194,16 +1578,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             chk.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    if (!allowedItems.includes(app.exeName)) allowedItems.push(app.exeName);
+                    if (!blockedApps.includes(app.exeName)) blockedApps.push(app.exeName);
                 } else {
-                    allowedItems = allowedItems.filter(a => 
-                        a.toLowerCase() !== app.exeName.toLowerCase() && 
-                        (!app.title || !app.title.toLowerCase().includes(a.toLowerCase()))
+                    blockedApps = blockedApps.filter(a =>
+                        a.toLowerCase() !== app.exeName.toLowerCase()
                     );
                 }
-                userData.allowedItems = allowedItems;
+                userData.blockedApps = blockedApps;
                 saveUserData();
-                sendToCpp({ action: 'setWhitelist', whitelist: allowedItems });
+                sendToCpp({ action: 'setBlacklist', blacklist: blockedApps });
             });
 
             item.appendChild(iconImg);
@@ -1553,8 +1936,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (data.remainingSec !== undefined && data.maxPeriodSec > 0) {
             const ratio = data.remainingSec / data.maxPeriodSec;
-            const offset = 477.5 * (1 - ratio);
-            gaugeProgressBar.style.strokeDashoffset = offset;
+            updateVisualProgress(ratio);
 
             // Real-time Plant Growth Animation (0.0 to 1.0)
             const progressRatio = Math.max(0, Math.min(1.0, 1 - ratio));

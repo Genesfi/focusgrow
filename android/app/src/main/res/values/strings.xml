@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FocusGrow</string>
+    <string name="accessibility_description">FocusGrow needs accessibility access to block restricted apps and browser tabs during your focus sessions.</string>
+</resources>
