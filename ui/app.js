@@ -120,6 +120,72 @@ document.addEventListener('DOMContentLoaded', () => {
         Notification.requestPermission();
     }
 
+    // --- IndexedDB for Large GIF Storage ---
+    const DB_NAME = 'FocusGrowDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'gifs';
+
+    const gifDb = {
+        _db: null,
+        init() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = (e) => {
+                    this._db = e.target.result;
+                    resolve(this._db);
+                };
+                request.onerror = (e) => reject(e.target.error);
+            });
+        },
+        async save(id, data) {
+            if (!this._db) await this.init();
+            return new Promise((resolve, reject) => {
+                const tx = this._db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put({ id, data });
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        },
+        async get(id) {
+            if (!id) return null;
+            if (!this._db) await this.init();
+            return new Promise((resolve, reject) => {
+                const tx = this._db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        },
+        async delete(id) {
+            if (!this._db) await this.init();
+            return new Promise((resolve, reject) => {
+                const tx = this._db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.delete(id);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        },
+        async clearAll() {
+            if (!this._db) await this.init();
+            return new Promise((resolve, reject) => {
+                const tx = this._db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.clear();
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+    };
+
     // Persistent State Management
     const STORAGE_KEY = 'focusgrow_user_data_v1';
     const todayDateStr = new Date().toISOString().split('T')[0];
@@ -141,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ambientMode: 'plant', // 'plant', 'custom', or 'ytmusic'
         accentMode: 'preset', // 'preset', 'custom', or 'ytmusic_dynamic'
         accentColor: '#60cdff',
+        notificationSound: 'default', // 'default', 'reminder', 'alarm', 'chime', 'none'
         customGifData: '',
         customGifName: '',
         recentGifs: [], // Stores up to 5 recently used custom GIFs: { id, name, data }
@@ -150,7 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
         pipHeight: 400,
         timerTheme: 'classic', // 'classic', 'hourglass', 'wave', 'blocks', 'dots', 'orbit'
         isStealthMode: false,
-        showVinylSpindle: true
+        showVinylSpindle: true,
+        autoPipOnStart: false,
+        completedMinutesByDate: {} // { 'YYYY-MM-DD': minutes }
     };
 
     function loadUserData() {
@@ -160,16 +229,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 const parsed = JSON.parse(saved);
                 userData = { ...userData, ...parsed };
 
+                // Migration: Move base64 GIFs to IndexedDB
+                migrateGifsToIndexedDB();
+
                 if (userData.lastDateStr !== todayDateStr) {
                     const yesterdayMins = userData.completedMinutesToday || 0;
+
+                    // Save yesterday's minutes to historical stats
+                    userData.completedMinutesByDate = userData.completedMinutesByDate || {};
+                    userData.completedMinutesByDate[userData.lastDateStr] = yesterdayMins;
+
                     userData.yesterdayHours = (yesterdayMins / 60).toFixed(1);
 
                     const targetMins = userData.dailyGoalHours * 60;
-                    if (yesterdayMins >= targetMins) {
-                        userData.streakDays = (userData.streakDays || 0) + 1;
-                    } else if (yesterdayMins === 0) {
+
+                    // --- STREAK LOGIC FIX ---
+                    const lastDate = new Date(userData.lastDateStr);
+                    const todayDate = new Date(todayDateStr);
+                    const diffTime = Math.abs(todayDate - lastDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays === 1) {
+                        if (yesterdayMins >= targetMins) {
+                            userData.streakDays = (userData.streakDays || 0) + 1;
+                        } else {
+                            userData.streakDays = 0;
+                        }
+                    } else {
+                        // Missed one or more days entirely
                         userData.streakDays = 0;
                     }
+                    // -------------------------
 
                     userData.completedMinutesToday = 0;
                     userData.lastDateStr = todayDateStr;
@@ -178,6 +268,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {
             console.error('Error loading local user data:', e);
+        }
+    }
+
+    async function migrateGifsToIndexedDB() {
+        let changed = false;
+
+        // Migrate active custom GIF
+        if (userData.customGifData && userData.customGifData.startsWith('data:image')) {
+            const id = 'active_' + Date.now();
+            await gifDb.save(id, userData.customGifData);
+            userData.customGifData = id;
+            changed = true;
+        }
+
+        // Migrate recent GIFs
+        if (userData.recentGifs && userData.recentGifs.length > 0) {
+            for (let i = 0; i < userData.recentGifs.length; i++) {
+                const gif = userData.recentGifs[i];
+                if (gif.data && gif.data.startsWith('data:image')) {
+                    const id = gif.id || 'recent_' + Date.now() + '_' + i;
+                    await gifDb.save(id, gif.data);
+                    gif.data = id;
+                    gif.id = id;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            saveUserData();
+            applyGifTheme();
+            renderRecentGifs();
         }
     }
 
@@ -210,7 +332,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Notification Helper (Sends exclusively via C++ Native Windows Toast API)
     function sendNotification(title, body) {
         if (!userData.notificationsEnabled) return;
-        sendToCpp({ action: 'notify', title: title, body: body });
+
+        // Anti-spam: Don't send identical notification within 1 second
+        const now = Date.now();
+        const notifKey = title + body;
+        if (window._lastNotifKey === notifKey && (now - (window._lastNotifTime || 0)) < 1000) {
+            return;
+        }
+        window._lastNotifKey = notifKey;
+        window._lastNotifTime = now;
+
+        sendToCpp({
+            action: 'notify',
+            title: title,
+            body: body,
+            sound: userData.notificationSound || 'default'
+        });
     }
 
     // --- YTMPX WebSocket Realtime Sync ---
@@ -476,10 +613,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dynamic Accent Color Manager & Realtime CSS Variable Applicator
     function applyAccentTheme(hexColor) {
         if (!hexColor) return;
-        document.documentElement.style.setProperty('--accent-blue', hexColor);
-        document.documentElement.style.setProperty('--accent-blue-hover', hexColor);
+
+        // --- Accessibility: Luminance Check ---
+        const getLuminance = (hex) => {
+            const rgb = hex.match(/[A-Za-z0-9]{2}/g).map(v => parseInt(v, 16) / 255);
+            const a = rgb.map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+            return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+        };
+
+        let finalColor = hexColor;
+        const lum = getLuminance(hexColor);
+        if (lum < 0.12) { // Too dark for dark theme
+            finalColor = '#80d8ff'; // Brighter blue fallback
+        } else if (lum > 0.9) { // Too bright
+            finalColor = '#4fc3f7';
+        }
+
+        document.documentElement.style.setProperty('--accent-blue', finalColor);
+        document.documentElement.style.setProperty('--accent-blue-hover', finalColor);
+
         const picker = document.getElementById('accent-color-picker');
-        if (picker && hexColor.startsWith('#')) picker.value = hexColor;
+        if (picker && finalColor.startsWith('#')) picker.value = finalColor;
+
+        // Sync active state of chips
+        document.querySelectorAll('.accent-chip').forEach(chip => {
+            const val = chip.getAttribute('data-accent');
+            if (userData.accentMode === 'ytmusic_dynamic') {
+                chip.classList.toggle('active', val === 'ytmusic_dynamic');
+            } else if (userData.accentMode === 'preset') {
+                chip.classList.toggle('active', val === hexColor);
+            } else {
+                chip.classList.remove('active');
+            }
+        });
     }
 
     // Extract Vibrant Dominant Color from Album Cover Canvas
@@ -490,27 +656,35 @@ document.addEventListener('DOMContentLoaded', () => {
         img.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
-                canvas.width = 32;
-                canvas.height = 32;
+                canvas.width = 64; // Increased resolution for better sampling
+                canvas.height = 64;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, 32, 32);
-                const data = ctx.getImageData(0, 0, 32, 32).data;
-                let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                ctx.drawImage(img, 0, 0, 64, 64);
+                const data = ctx.getImageData(0, 0, 64, 64).data;
+
+                let bestColor = { r: 96, g: 205, b: 255, score: 0 }; // Fallback to default blue
+
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i], g = data[i+1], b = data[i+2];
+
                     const max = Math.max(r, g, b);
                     const min = Math.min(r, g, b);
-                    const saturation = max === 0 ? 0 : (max - min) / max;
-                    if (max > 40 && max < 240 && saturation > 0.15) {
-                        rSum += r; gSum += g; bSum += b;
-                        count++;
+                    const delta = max - min;
+                    const saturation = max === 0 ? 0 : delta / max;
+                    const brightness = max / 255;
+
+                    // Vibrancy Score: Prioritize colorfulness, but allow dark colors if they are very saturated
+                    if (max > 20 && max < 250 && saturation > 0.05) {
+                        const score = (saturation * 2.0) + (brightness * 0.5);
+                        if (score > bestColor.score) {
+                            bestColor = { r, g, b, score };
+                        }
                     }
                 }
-                if (count > 0) {
-                    const r = Math.round(rSum / count);
-                    const g = Math.round(gSum / count);
-                    const b = Math.round(bSum / count);
-                    const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+
+                if (bestColor.score > 0) {
+                    const toHex = (c) => c.toString(16).padStart(2, '0');
+                    const hex = `#${toHex(bestColor.r)}${toHex(bestColor.g)}${toHex(bestColor.b)}`;
                     callback(hex);
                 } else {
                     callback('#60cdff');
@@ -523,8 +697,40 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = imageUrl;
     }
 
-    // Synchronize Full-Panel Vinyl Center Point to Exact Center of Timer Clock Ring Dial
-    function syncVinylCenterPosition() {
+    // Debugging Tool: Log Layout info to F12 Console
+    function debugTimerLayout() {
+        console.group('%c 🕒 FOCUSGROW LAYOUT DEBUG ', 'background: #60cdff; color: #000; font-weight: bold;');
+        const timerView = document.getElementById('timer-view');
+        const mainLayout = document.querySelector('.timer-main-layout');
+        const gauge = document.querySelector('.gauge-container');
+        const card = document.getElementById('focus-card');
+
+        const logElem = (name, el) => {
+            if (!el) {
+                console.error(`${name}: NOT FOUND!`);
+                return;
+            }
+            const rect = el.getBoundingClientRect();
+            console.log(`%c${name}:`, 'font-weight: bold', {
+                width: rect.width,
+                height: rect.height,
+                top: rect.top,
+                bottom: rect.bottom,
+                display: window.getComputedStyle(el).display,
+                position: window.getComputedStyle(el).position,
+                zIndex: window.getComputedStyle(el).zIndex
+            });
+        };
+
+        logElem('Focus Card (Parent)', card);
+        logElem('Timer View', timerView);
+        logElem('Main Layout (Container)', mainLayout);
+        logElem('Gauge (The Circle)', gauge);
+
+        console.log('Window Inner Height:', window.innerHeight);
+        console.log('Body Classes:', document.body.className);
+        console.groupEnd();
+    }
         const focusCard = document.getElementById('focus-card');
         const gaugeContainer = document.querySelector('.gauge-container');
         const cardVinylDisc = document.querySelector('.card-vinyl-disc');
@@ -678,7 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (theme === 'orbit') {
             const particle = document.getElementById('orbit-particle');
             if (particle) {
-                const angle = progressRatio * 360;
+                const angle = ratio * 360;
                 particle.style.transform = `rotate(${angle}deg)`;
                 particle.style.display = 'block';
             }
@@ -753,38 +959,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateYtMusicUI();
 
-        } else if (userData.ambientMode === 'custom' && userData.customGifData && userData.customGifData.length > 50) {
+        } else if (userData.ambientMode === 'custom' && userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:'))) {
             if (btnSelectCustomGif) btnSelectCustomGif.classList.add('active');
 
-            if (isFullMode) {
-                cardGifImg.src = userData.customGifData;
-                cardGifImg.style.opacity = opacity;
-                cardGifContainer.style.display = 'block';
-            } else {
-                gaugeGifImg.src = userData.customGifData;
-                gaugeGifImg.style.opacity = opacity;
-                gaugeGifContainer.style.display = 'block';
-            }
+            // Load data from IndexedDB or use directly if it's still base64
+            (async () => {
+                let actualData = userData.customGifData;
+                if (actualData && !actualData.startsWith('data:image')) {
+                    actualData = await gifDb.get(actualData);
+                }
 
-            // Sync modal preview thumbnail & controls
-            if (gifPreviewImg) {
-                gifPreviewImg.src = userData.customGifData;
-                gifPreviewImg.style.opacity = opacity;
-            }
-            if (gifPreviewContainer) {
-                gifPreviewContainer.style.borderRadius = isFullMode ? '8px' : '50%';
-            }
-            if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'block';
-            if (customGifNameDisplay) customGifNameDisplay.textContent = userData.customGifName || 'Custom GIF';
-            if (gifStyleSection) gifStyleSection.style.display = 'block';
-            if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
-            if (gifOpacityRow) gifOpacityRow.style.display = 'block';
-            if (gifOpacitySlider) gifOpacitySlider.value = userData.gifOpacity || 78;
-            if (opacityLabel) opacityLabel.textContent = `${userData.gifOpacity || 78}%`;
+                if (!actualData) return;
 
-            document.querySelectorAll('.gif-mode-chip').forEach(chip => {
-                chip.classList.toggle('active', chip.getAttribute('data-mode') === (userData.gifDisplayMode || 'circle'));
-            });
+                if (isFullMode) {
+                    cardGifImg.src = actualData;
+                    cardGifImg.style.opacity = opacity;
+                    cardGifContainer.style.display = 'block';
+                } else {
+                    gaugeGifImg.src = actualData;
+                    gaugeGifImg.style.opacity = opacity;
+                    gaugeGifContainer.style.display = 'block';
+                }
+
+                // Sync modal preview thumbnail & controls
+                if (gifPreviewImg) {
+                    gifPreviewImg.src = actualData;
+                    gifPreviewImg.style.opacity = opacity;
+                }
+                if (gifPreviewContainer) {
+                    gifPreviewContainer.style.borderRadius = isFullMode ? '8px' : '50%';
+                }
+                if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'block';
+                if (customGifNameDisplay) customGifNameDisplay.textContent = userData.customGifName || 'Custom GIF';
+                if (gifStyleSection) gifStyleSection.style.display = 'block';
+                if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
+                if (gifOpacityRow) gifOpacityRow.style.display = 'block';
+                if (gifOpacitySlider) gifOpacitySlider.value = userData.gifOpacity || 78;
+                if (opacityLabel) opacityLabel.textContent = `${userData.gifOpacity || 78}%`;
+
+                document.querySelectorAll('.gif-mode-chip').forEach(chip => {
+                    chip.classList.toggle('active', chip.getAttribute('data-mode') === (userData.gifDisplayMode || 'circle'));
+                });
+            })();
         } else {
             if (defaultChip) defaultChip.classList.add('active');
             if (plantGrowthContainer) plantGrowthContainer.style.display = 'flex';
@@ -798,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Render Recent GIFs History (Max 5 items)
-    function renderRecentGifs() {
+    async function renderRecentGifs() {
         const recentGifsSection = document.getElementById('recent-gifs-section');
         const recentGifsContainer = document.getElementById('recent-gifs-container');
         if (!recentGifsSection || !recentGifsContainer) return;
@@ -806,16 +1022,26 @@ document.addEventListener('DOMContentLoaded', () => {
         userData.recentGifs = userData.recentGifs || [];
         
         // Auto-add current active GIF to recent list if not present
-        if (userData.customGifData && userData.customGifData.length > 50) {
+        if (userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:'))) {
             const exists = userData.recentGifs.some(g => g.data === userData.customGifData);
             if (!exists) {
+                const newId = userData.customGifData.startsWith('data:') ? 'gif_' + Date.now() : userData.customGifData;
+                if (userData.customGifData.startsWith('data:')) {
+                    await gifDb.save(newId, userData.customGifData);
+                    userData.customGifData = newId;
+                }
+
                 userData.recentGifs.unshift({
-                    id: Date.now().toString(),
+                    id: newId,
                     name: userData.customGifName || 'Custom GIF',
-                    data: userData.customGifData
+                    data: newId
                 });
                 if (userData.recentGifs.length > 5) {
-                    userData.recentGifs = userData.recentGifs.slice(0, 5);
+                    const removed = userData.recentGifs.pop();
+                    // Optional: Clean up removed GIF from IndexedDB if not active
+                    if (removed.data !== userData.customGifData) {
+                        await gifDb.delete(removed.data);
+                    }
                 }
                 saveUserData();
             }
@@ -829,14 +1055,16 @@ document.addEventListener('DOMContentLoaded', () => {
         recentGifsSection.style.display = 'block';
         recentGifsContainer.innerHTML = '';
 
-        userData.recentGifs.forEach((gif, index) => {
+        for (const [index, gif] of userData.recentGifs.entries()) {
             const isActive = (userData.customGifData === gif.data);
             const card = document.createElement('div');
             card.className = `recent-gif-card ${isActive ? 'active' : ''}`;
             card.title = gif.name;
 
+            const thumbData = gif.data.startsWith('data:') ? gif.data : await gifDb.get(gif.data);
+
             card.innerHTML = `
-                <img class="recent-gif-thumb" src="${gif.data}" alt="thumb">
+                <img class="recent-gif-thumb" src="${thumbData || ''}" alt="thumb">
                 <div class="recent-gif-info">
                     <span class="recent-gif-title">${gif.name}</span>
                 </div>
@@ -855,9 +1083,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Click remove button
-            card.querySelector('.btn-remove-recent')?.addEventListener('click', (e) => {
+            card.querySelector('.btn-remove-recent')?.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                userData.recentGifs.splice(index, 1);
+                const removed = userData.recentGifs.splice(index, 1)[0];
+                await gifDb.delete(removed.data);
+
                 if (isActive) {
                     if (userData.recentGifs.length > 0) {
                         userData.ambientMode = 'custom';
@@ -875,17 +1105,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             recentGifsContainer.appendChild(card);
-        });
+        }
     }
 
     applyGifTheme();
     applyTimerTheme();
     renderRecentGifs();
+    updateYtMusicUI();
 
     // Clear Recent GIFs Button Listener
-    document.getElementById('btn-clear-recent-gifs')?.addEventListener('click', () => {
+    document.getElementById('btn-clear-recent-gifs')?.addEventListener('click', async () => {
         userData.recentGifs = [];
+        await gifDb.clearAll();
+        // If current active is custom, reset it too
+        if (userData.ambientMode === 'custom') {
+            userData.ambientMode = 'plant';
+            userData.customGifData = '';
+            userData.customGifName = '';
+        }
         saveUserData();
+        applyGifTheme();
         renderRecentGifs();
     });
 
@@ -907,25 +1146,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             const newData = evt.target.result;
             const newName = file.name;
+            const newId = 'gif_' + Date.now();
+
+            await gifDb.save(newId, newData);
 
             userData.ambientMode = 'custom';
-            userData.customGifData = newData;
+            userData.customGifData = newId;
             userData.customGifName = newName;
             userData.gifOpacity = userData.gifOpacity || 78;
             userData.gifDisplayMode = userData.gifDisplayMode || 'circle';
 
             userData.recentGifs = userData.recentGifs || [];
-            userData.recentGifs = userData.recentGifs.filter(g => g.data !== newData);
+            // Remove if exists (by data/id)
+            userData.recentGifs = userData.recentGifs.filter(g => g.data !== newId);
+
             userData.recentGifs.unshift({
-                id: Date.now().toString(),
+                id: newId,
                 name: newName,
-                data: newData
+                data: newId
             });
             if (userData.recentGifs.length > 5) {
-                userData.recentGifs = userData.recentGifs.slice(0, 5);
+                const removed = userData.recentGifs.pop();
+                if (removed.data !== userData.customGifData) {
+                    await gifDb.delete(removed.data);
+                }
             }
 
             saveUserData();
@@ -1376,8 +1623,19 @@ document.addEventListener('DOMContentLoaded', () => {
             restrictedSites: userData.restrictedSites || []
         });
 
+        if (userData.autoPipOnStart) {
+            sendToCpp({
+                action: 'togglePip',
+                width: userData.pipWidth || 280,
+                height: userData.pipHeight || 400
+            });
+        }
+
         setupView.classList.remove('active');
         timerView.classList.add('active');
+
+        // Let layout settle then log
+        setTimeout(debugTimerLayout, 500);
     });
 
     // Pause / Stop Session
@@ -1414,10 +1672,53 @@ document.addEventListener('DOMContentLoaded', () => {
             e?.stopPropagation();
             document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             chkNotificationsToggle.checked = userData.notificationsEnabled;
+
+            const soundSelect = document.getElementById('select-notification-sound');
+            if (soundSelect) soundSelect.value = userData.notificationSound || 'default';
+
+            const chkAutoPip = document.getElementById('chk-auto-pip');
+            if (chkAutoPip) chkAutoPip.checked = !!userData.autoPipOnStart;
+
             applyGifTheme();
             optionsModal.classList.add('active');
         });
     });
+
+    document.getElementById('chk-auto-pip')?.addEventListener('change', (e) => {
+        userData.autoPipOnStart = e.target.checked;
+        saveUserData();
+    });
+
+    document.getElementById('select-notification-sound')?.addEventListener('change', (e) => {
+        userData.notificationSound = e.target.value;
+        saveUserData();
+    });
+
+    // --- GIF Maintenance Utility ---
+    document.getElementById('btn-cleanup-gifs')?.addEventListener('click', async () => {
+        if (!confirm('This will remove all GIF history data except for your current active GIF. Continue?')) return;
+
+        const activeId = userData.customGifData;
+        const recentIds = (userData.recentGifs || []).map(g => g.data);
+        const keepIds = new Set([activeId, ...recentIds]);
+
+        if (!gifDb._db) await gifDb.init();
+        const tx = gifDb._db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAllKeys();
+
+        request.onsuccess = () => {
+            const keys = request.result;
+            keys.forEach(key => {
+                if (!keepIds.has(key)) {
+                    store.delete(key);
+                }
+            });
+            alert('Cleanup complete! Unused GIF data removed.');
+            renderRecentGifs();
+        };
+    });
+
     btnCloseOptionsModal.addEventListener('click', () => {
         saveUserData();
         optionsModal.classList.remove('active');
@@ -1606,6 +1907,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const goalMins = userData.dailyGoalHours * 60;
         const donutRatio = Math.min(1.0, userData.completedMinutesToday / goalMins);
         goalDonutFill.style.strokeDashoffset = 301.5 * (1 - donutRatio);
+
+        renderWeeklyChart();
+    }
+
+    function renderWeeklyChart() {
+        const chartContainer = document.getElementById('stats-weekly-chart');
+        if (!chartContainer) return;
+
+        chartContainer.innerHTML = '';
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const today = new Date();
+
+        // ALWAYS use the daily goal (e.g. 4 hrs) for the 7-day trend chart.
+        // This keeps the bar heights consistent even when switching tabs in the modal.
+        const dailyGoalHours = parseFloat(userData.dailyGoalHours) || 1;
+        const dailyGoalMins = dailyGoalHours * 60;
+
+        // Get last 7 days
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const dayName = dayNames[d.getDay()];
+
+            // Try to get minutes from dedicated history, fallback to summing appStats
+            let mins = (dateStr === todayDateStr) ? userData.completedMinutesToday : (userData.completedMinutesByDate[dateStr] || 0);
+
+            if (mins === 0 && userData.appStatsByDate && userData.appStatsByDate[dateStr]) {
+                const dayApps = userData.appStatsByDate[dateStr];
+                let totalSec = 0;
+                for (const exe in dayApps) {
+                    totalSec += dayApps[exe];
+                }
+                mins = Math.floor(totalSec / 60);
+            }
+
+            const ratio = Math.min(1.0, mins / dailyGoalMins);
+            const barWrapper = document.createElement('div');
+            barWrapper.className = 'chart-bar-wrapper';
+
+            // Visual logic: Ensure a minimum visible height (8%) even for small values > 0
+            const displayPercent = mins > 0 ? (8 + (ratio * 92)) : 0;
+            const isGoalMet = mins >= dailyGoalMins;
+
+            barWrapper.innerHTML = `
+                <div class="chart-bar-container">
+                    <div class="chart-bar-fill ${isGoalMet ? 'goal-met' : ''}" style="height: ${Math.round(displayPercent)}%;" title="${mins} mins on ${dateStr}">
+                        ${mins >= (dailyGoalMins * 0.15) ? `<span class="bar-val-hint">${mins}m</span>` : ''}
+                    </div>
+                </div>
+                <div class="chart-day-label">${i === 0 ? 'Today' : dayName}</div>
+            `;
+            chartContainer.appendChild(barWrapper);
+        }
     }
 
     // Statistics Modal Elements
@@ -1629,7 +1984,27 @@ document.addEventListener('DOMContentLoaded', () => {
         { text: "You don't need more time, you just need more focus.", author: "Productivity Master" },
         { text: "Fokus pada proses, hasil indah akan mengikuti dengan sendirinya.", author: "Filosofi Kerja" },
         { text: "It's not that I'm so smart, it's just that I stay with problems longer.", author: "Albert Einstein" },
-        { text: "Fokus adalah seni mengatakan 'tidak' pada seribu hal baik lainnya.", author: "Steve Jobs" }
+        { text: "Fokus adalah seni mengatakan 'tidak' pada seribu hal baik lainnya.", author: "Steve Jobs" },
+        { text: "Disiplin adalah jembatan antara cita-cita dan pencapaian.", author: "Success Logic" },
+        { text: "Work hard in silence, let your success be your noise.", author: "Frank Ocean" },
+        { text: "Cara terbaik untuk memulai adalah berhenti berbicara dan mulai melakukan.", author: "Walt Disney" },
+        { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+        { text: "Jangan menunggu waktu yang tepat. Ciptakan waktu itu sekarang juga.", author: "FocusGrow Wisdom" },
+        { text: "Small steps in the right direction can turn out to be the biggest steps of your life.", author: "Daily Motivation" },
+        { text: "Your mind is for having ideas, not holding them. Focus on the task at hand.", author: "David Allen" },
+        { text: "Productivity is being able to do things that you were never able to do before.", author: "Franz Kafka" },
+        { text: "Energi dan ketekunan menaklukkan segala hal.", author: "Benjamin Franklin" },
+        { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+        { text: "Focus is a matter of deciding what things you're NOT going to do.", author: "John Carmack" },
+        { text: "Don't count the days, make the days count.", author: "Muhammad Ali" },
+        { text: "Work like there is someone working 24 hours a day to take it all away from you.", author: "Mark Cuban" },
+        { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+        { text: "Ambisimu menentukan masa depanmu. Jangan berhenti sekarang.", author: "FocusGrow Inspiration" },
+        { text: "Stay hungry, stay foolish.", author: "Steve Jobs" },
+        { text: "Disiplin diri adalah bentuk tertinggi dari rasa cinta pada diri sendiri.", author: "Daily Discipline" },
+        { text: "The expert in anything was once a beginner. Start now.", author: "Helen Hayes" },
+        { text: "Quality is not an act, it is a habit.", author: "Aristotle" }
     ];
 
     const REST_QUOTES = [
@@ -1639,10 +2014,25 @@ document.addEventListener('DOMContentLoaded', () => {
         { text: "Almost everything will work again if you unplug it for a few minutes, including you.", author: "Anne Lamott" },
         { text: "Kesehatan dan ketenangan pikiranmu adalah investasi terbaik untuk masa depan.", author: "Renungan Diri" },
         { text: "Take a break. A rested mind can solve problems that a tired mind cannot.", author: "Wellness Wisdom" },
-        { text: "Minum air putih, berdiri sejenak, dan biarkan matamu beristirahat.", author: "Tips Sehat FocusGrow" },
-        { text: "Rest is not idleness, and to lie sometimes on the grass under trees is by no means a waste of time.", author: "John Lubbock" },
-        { text: "Tubuhmu butuh jeda agar bisa berlari kencang kembali nanti.", author: "Wejangan Bijak" },
-        { text: "He who holds his breath for too long will collapse. Breathe and rest now.", author: "Ancient Wisdom" }
+        { text: "Minum air putih, berdiri sejenak, dan biarkan matamu beristirahat.", author: "Health Reminder" },
+        { text: "Rest is not idleness; to lie on the grass under trees is by no means a waste of time.", author: "John Lubbock" },
+        { text: "Tubuhmu butuh jeda agar bisa berlari kencang kembali nanti.", author: "FocusGrow Tips" },
+        { text: "He who holds his breath for too long will collapse. Breathe and rest now.", author: "Ancient Wisdom" },
+        { text: "Tidur adalah meditasi terbaik. Tapi saat ini, cukup regangkan badanmu saja.", author: "Dalai Lama" },
+        { text: "Resting is a part of the process, not a reward for the process.", author: "Fitness Mental" },
+        { text: "Sometimes the most productive thing you can do is relax.", author: "Mark Black" },
+        { text: "Jangan merasa bersalah karena beristirahat. Mesin pun butuh pendinginan.", author: "Modern Productivity" },
+        { text: "Tenangkan pikiranmu, dan jiwamu akan berbicara.", author: "Spirit Quote" },
+        { text: "Your body hears everything your mind says. Give it some peace.", author: "Health First" },
+        { text: "A change of pace is as good as a rest. Look away from the screen for a bit.", author: "Proverb" },
+        { text: "The time to relax is when you don't have time for it.", author: "Sydney J. Harris" },
+        { text: "Refresh your mind, clear your vision, and recharge your soul.", author: "Zen Master" },
+        { text: "Breathe in confidence, breathe out doubt. Take this moment for yourself.", author: "Mindfulness" },
+        { text: "Relax, recharge, and refocus. Your best is yet to come.", author: "FocusGrow Wellness" },
+        { text: "Inner peace begins the moment you choose not to allow another person or event to control your emotions.", author: "Pema Chödrön" },
+        { text: "Your calm mind is the ultimate weapon against your challenges. So relax.", author: "Bryant McGill" },
+        { text: "Within you, there is a stillness and a sanctuary to which you can retreat at any time.", author: "Hermann Hesse" },
+        { text: "Rest and be thankful.", author: "William Wordsworth" }
     ];
 
     function updateRandomQuote(mode = 'focus') {
@@ -1778,6 +2168,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const maxAppSecs = sortedApps[0].secs || 1;
 
+        renderWeeklyChart();
+
         sortedApps.forEach(item => {
             const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
             const relativePercent = Math.round((item.secs / maxAppSecs) * 100);
@@ -1841,6 +2233,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         activeState = data.state;
         isPaused = data.isPaused;
+
+        // --- Session Persistence: Save active session metadata ---
+        if (activeState !== 'idle') {
+            userData.activeSession = {
+                state: activeState,
+                remainingSec: data.remainingSec,
+                currentPeriod: data.currentPeriod,
+                totalPeriods: data.totalPeriods,
+                focusMins: selectedMins,
+                chunkMins: selectedPeriodMins,
+                breakMins: selectedBreakMins,
+                skipBreaks: chkSkipBreaks.checked,
+                timestamp: Date.now()
+            };
+        } else {
+            delete userData.activeSession;
+        }
+        saveUserData();
 
         // Record per-app focus time tick (1 sec) & work hours window
         if (activeState === 'focusing' && !isPaused && data.activeExe) {
@@ -1985,6 +2395,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updatePickerDisplay();
     updateStatsUI();
+
+    // Sync initial stats to C++
+    sendToCpp({
+        action: 'syncStats',
+        completedMinutesToday: userData.completedMinutesToday || 0,
+        dailyGoalMinutes: (userData.dailyGoalHours || 1) * 60
+    });
+
+    // --- Session Persistence: Resume session if one was active ---
+    if (userData.activeSession && userData.activeSession.state !== 'idle') {
+        const s = userData.activeSession;
+        // Optional: only resume if it was less than 2 hours ago?
+        const twoHours = 2 * 60 * 60 * 1000;
+        if (Date.now() - s.timestamp < twoHours) {
+            sendToCpp({
+                action: 'resumeSession',
+                sessionState: s.state,
+                remainingSec: s.remainingSec,
+                currentPeriod: s.currentPeriod,
+                totalPeriods: s.totalPeriods,
+                focusMinutes: s.focusMins,
+                focusChunkMinutes: s.chunkMins,
+                breakMinutes: s.breakMins,
+                skipBreaks: s.skipBreaks
+            });
+        } else {
+            delete userData.activeSession;
+            saveUserData();
+        }
+    }
+
     sendToCpp({ action: 'getRunningApps' });
     
     // Auto-poll running browser apps every 4 seconds to sync YouTube Music track titles

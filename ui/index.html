@@ -154,161 +154,163 @@
                         </div>
                     </div>
 
-                    <!-- Circular Progress Gauge Dial -->
-                    <div class="gauge-container">
-                        <!-- Circle Inner GIF Backdrop -->
-                        <div class="gauge-gif-backdrop" id="gauge-gif-container">
-                            <img id="gauge-gif-img" src="" alt="focus ambient gif">
-                        </div>
-
-                        <!-- YT Music Vinyl Record Spinning Disc Backdrop (Circle Mode) -->
-                        <div class="vinyl-disc-container" id="vinyl-disc-container" style="display: none;">
-                            <div class="vinyl-disc">
-                                <img id="vinyl-cover-img" class="vinyl-cover-img" src="" alt="Album Cover">
-                                <div class="vinyl-spindle-glass"></div>
+                    <div class="timer-main-layout">
+                        <!-- Circular Progress Gauge Dial -->
+                        <div class="gauge-container">
+                            <!-- Circle Inner GIF Backdrop -->
+                            <div class="gauge-gif-backdrop" id="gauge-gif-container">
+                                <img id="gauge-gif-img" src="" alt="focus ambient gif">
                             </div>
-                        </div>
 
-                        <!-- Realtime Dynamic Plant Growth SVG (Matching Screenshot 2 - Soft Rounded Leaves) -->
-                        <div class="plant-growth-container" id="plant-growth-container">
-                            <svg class="plant-growth-svg" viewBox="0 0 100 120">
-                                <!-- Pot & Soil Mound -->
-                                <rect x="30" y="90" width="40" height="8" rx="4" fill="#60a5fa"/>
-                                <path d="M34 98 L66 98 C64 112, 36 112, 34 98 Z" fill="#60a5fa"/>
-                                <ellipse cx="50" cy="90" rx="17" ry="3" fill="#78350f"/>
-                                
-                                <!-- Main Stem -->
-                                <path id="plant-stem" d="M50 90 L50 32" fill="none" stroke="#047857" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="60" style="transition: stroke-dashoffset 0.5s linear;"/>
+                            <!-- YT Music Vinyl Record Spinning Disc Backdrop (Circle Mode) -->
+                            <div class="vinyl-disc-container" id="vinyl-disc-container" style="display: none;">
+                                <div class="vinyl-disc">
+                                    <img id="vinyl-cover-img" class="vinyl-cover-img" src="" alt="Album Cover">
+                                    <div class="vinyl-spindle-glass"></div>
+                                </div>
+                            </div>
 
-                                <!-- Leaf Pair 1 (Bottom) - Soft Rounded Leaves -->
-                                <g id="leaf-pair-1" class="plant-leaf-group">
-                                    <rect x="28" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(-15 37 80)"/>
-                                    <rect x="54" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(15 63 80)"/>
-                                </g>
+                            <!-- Realtime Dynamic Plant Growth SVG (Matching Screenshot 2 - Soft Rounded Leaves) -->
+                            <div class="plant-growth-container" id="plant-growth-container">
+                                <svg class="plant-growth-svg" viewBox="0 0 100 120">
+                                    <!-- Pot & Soil Mound -->
+                                    <rect x="30" y="90" width="40" height="8" rx="4" fill="#60a5fa"/>
+                                    <path d="M34 98 L66 98 C64 112, 36 112, 34 98 Z" fill="#60a5fa"/>
+                                    <ellipse cx="50" cy="90" rx="17" ry="3" fill="#78350f"/>
 
-                                <!-- Leaf Pair 2 (Middle) - Soft Rounded Leaves -->
-                                <g id="leaf-pair-2" class="plant-leaf-group">
-                                    <rect x="26" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(-20 35 64)"/>
-                                    <rect x="56" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(20 65 64)"/>
-                                </g>
+                                    <!-- Main Stem -->
+                                    <path id="plant-stem" d="M50 90 L50 32" fill="none" stroke="#047857" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="60" style="transition: stroke-dashoffset 0.5s linear;"/>
 
-                                <!-- Leaf Pair 3 (Top) - Soft Rounded Leaves -->
-                                <g id="leaf-pair-3" class="plant-leaf-group">
-                                    <rect x="28" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(-15 37 48)"/>
-                                    <rect x="54" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(15 63 48)"/>
-                                </g>
+                                    <!-- Leaf Pair 1 (Bottom) - Soft Rounded Leaves -->
+                                    <g id="leaf-pair-1" class="plant-leaf-group">
+                                        <rect x="28" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(-15 37 80)"/>
+                                        <rect x="54" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(15 63 80)"/>
+                                    </g>
 
-                                <!-- Top Golden Flower Bud -->
-                                <g id="plant-top-bud" class="plant-leaf-group">
-                                    <circle cx="50" cy="24" r="6" fill="#fbbf24"/>
-                                    <rect x="42" y="27" width="16" height="10" rx="5" fill="#34d399"/>
-                                </g>
-                            </svg>
-                        </div>
+                                    <!-- Leaf Pair 2 (Middle) - Soft Rounded Leaves -->
+                                    <g id="leaf-pair-2" class="plant-leaf-group">
+                                        <rect x="26" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(-20 35 64)"/>
+                                        <rect x="56" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(20 65 64)"/>
+                                    </g>
 
-                        <svg class="gauge-svg" viewBox="0 0 200 200">
-                            <!-- Theme Definitions (Clips, Masks) -->
-                            <defs>
-                                <!-- Liquid Wave Clip: Contained within the gauge circle -->
-                                <clipPath id="gauge-circle-clip">
-                                    <circle cx="100" cy="100" r="76" />
-                                </clipPath>
+                                    <!-- Leaf Pair 3 (Top) - Soft Rounded Leaves -->
+                                    <g id="leaf-pair-3" class="plant-leaf-group">
+                                        <rect x="28" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(-15 37 48)"/>
+                                        <rect x="54" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(15 63 48)"/>
+                                    </g>
 
-                                <!-- Hourglass Top Clip -->
-                                <clipPath id="clip-hourglass-top">
-                                    <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z" />
-                                </clipPath>
+                                    <!-- Top Golden Flower Bud -->
+                                    <g id="plant-top-bud" class="plant-leaf-group">
+                                        <circle cx="50" cy="24" r="6" fill="#fbbf24"/>
+                                        <rect x="42" y="27" width="16" height="10" rx="5" fill="#34d399"/>
+                                    </g>
+                                </svg>
+                            </div>
 
-                                <!-- Hourglass Bottom Clip -->
-                                <clipPath id="clip-hourglass-bottom">
-                                    <path d="M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z" />
-                                </clipPath>
+                            <svg class="gauge-svg" viewBox="0 0 200 200">
+                                <!-- Theme Definitions (Clips, Masks) -->
+                                <defs>
+                                    <!-- Liquid Wave Clip: Contained within the gauge circle -->
+                                    <clipPath id="gauge-circle-clip">
+                                        <circle cx="100" cy="100" r="92" />
+                                    </clipPath>
 
-                                <!-- Dot Matrix Mask -->
-                                <mask id="mask-dots">
-                                    <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="8" stroke-dasharray="0 10" stroke-linecap="round" />
-                                </mask>
+                                    <!-- Hourglass Top Clip -->
+                                    <clipPath id="clip-hourglass-top">
+                                        <path d="M 20 20 H 180 C 180 20 130 100 105 100 H 95 C 70 100 20 20 20 20 Z" />
+                                    </clipPath>
 
-                                <!-- Minimal Blocks Mask -->
-                                <mask id="mask-blocks">
-                                    <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="12" stroke-dasharray="35 5" />
-                                </mask>
-                            </defs>
+                                    <!-- Hourglass Bottom Clip -->
+                                    <clipPath id="clip-hourglass-bottom">
+                                        <path d="M 95 100 H 105 C 130 100 180 180 180 180 H 20 C 20 180 70 100 95 100 Z" />
+                                    </clipPath>
 
-                            <g class="gauge-ticks" id="gauge-ticks"></g>
+                                    <!-- Dot Matrix Mask -->
+                                    <mask id="mask-dots">
+                                        <circle cx="100" cy="100" r="92" fill="none" stroke="white" stroke-width="8" stroke-dasharray="0 12" stroke-linecap="round" />
+                                    </mask>
 
-                            <!-- Base background for most themes -->
-                            <circle class="gauge-bg" cx="100" cy="100" r="76"></circle>
+                                    <!-- Minimal Blocks Mask -->
+                                    <mask id="mask-blocks">
+                                        <circle cx="100" cy="100" r="92" fill="none" stroke="white" stroke-width="12" stroke-dasharray="40 6" />
+                                    </mask>
+                                </defs>
 
-                            <!-- Theme Layers -->
-                            <!-- 1. Liquid Wave Layer (Overhaul V5 - Seamless Loop) -->
-                            <g class="theme-layer layer-wave" style="display: none;" clip-path="url(#gauge-circle-clip)">
-                                <circle cx="100" cy="100" r="76" fill="var(--accent-blue)" opacity="0.1" />
-                                <g id="wave-level-group" style="transition: transform 1s linear;">
-                                    <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
-                                    <path class="liquid-wave wave-back" d="M -100 100 Q -75 80 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.4" />
-                                    <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
-                                </g>
-                            </g>
+                                <g class="gauge-ticks" id="gauge-ticks"></g>
 
-                            <!-- 2. Hourglass Layer (Overhaul V5 - Dual Sand Wave) -->
-                            <g class="theme-layer layer-hourglass" style="display: none;">
-                                <!-- Top and Bottom Caps -->
-                                <rect x="45" y="35" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
-                                <rect x="45" y="160" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
+                                <!-- Base background for most themes -->
+                                <circle class="gauge-bg" cx="100" cy="100" r="92"></circle>
 
-                                <!-- Main Frame -->
-                                <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
-                                    fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-
-                                <!-- Top Sand (Draining) -->
-                                <g clip-path="url(#clip-hourglass-top)">
-                                    <g id="sand-top-level-group" style="transition: transform 1s linear;">
-                                        <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.9" />
+                                <!-- Theme Layers -->
+                                <!-- 1. Liquid Wave Layer (Overhaul V5 - Seamless Loop) -->
+                                <g class="theme-layer layer-wave" style="display: none;" clip-path="url(#gauge-circle-clip)">
+                                    <circle cx="100" cy="100" r="92" fill="var(--accent-blue)" opacity="0.15" />
+                                    <g id="wave-level-group" style="transition: transform 1s linear;">
+                                        <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
+                                        <path class="liquid-wave wave-back" d="M -100 100 Q -75 80 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.4" />
+                                        <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
                                     </g>
                                 </g>
 
-                                <!-- Bottom Sand (Filling) -->
-                                <g clip-path="url(#clip-hourglass-bottom)">
-                                    <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
-                                        <path class="liquid-wave wave-front" d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
+                                <!-- 2. Hourglass Layer (Overhaul V5 - Dual Sand Wave) -->
+                                <g class="theme-layer layer-hourglass" style="display: none;">
+                                    <!-- Top and Bottom Caps -->
+                                    <rect x="45" y="35" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
+                                    <rect x="45" y="160" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
+
+                                    <!-- Main Frame -->
+                                    <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
+                                        fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+
+                                    <!-- Top Sand (Draining) -->
+                                    <g clip-path="url(#clip-hourglass-top)">
+                                        <g id="sand-top-level-group" style="transition: transform 1s linear;">
+                                            <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.9" />
+                                        </g>
                                     </g>
+
+                                    <!-- Bottom Sand (Filling) -->
+                                    <g clip-path="url(#clip-hourglass-bottom)">
+                                        <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
+                                            <path class="liquid-wave wave-front" d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
+                                        </g>
+                                    </g>
+
+                                    <!-- Falling Stream -->
+                                    <rect id="sand-stream" x="98.5" y="98" width="3" height="5" fill="var(--accent-blue)" opacity="1" style="display: none;" />
                                 </g>
 
-                                <!-- Falling Stream -->
-                                <rect id="sand-stream" x="98.5" y="98" width="3" height="5" fill="var(--accent-blue)" opacity="1" style="display: none;" />
-                            </g>
+                                <!-- Progress Bars (used by Classic, Dots, Blocks, Orbit) -->
+                                <circle class="gauge-progress" id="gauge-progress-bar" cx="100" cy="100" r="92"></circle>
 
-                            <!-- Progress Bars (used by Classic, Dots, Blocks, Orbit) -->
-                            <circle class="gauge-progress" id="gauge-progress-bar" cx="100" cy="100" r="76"></circle>
-
-                            <!-- Orbit Particle -->
-                            <circle id="orbit-particle" cx="100" cy="24" r="5" fill="var(--accent-blue)" style="display: none; transition: transform 0.5s linear; transform-origin: 100px 100px;" />
-                        </svg>
-                        <div class="gauge-center" id="gauge-clickable-area" title="Click to hide/show timer digits">
-                            <div id="timer-text-wrapper">
-                                <div class="timer-time" id="active-timer-display">30:00</div>
-                                <div class="timer-label" id="active-status-label">REMAINING</div>
+                                <!-- Orbit Particle -->
+                                <circle id="orbit-particle" cx="192" cy="100" r="6" fill="var(--accent-blue)" style="display: none; transition: transform 0.5s linear; transform-origin: 100px 100px;" />
+                            </svg>
+                            <div class="gauge-center" id="gauge-clickable-area" title="Click to hide/show timer digits">
+                                <div id="timer-text-wrapper">
+                                    <div class="timer-time" id="active-timer-display">30:00</div>
+                                    <div class="timer-label" id="active-status-label">REMAINING</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Control Buttons -->
-                    <div class="timer-action-bar">
-                        <button id="btn-pause" class="circle-btn accent">
-                            <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <rect x="6" y="4" width="4" height="16"></rect>
-                                <rect x="14" y="4" width="4" height="16"></rect>
-                            </svg>
-                            <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
-                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                            </svg>
-                        </button>
-                        <button id="btn-stop" class="circle-btn secondary" title="End Session">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <rect x="4" y="4" width="16" height="16"></rect>
-                            </svg>
-                        </button>
+                        <!-- Control Buttons -->
+                        <div class="timer-action-bar">
+                            <button id="btn-pause" class="circle-btn accent">
+                                <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <rect x="6" y="4" width="4" height="16"></rect>
+                                    <rect x="14" y="4" width="4" height="16"></rect>
+                                </svg>
+                                <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                            </button>
+                            <button id="btn-stop" class="circle-btn secondary" title="End Session">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <rect x="4" y="4" width="16" height="16"></rect>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="up-next-info">
@@ -513,6 +515,23 @@
                         <span class="slider"></span>
                     </label>
                 </div>
+                <div class="option-row">
+                    <span>Notification Sound</span>
+                    <select id="select-notification-sound" class="small-action-btn" style="width: 120px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
+                        <option value="default" style="background: #242424; color: white;">Default</option>
+                        <option value="reminder" style="background: #242424; color: white;">Reminder</option>
+                        <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
+                        <option value="chime" style="background: #242424; color: white;">Chime</option>
+                        <option value="none" style="background: #242424; color: white;">Silent</option>
+                    </select>
+                </div>
+                <div class="option-row">
+                    <span>Auto-PIP on Session Start</span>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-auto-pip">
+                        <span class="slider"></span>
+                    </label>
+                </div>
 
                 <!-- Timer Ambient GIF Selection & Style Options -->
                 <div class="option-column">
@@ -648,6 +667,10 @@
                     <span>Clear Blocked Apps List</span>
                     <button class="small-action-btn" id="btn-clear-whitelist">Clear</button>
                 </div>
+                <div class="option-row">
+                    <span>Cleanup GIF Storage</span>
+                    <button class="small-action-btn" id="btn-cleanup-gifs" title="Remove unused cached GIFs">Clean</button>
+                </div>
             </div>
         </div>
     </div>
@@ -709,6 +732,13 @@
             </div>
 
             <!-- Ranked App Focus Time List -->
+            <div class="stats-section-title">
+                <span>7-Day Activity Trend</span>
+            </div>
+            <div class="stats-weekly-chart" id="stats-weekly-chart">
+                <!-- Chart bars injected via JS -->
+            </div>
+
             <div class="stats-section-title">
                 <span>Application & Tool Breakdown</span>
                 <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Ranked by focus time</span>

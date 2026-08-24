@@ -22,33 +22,68 @@ private:
     std::wstring GetRandomQuote(OverlayMode mode) {
         static const std::vector<std::wstring> focusQuotes = {
             L"\"Tetap fokus pada tujuanmu. Hasil besar dibangun dari langkah-langkah kecil setiap hari.\"",
-            L"\"Focus on being productive instead of busy. — Tim Ferriss\"",
+            L"\"Focus on being productive instead of busy. - Tim Ferriss\"",
             L"\"Konsistensi adalah kunci keberhasilan. Kerjakan tugasmu dengan penuh kesungguhan.\"",
-            L"\"Deep work is the superpower of the 21st century. — Cal Newport\"",
+            L"\"Deep work is the superpower of the 21st century. - Cal Newport\"",
             L"\"Jangan biarkan gangguan kecil menghalangi impian besarmu.\"",
-            L"\"Do what you have to do until you can do what you want to do. — Oprah Winfrey\"",
+            L"\"Do what you have to do until you can do what you want to do. - Oprah Winfrey\"",
             L"\"Satu jam fokus penuh jauh lebih berharga daripada seharian bekerja setengah hati.\"",
             L"\"Starve your distractions, feed your focus.\"",
             L"\"Kerjakan yang paling penting terlebih dahulu, biarkan yang lain menyusul.\"",
-            L"\"Action is the foundational key to all success. — Pablo Picasso\"",
+            L"\"Action is the foundational key to all success. - Pablo Picasso\"",
             L"\"Impian tidak terwujud lewat keajaiban; itu membutuhkan keringat, tekad, dan kerja keras.\"",
             L"\"You don't need more time, you just need more focus.\"",
             L"\"Fokus pada proses, hasil indah akan mengikuti dengan sendirinya.\"",
-            L"\"It's not that I'm so smart, it's just that I stay with problems longer. — Albert Einstein\"",
-            L"\"Fokus adalah seni mengatakan 'tidak' pada seribu hal baik lainnya. — Steve Jobs\""
+            L"\"It's not that I'm so smart, it's just that I stay with problems longer. - Albert Einstein\"",
+            L"\"Fokus adalah seni mengatakan 'tidak' pada seribu hal baik lainnya. - Steve Jobs\"",
+            L"\"Disiplin adalah jembatan antara cita-cita dan pencapaian.\"",
+            L"\"Work hard in silence, let your success be your noise.\"",
+            L"\"Cara terbaik untuk memulai adalah berhenti berbicara dan mulai melakukan.\"",
+            L"\"Success is not final, failure is not fatal: it is the courage to continue that counts.\"",
+            L"\"Jangan menunggu waktu yang tepat. Ciptakan waktu itu sekarang juga.\"",
+            L"\"Small steps in the right direction can turn out to be the biggest steps of your life.\"",
+            L"\"Your mind is for having ideas, not holding them. Focus on the task at hand.\"",
+            L"\"Productivity is being able to do things that you were never able to do before.\"",
+            L"\"Energi dan ketekunan menaklukkan segala hal.\"",
+            L"\"Believe you can and you're halfway there. - Theodore Roosevelt\"",
+            L"\"The only way to do great work is to love what you do. - Steve Jobs\"",
+            L"\"Focus is a matter of deciding what things you're NOT going to do. - John Carmack\"",
+            L"\"Don't count the days, make the days count. - Muhammad Ali\"",
+            L"\"Work like there is someone working 24 hours a day to take it all away from you. - Mark Cuban\"",
+            L"\"It always seems impossible until it's done. - Nelson Mandela\"",
+            L"\"Ambisimu menentukan masa depanmu. Jangan berhenti sekarang.\"",
+            L"\"Stay hungry, stay foolish. - Steve Jobs\"",
+            L"\"Disiplin diri adalah bentuk tertinggi dari rasa cinta pada diri sendiri.\"",
+            L"\"The expert in anything was once a beginner. Start now.\"",
+            L"\"Quality is not an act, it is a habit. - Aristotle\""
         };
 
         static const std::vector<std::wstring> restQuotes = {
             L"\"Istirahat bukan berarti berhenti, melainkan mengisi ulang energi untuk melangkah lebih jauh.\"",
-            L"\"Rest when you're weary. Refresh and renew yourself, your body, your mind, your spirit. — Ralph Marston\"",
+            L"\"Rest when you're weary. Refresh and renew yourself, your body, your mind, your spirit. - Ralph Marston\"",
             L"\"Jauhkan pandangan dari layar, regangkan tubuhmu, dan hirup udara segar.\"",
-            L"\"Almost everything will work again if you unplug it for a few minutes, including you. — Anne Lamott\"",
+            L"\"Almost everything will work again if you unplug it for a few minutes, including you. - Anne Lamott\"",
             L"\"Kesehatan dan ketenangan pikiranmu adalah investasi terbaik untuk masa depan.\"",
             L"\"Take a break. A rested mind can solve problems that a tired mind cannot.\"",
             L"\"Minum air putih, berdiri sejenak, dan biarkan matamu beristirahat.\"",
-            L"\"Rest is not idleness; to lie on the grass under trees is by no means a waste of time. — John Lubbock\"",
+            L"\"Rest is not idleness; to lie on the grass under trees is by no means a waste of time. - John Lubbock\"",
             L"\"Tubuhmu butuh jeda agar bisa berlari kencang kembali nanti.\"",
-            L"\"He who holds his breath for too long will collapse. Breathe and rest now.\""
+            L"\"He who holds his breath for too long will collapse. Breathe and rest now.\"",
+            L"\"Tidur adalah meditasi terbaik. Tapi saat ini, cukup regangkan badanmu saja.\"",
+            L"\"Resting is a part of the process, not a reward for the process.\"",
+            L"\"Sometimes the most productive thing you can do is relax.\"",
+            L"\"Jangan merasa bersalah karena beristirahat. Mesin pun butuh pendinginan.\"",
+            L"\"Tenangkan pikiranmu, dan jiwamu akan berbicara.\"",
+            L"\"Your body hears everything your mind says. Give it some peace.\"",
+            L"\"A change of pace is as good as a rest. Look away from the screen for a bit.\"",
+            L"\"The time to relax is when you don't have time for it.\"",
+            L"\"Refresh your mind, clear your vision, and recharge your soul.\"",
+            L"\"Breathe in confidence, breathe out doubt. Take this moment for yourself.\"",
+            L"\"Relax, recharge, and refocus. Your best is yet to come.\"",
+            L"\"Inner peace begins the moment you choose not to allow another person or event to control your emotions.\"",
+            L"\"Your calm mind is the ultimate weapon against your challenges. So relax.\"",
+            L"\"Within you, there is a stillness and a sanctuary to which you can retreat at any time.\"",
+            L"\"Rest and be thankful. - William Wordsworth\""
         };
 
         const auto& list = (mode == OverlayMode::RestBreak) ? restQuotes : focusQuotes;
@@ -171,6 +206,12 @@ private:
         }
         case WM_ERASEBKGND:
             return 1;
+        case WM_CLOSE:
+            // Reverted: Alt+F4 disabled to ensure focus remains unbroken
+            return 0;
+        case WM_SYSCOMMAND:
+            if ((wParam & 0xFFF0) == SC_CLOSE) return 0;
+            return DefWindowProc(hwnd, msg, wParam, lParam);
         case WM_KEYDOWN:
             if (m_mode == OverlayMode::FocusBlock) {
                 if (wParam == VK_ESCAPE) {

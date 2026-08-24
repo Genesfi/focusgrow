@@ -7,6 +7,7 @@
 #include <functional>
 #include <sstream>
 #include <iomanip>
+#include <ctime>
 #include "AppDetector.hpp"
 #include "OverlayWindow.hpp"
 
@@ -42,6 +43,8 @@ private:
 
     int m_totalPeriods = 1;
     int m_currentPeriod = 1;
+
+    time_t m_lastTickTime = 0;
 
     std::vector<std::wstring> m_systemWhitelist = {
         L"FocusGrow.exe",
@@ -322,14 +325,36 @@ public:
 
         m_state = SessionState::Focusing;
         m_isPaused = false;
+        m_lastTickTime = time(nullptr);
 
         m_overlay.Hide();
+        NotifyState();
+    }
+
+    void ResumeSession(const std::wstring& stateStr, int remainingSec, int currentPeriod, int totalPeriods, int focusMins, int chunkMins, int breakMins, bool skipBreaks) {
+        if (stateStr == L"focusing") m_state = SessionState::Focusing;
+        else if (stateStr == L"resting") m_state = SessionState::Resting;
+        else m_state = SessionState::Idle;
+
+        if (m_state == SessionState::Idle) return;
+
+        m_remainingSec = remainingSec;
+        m_currentPeriod = currentPeriod;
+        m_totalPeriods = totalPeriods;
+        m_totalFocusMinutes = focusMins;
+        m_singlePeriodSec = chunkMins * 60;
+        m_breakDurationSec = breakMins * 60;
+        m_skipBreaks = skipBreaks;
+        m_isPaused = true; // Always resume in paused state for safety
+        m_lastTickTime = time(nullptr);
+
         NotifyState();
     }
 
     void PauseSession() {
         if (m_state != SessionState::Idle) {
             m_isPaused = !m_isPaused;
+            if (!m_isPaused) m_lastTickTime = time(nullptr);
             NotifyState();
         }
     }
@@ -343,13 +368,23 @@ public:
         NotifyState();
     }
 
+    void SetInitialStats(int completedMins, int goalMins) {
+        m_stats.completedMinutesToday = completedMins;
+        m_stats.totalGoalMinutes = goalMins;
+        NotifyState();
+    }
+
     void TickOneSecond() {
+        time_t now = time(nullptr);
+        int delta = (m_lastTickTime == 0) ? 1 : (int)(now - m_lastTickTime);
+        m_lastTickTime = now;
+
         if (m_state == SessionState::Idle || m_isPaused) return;
 
         // Tick temporary site passes
         for (auto& site : m_restrictedSites) {
             if (site.passRemainingSec > 0) {
-                site.passRemainingSec--;
+                site.passRemainingSec = max(0, site.passRemainingSec - delta);
                 if (site.passRemainingSec == 0) {
                     HWND hwndForeground = GetForegroundWindow();
                     if (hwndForeground) OnForegroundWindowChanged(hwndForeground);
@@ -358,9 +393,12 @@ public:
         }
 
         if (m_remainingSec > 0) {
-            m_remainingSec--;
-            if (m_state == SessionState::Focusing && m_remainingSec % 60 == 0) {
-                m_stats.completedMinutesToday++;
+            int oldMins = m_remainingSec / 60;
+            m_remainingSec = max(0, m_remainingSec - delta);
+            int newMins = m_remainingSec / 60;
+
+            if (m_state == SessionState::Focusing && oldMins > newMins) {
+                m_stats.completedMinutesToday += (oldMins - newMins);
             }
         }
 
@@ -424,8 +462,9 @@ public:
             GetWindowTextW(hwndForeground, wtitleBuf, 512);
             std::wstring windowTitle(wtitleBuf);
 
-            // Step 1: If active foreground app is NOT a browser and IS allowed (e.g., explorer.exe, code.exe, notepad.exe): HIDE OVERLAY IMMEDIATELY!
-            if (!IsBrowserApp(exeName) && IsAppAllowed(exeName, windowTitle)) {
+            // If user goes to an allowed app, reset the manual dismissal tracker
+            if (IsAppAllowed(exeName, windowTitle)) {
+                m_lastDismissedHwnd = nullptr;
                 if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
                     m_overlay.Hide();
                 }

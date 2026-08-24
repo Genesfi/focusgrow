@@ -25,6 +25,7 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "winmm.lib")
 
 using namespace Microsoft::WRL;
 
@@ -127,8 +128,9 @@ void ShowWindowsToastNotification(const std::wstring& title, const std::wstring&
     wcsncpy_s(nid.szInfo, body.c_str(), _TRUNCATE);
     nid.dwInfoFlags = NIIF_INFO | NIIF_LARGE_ICON;
 
-    Shell_NotifyIconW(NIM_ADD, &nid);
-    Shell_NotifyIconW(NIM_MODIFY, &nid);
+    if (!Shell_NotifyIconW(NIM_MODIFY, &nid)) {
+        Shell_NotifyIconW(NIM_ADD, &nid);
+    }
     MessageBeep(MB_ICONASTERISK);
 }
 
@@ -364,6 +366,31 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         ParseAndSetBlacklist(msg);
         ParseAndSetRestrictedSites(msg);
         g_focusEngine->StartSession(mins, chunkMins, breakMins, skipBreaks);
+    } else if (msg.find(L"\"action\":\"resumeSession\"") != std::wstring::npos) {
+        std::wstring state = L"idle";
+        int rem = 0, cur = 1, tot = 1, foc = 30, chk = 25, brk = 5;
+        bool skip = false;
+
+        size_t p;
+        if ((p = msg.find(L"\"sessionState\":\"")) != std::wstring::npos) {
+            size_t end = msg.find(L"\"", p + 16);
+            if (end != std::wstring::npos) state = msg.substr(p + 16, end - (p + 16));
+        }
+        if ((p = msg.find(L"\"remainingSec\":")) != std::wstring::npos) rem = _wtoi(msg.c_str() + p + 15);
+        if ((p = msg.find(L"\"currentPeriod\":")) != std::wstring::npos) cur = _wtoi(msg.c_str() + p + 16);
+        if ((p = msg.find(L"\"totalPeriods\":")) != std::wstring::npos) tot = _wtoi(msg.c_str() + p + 15);
+        if ((p = msg.find(L"\"focusMinutes\":")) != std::wstring::npos) foc = _wtoi(msg.c_str() + p + 15);
+        if ((p = msg.find(L"\"focusChunkMinutes\":")) != std::wstring::npos) chk = _wtoi(msg.c_str() + p + 20);
+        if ((p = msg.find(L"\"breakMinutes\":")) != std::wstring::npos) brk = _wtoi(msg.c_str() + p + 15);
+        if (msg.find(L"\"skipBreaks\":true") != std::wstring::npos) skip = true;
+
+        g_focusEngine->ResumeSession(state, rem, cur, tot, foc, chk, brk, skip);
+    } else if (msg.find(L"\"action\":\"syncStats\"") != std::wstring::npos) {
+        int comp = 0, goal = 60;
+        size_t p;
+        if ((p = msg.find(L"\"completedMinutesToday\":")) != std::wstring::npos) comp = _wtoi(msg.c_str() + p + 24);
+        if ((p = msg.find(L"\"dailyGoalMinutes\":")) != std::wstring::npos) goal = _wtoi(msg.c_str() + p + 19);
+        if (g_focusEngine) g_focusEngine->SetInitialStats(comp, goal);
     } else if (msg.find(L"\"action\":\"setBlacklist\"") != std::wstring::npos) {
         ParseAndSetBlacklist(msg);
     } else if (msg.find(L"\"action\":\"setRestrictedSites\"") != std::wstring::npos) {
@@ -416,6 +443,7 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     } else if (msg.find(L"\"action\":\"notify\"") != std::wstring::npos) {
         std::wstring title = L"FocusGrow Notification";
         std::wstring body = L"Focus session update.";
+        std::wstring sound = L"default";
 
         size_t titlePos = msg.find(L"\"title\":\"");
         if (titlePos != std::wstring::npos) {
@@ -433,8 +461,23 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
             }
         }
 
+        size_t soundPos = msg.find(L"\"sound\":\"");
+        if (soundPos != std::wstring::npos) {
+            size_t soundEnd = msg.find(L"\"", soundPos + 9);
+            if (soundEnd != std::wstring::npos) {
+                sound = msg.substr(soundPos + 9, soundEnd - (soundPos + 9));
+            }
+        }
+
+        if (sound == L"reminder") PlaySoundW(L"Notification.Reminder", NULL, SND_ALIAS | SND_ASYNC);
+        else if (sound == L"alarm") PlaySoundW(L"Notification.Looping.Alarm", NULL, SND_ALIAS | SND_ASYNC);
+        else if (sound == L"chime") PlaySoundW(L"Notification.Proximity", NULL, SND_ALIAS | SND_ASYNC);
+        else if (sound == L"none") { /* Silent */ }
+        else PlaySoundW(L"Notification.Default", NULL, SND_ALIAS | SND_ASYNC);
+
         ShowWindowsToastNotification(title, body);
-    } else if (msg.find(L"\"action\":\"close\"") != std::wstring::npos) {
+    }
+ else if (msg.find(L"\"action\":\"close\"") != std::wstring::npos) {
         DestroyWindow(g_hWnd);
     }
 }
