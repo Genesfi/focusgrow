@@ -656,35 +656,27 @@ document.addEventListener('DOMContentLoaded', () => {
         img.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
-                canvas.width = 64; // Increased resolution for better sampling
-                canvas.height = 64;
+                canvas.width = 32;
+                canvas.height = 32;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, 64, 64);
-                const data = ctx.getImageData(0, 0, 64, 64).data;
-
-                let bestColor = { r: 96, g: 205, b: 255, score: 0 }; // Fallback to default blue
-
+                ctx.drawImage(img, 0, 0, 32, 32);
+                const data = ctx.getImageData(0, 0, 32, 32).data;
+                let rSum = 0, gSum = 0, bSum = 0, count = 0;
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i], g = data[i+1], b = data[i+2];
-
                     const max = Math.max(r, g, b);
                     const min = Math.min(r, g, b);
-                    const delta = max - min;
-                    const saturation = max === 0 ? 0 : delta / max;
-                    const brightness = max / 255;
-
-                    // Vibrancy Score: Prioritize colorfulness, but allow dark colors if they are very saturated
-                    if (max > 20 && max < 250 && saturation > 0.05) {
-                        const score = (saturation * 2.0) + (brightness * 0.5);
-                        if (score > bestColor.score) {
-                            bestColor = { r, g, b, score };
-                        }
+                    const saturation = max === 0 ? 0 : (max - min) / max;
+                    if (max > 40 && max < 240 && saturation > 0.15) {
+                        rSum += r; gSum += g; bSum += b;
+                        count++;
                     }
                 }
-
-                if (bestColor.score > 0) {
-                    const toHex = (c) => c.toString(16).padStart(2, '0');
-                    const hex = `#${toHex(bestColor.r)}${toHex(bestColor.g)}${toHex(bestColor.b)}`;
+                if (count > 0) {
+                    const r = Math.round(rSum / count);
+                    const g = Math.round(gSum / count);
+                    const b = Math.round(bSum / count);
+                    const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
                     callback(hex);
                 } else {
                     callback('#60cdff');
@@ -697,40 +689,8 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = imageUrl;
     }
 
-    // Debugging Tool: Log Layout info to F12 Console
-    function debugTimerLayout() {
-        console.group('%c 🕒 FOCUSGROW LAYOUT DEBUG ', 'background: #60cdff; color: #000; font-weight: bold;');
-        const timerView = document.getElementById('timer-view');
-        const mainLayout = document.querySelector('.timer-main-layout');
-        const gauge = document.querySelector('.gauge-container');
-        const card = document.getElementById('focus-card');
-
-        const logElem = (name, el) => {
-            if (!el) {
-                console.error(`${name}: NOT FOUND!`);
-                return;
-            }
-            const rect = el.getBoundingClientRect();
-            console.log(`%c${name}:`, 'font-weight: bold', {
-                width: rect.width,
-                height: rect.height,
-                top: rect.top,
-                bottom: rect.bottom,
-                display: window.getComputedStyle(el).display,
-                position: window.getComputedStyle(el).position,
-                zIndex: window.getComputedStyle(el).zIndex
-            });
-        };
-
-        logElem('Focus Card (Parent)', card);
-        logElem('Timer View', timerView);
-        logElem('Main Layout (Container)', mainLayout);
-        logElem('Gauge (The Circle)', gauge);
-
-        console.log('Window Inner Height:', window.innerHeight);
-        console.log('Body Classes:', document.body.className);
-        console.groupEnd();
-    }
+    // Synchronize Full-Panel Vinyl Center Point to Exact Center of Timer Clock Ring Dial
+    function syncVinylCenterPosition() {
         const focusCard = document.getElementById('focus-card');
         const gaugeContainer = document.querySelector('.gauge-container');
         const cardVinylDisc = document.querySelector('.card-vinyl-disc');
@@ -1633,9 +1593,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupView.classList.remove('active');
         timerView.classList.add('active');
-
-        // Let layout settle then log
-        setTimeout(debugTimerLayout, 500);
     });
 
     // Pause / Stop Session
@@ -1994,17 +1951,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { text: "Your mind is for having ideas, not holding them. Focus on the task at hand.", author: "David Allen" },
         { text: "Productivity is being able to do things that you were never able to do before.", author: "Franz Kafka" },
         { text: "Energi dan ketekunan menaklukkan segala hal.", author: "Benjamin Franklin" },
-        { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
-        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-        { text: "Focus is a matter of deciding what things you're NOT going to do.", author: "John Carmack" },
-        { text: "Don't count the days, make the days count.", author: "Muhammad Ali" },
-        { text: "Work like there is someone working 24 hours a day to take it all away from you.", author: "Mark Cuban" },
-        { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
-        { text: "Ambisimu menentukan masa depanmu. Jangan berhenti sekarang.", author: "FocusGrow Inspiration" },
-        { text: "Stay hungry, stay foolish.", author: "Steve Jobs" },
-        { text: "Disiplin diri adalah bentuk tertinggi dari rasa cinta pada diri sendiri.", author: "Daily Discipline" },
-        { text: "The expert in anything was once a beginner. Start now.", author: "Helen Hayes" },
-        { text: "Quality is not an act, it is a habit.", author: "Aristotle" }
+        { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" }
     ];
 
     const REST_QUOTES = [
@@ -2027,12 +1974,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { text: "A change of pace is as good as a rest. Look away from the screen for a bit.", author: "Proverb" },
         { text: "The time to relax is when you don't have time for it.", author: "Sydney J. Harris" },
         { text: "Refresh your mind, clear your vision, and recharge your soul.", author: "Zen Master" },
-        { text: "Breathe in confidence, breathe out doubt. Take this moment for yourself.", author: "Mindfulness" },
-        { text: "Relax, recharge, and refocus. Your best is yet to come.", author: "FocusGrow Wellness" },
-        { text: "Inner peace begins the moment you choose not to allow another person or event to control your emotions.", author: "Pema Chödrön" },
-        { text: "Your calm mind is the ultimate weapon against your challenges. So relax.", author: "Bryant McGill" },
-        { text: "Within you, there is a stillness and a sanctuary to which you can retreat at any time.", author: "Hermann Hesse" },
-        { text: "Rest and be thankful.", author: "William Wordsworth" }
+        { text: "Breathe in confidence, breathe out doubt. Take this moment for yourself.", author: "Mindfulness" }
     ];
 
     function updateRandomQuote(mode = 'focus') {

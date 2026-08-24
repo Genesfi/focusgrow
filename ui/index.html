@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Custom Win11 Frameless Titlebar -->
@@ -18,13 +20,22 @@
             </div>
             <div class="window-controls">
                 <button id="btn-min" title="Minimize">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="5.5" width="10" height="1.2" rx="0.6"/></svg>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                        <rect x="1" y="5.5" width="10" height="1.2" rx="0.6" />
+                    </svg>
                 </button>
                 <button id="btn-max" title="Maximize">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="1.5" width="9" height="9" rx="1"/></svg>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                        stroke-width="1.2">
+                        <rect x="1.5" y="1.5" width="9" height="9" rx="1" />
+                    </svg>
                 </button>
                 <button id="btn-close" class="close" title="Close">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                        stroke-width="1.2">
+                        <line x1="2" y1="2" x2="10" y2="10" />
+                        <line x1="10" y1="2" x2="2" y2="10" />
+                    </svg>
                 </button>
             </div>
         </header>
@@ -50,28 +61,38 @@
                         <h2>Get ready to focus</h2>
                         <div class="header-actions">
                             <button class="icon-btn btn-pip-toggle" title="Pop out floating timer">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M15 3h6v6" />
+                                    <path d="M10 14L21 3" />
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
                             </button>
                         </div>
                     </div>
                     <p class="subtitle">
-                        We'll block unallowed applications during each session. For longer sessions, we'll enforce short breaks so you can recharge.
+                        We'll block unallowed applications during each session. For longer sessions, we'll enforce short
+                        breaks so you can recharge.
                     </p>
 
                     <!-- Live YT Music Marquee Ticker (Setup View) -->
                     <div class="ytmusic-ticker" id="ytmusic-ticker-setup" style="display: none;">
                         <div class="ytmusic-media-controls">
                             <button class="media-control-btn btn-yt-prev" title="Previous Track (YT Music)">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                                </svg>
                             </button>
                             <button class="media-control-btn btn-yt-playpause" title="Play/Pause (YT Music)">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                                    <path class="icon-pause-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                                    <path class="icon-play-path" d="M8 5v14l11-7z" style="display: none;"/>
+                                    <path class="icon-pause-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                                    <path class="icon-play-path" d="M8 5v14l11-7z" style="display: none;" />
                                 </svg>
                             </button>
                             <button class="media-control-btn btn-yt-next" title="Next Track (YT Music)">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                                </svg>
                             </button>
                         </div>
                         <div class="ticker-content">
@@ -82,15 +103,22 @@
                     <!-- Focus Time Picker -->
                     <div class="timer-picker-box">
                         <div class="picker-value">
-                            <input type="number" id="picker-mins-input" class="picker-mins-input" value="30" min="1" max="480" aria-label="Focus session minutes">
+                            <input type="number" id="picker-mins-input" class="picker-mins-input" value="30" min="1"
+                                max="480" aria-label="Focus session minutes">
                             <span class="unit">mins focus</span>
                         </div>
                         <div class="picker-controls">
                             <button id="btn-picker-up" class="arrow-btn">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
                             </button>
                             <button id="btn-picker-down" class="arrow-btn">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -100,11 +128,19 @@
                         <span class="setting-label">Focus period length</span>
                         <div class="small-picker-box">
                             <button id="btn-period-down" class="small-btn">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
                             </button>
-                            <input type="number" id="picker-period-input" class="small-picker-input" value="25" min="1" max="120" aria-label="Focus period length"> <span class="unit">mins</span>
+                            <input type="number" id="picker-period-input" class="small-picker-input" value="25" min="1"
+                                max="120" aria-label="Focus period length"> <span class="unit">mins</span>
                             <button id="btn-period-up" class="small-btn">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -114,11 +150,19 @@
                         <span class="setting-label">Break duration</span>
                         <div class="small-picker-box">
                             <button id="btn-break-down" class="small-btn">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
                             </button>
-                            <input type="number" id="picker-break-input" class="small-picker-input" value="5" min="1" max="60" aria-label="Break duration"> <span class="unit">mins</span>
+                            <input type="number" id="picker-break-input" class="small-picker-input" value="5" min="1"
+                                max="60" aria-label="Break duration"> <span class="unit">mins</span>
                             <button id="btn-break-up" class="small-btn">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -149,168 +193,196 @@
                         <h2 id="focus-period-title">Focus period (1 of 1)</h2>
                         <div class="header-actions">
                             <button class="icon-btn btn-pip-toggle" title="Expand / Restore window">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M15 3h6v6" />
+                                    <path d="M10 14L21 3" />
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
                             </button>
                         </div>
                     </div>
 
-                    <div class="timer-main-layout">
-                        <!-- Circular Progress Gauge Dial -->
-                        <div class="gauge-container">
-                            <!-- Circle Inner GIF Backdrop -->
-                            <div class="gauge-gif-backdrop" id="gauge-gif-container">
-                                <img id="gauge-gif-img" src="" alt="focus ambient gif">
+                    <!-- Circular Progress Gauge Dial -->
+                    <div class="gauge-container">
+                        <!-- Circle Inner GIF Backdrop -->
+                        <div class="gauge-gif-backdrop" id="gauge-gif-container">
+                            <img id="gauge-gif-img" src="" alt="focus ambient gif">
+                        </div>
+
+                        <!-- YT Music Vinyl Record Spinning Disc Backdrop (Circle Mode) -->
+                        <div class="vinyl-disc-container" id="vinyl-disc-container" style="display: none;">
+                            <div class="vinyl-disc">
+                                <img id="vinyl-cover-img" class="vinyl-cover-img" src="" alt="Album Cover">
+                                <div class="vinyl-spindle-glass"></div>
                             </div>
+                        </div>
 
-                            <!-- YT Music Vinyl Record Spinning Disc Backdrop (Circle Mode) -->
-                            <div class="vinyl-disc-container" id="vinyl-disc-container" style="display: none;">
-                                <div class="vinyl-disc">
-                                    <img id="vinyl-cover-img" class="vinyl-cover-img" src="" alt="Album Cover">
-                                    <div class="vinyl-spindle-glass"></div>
-                                </div>
-                            </div>
+                        <!-- Realtime Dynamic Plant Growth SVG (Matching Screenshot 2 - Soft Rounded Leaves) -->
+                        <div class="plant-growth-container" id="plant-growth-container">
+                            <svg class="plant-growth-svg" viewBox="0 0 100 120">
+                                <!-- Pot & Soil Mound -->
+                                <rect x="30" y="90" width="40" height="8" rx="4" fill="#60a5fa" />
+                                <path d="M34 98 L66 98 C64 112, 36 112, 34 98 Z" fill="#60a5fa" />
+                                <ellipse cx="50" cy="90" rx="17" ry="3" fill="#78350f" />
 
-                            <!-- Realtime Dynamic Plant Growth SVG (Matching Screenshot 2 - Soft Rounded Leaves) -->
-                            <div class="plant-growth-container" id="plant-growth-container">
-                                <svg class="plant-growth-svg" viewBox="0 0 100 120">
-                                    <!-- Pot & Soil Mound -->
-                                    <rect x="30" y="90" width="40" height="8" rx="4" fill="#60a5fa"/>
-                                    <path d="M34 98 L66 98 C64 112, 36 112, 34 98 Z" fill="#60a5fa"/>
-                                    <ellipse cx="50" cy="90" rx="17" ry="3" fill="#78350f"/>
+                                <!-- Main Stem -->
+                                <path id="plant-stem" d="M50 90 L50 32" fill="none" stroke="#047857" stroke-width="3.5"
+                                    stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="60"
+                                    style="transition: stroke-dashoffset 0.5s linear;" />
 
-                                    <!-- Main Stem -->
-                                    <path id="plant-stem" d="M50 90 L50 32" fill="none" stroke="#047857" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="60" stroke-dashoffset="60" style="transition: stroke-dashoffset 0.5s linear;"/>
-
-                                    <!-- Leaf Pair 1 (Bottom) - Soft Rounded Leaves -->
-                                    <g id="leaf-pair-1" class="plant-leaf-group">
-                                        <rect x="28" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(-15 37 80)"/>
-                                        <rect x="54" y="74" width="18" height="12" rx="6" fill="#34d399" transform="rotate(15 63 80)"/>
-                                    </g>
-
-                                    <!-- Leaf Pair 2 (Middle) - Soft Rounded Leaves -->
-                                    <g id="leaf-pair-2" class="plant-leaf-group">
-                                        <rect x="26" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(-20 35 64)"/>
-                                        <rect x="56" y="58" width="18" height="12" rx="6" fill="#10b981" transform="rotate(20 65 64)"/>
-                                    </g>
-
-                                    <!-- Leaf Pair 3 (Top) - Soft Rounded Leaves -->
-                                    <g id="leaf-pair-3" class="plant-leaf-group">
-                                        <rect x="28" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(-15 37 48)"/>
-                                        <rect x="54" y="42" width="18" height="12" rx="6" fill="#059669" transform="rotate(15 63 48)"/>
-                                    </g>
-
-                                    <!-- Top Golden Flower Bud -->
-                                    <g id="plant-top-bud" class="plant-leaf-group">
-                                        <circle cx="50" cy="24" r="6" fill="#fbbf24"/>
-                                        <rect x="42" y="27" width="16" height="10" rx="5" fill="#34d399"/>
-                                    </g>
-                                </svg>
-                            </div>
-
-                            <svg class="gauge-svg" viewBox="0 0 200 200">
-                                <!-- Theme Definitions (Clips, Masks) -->
-                                <defs>
-                                    <!-- Liquid Wave Clip: Contained within the gauge circle -->
-                                    <clipPath id="gauge-circle-clip">
-                                        <circle cx="100" cy="100" r="92" />
-                                    </clipPath>
-
-                                    <!-- Hourglass Top Clip -->
-                                    <clipPath id="clip-hourglass-top">
-                                        <path d="M 20 20 H 180 C 180 20 130 100 105 100 H 95 C 70 100 20 20 20 20 Z" />
-                                    </clipPath>
-
-                                    <!-- Hourglass Bottom Clip -->
-                                    <clipPath id="clip-hourglass-bottom">
-                                        <path d="M 95 100 H 105 C 130 100 180 180 180 180 H 20 C 20 180 70 100 95 100 Z" />
-                                    </clipPath>
-
-                                    <!-- Dot Matrix Mask -->
-                                    <mask id="mask-dots">
-                                        <circle cx="100" cy="100" r="92" fill="none" stroke="white" stroke-width="8" stroke-dasharray="0 12" stroke-linecap="round" />
-                                    </mask>
-
-                                    <!-- Minimal Blocks Mask -->
-                                    <mask id="mask-blocks">
-                                        <circle cx="100" cy="100" r="92" fill="none" stroke="white" stroke-width="12" stroke-dasharray="40 6" />
-                                    </mask>
-                                </defs>
-
-                                <g class="gauge-ticks" id="gauge-ticks"></g>
-
-                                <!-- Base background for most themes -->
-                                <circle class="gauge-bg" cx="100" cy="100" r="92"></circle>
-
-                                <!-- Theme Layers -->
-                                <!-- 1. Liquid Wave Layer (Overhaul V5 - Seamless Loop) -->
-                                <g class="theme-layer layer-wave" style="display: none;" clip-path="url(#gauge-circle-clip)">
-                                    <circle cx="100" cy="100" r="92" fill="var(--accent-blue)" opacity="0.15" />
-                                    <g id="wave-level-group" style="transition: transform 1s linear;">
-                                        <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
-                                        <path class="liquid-wave wave-back" d="M -100 100 Q -75 80 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.4" />
-                                        <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
-                                    </g>
+                                <!-- Leaf Pair 1 (Bottom) - Soft Rounded Leaves -->
+                                <g id="leaf-pair-1" class="plant-leaf-group">
+                                    <rect x="28" y="74" width="18" height="12" rx="6" fill="#34d399"
+                                        transform="rotate(-15 37 80)" />
+                                    <rect x="54" y="74" width="18" height="12" rx="6" fill="#34d399"
+                                        transform="rotate(15 63 80)" />
                                 </g>
 
-                                <!-- 2. Hourglass Layer (Overhaul V5 - Dual Sand Wave) -->
-                                <g class="theme-layer layer-hourglass" style="display: none;">
-                                    <!-- Top and Bottom Caps -->
-                                    <rect x="45" y="35" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
-                                    <rect x="45" y="160" width="110" height="6" rx="3" fill="var(--accent-blue)" opacity="0.3" />
-
-                                    <!-- Main Frame -->
-                                    <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
-                                        fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-
-                                    <!-- Top Sand (Draining) -->
-                                    <g clip-path="url(#clip-hourglass-top)">
-                                        <g id="sand-top-level-group" style="transition: transform 1s linear;">
-                                            <path class="liquid-wave wave-front" d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.9" />
-                                        </g>
-                                    </g>
-
-                                    <!-- Bottom Sand (Filling) -->
-                                    <g clip-path="url(#clip-hourglass-bottom)">
-                                        <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
-                                            <path class="liquid-wave wave-front" d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z" fill="var(--accent-blue)" opacity="0.8" />
-                                        </g>
-                                    </g>
-
-                                    <!-- Falling Stream -->
-                                    <rect id="sand-stream" x="98.5" y="98" width="3" height="5" fill="var(--accent-blue)" opacity="1" style="display: none;" />
+                                <!-- Leaf Pair 2 (Middle) - Soft Rounded Leaves -->
+                                <g id="leaf-pair-2" class="plant-leaf-group">
+                                    <rect x="26" y="58" width="18" height="12" rx="6" fill="#10b981"
+                                        transform="rotate(-20 35 64)" />
+                                    <rect x="56" y="58" width="18" height="12" rx="6" fill="#10b981"
+                                        transform="rotate(20 65 64)" />
                                 </g>
 
-                                <!-- Progress Bars (used by Classic, Dots, Blocks, Orbit) -->
-                                <circle class="gauge-progress" id="gauge-progress-bar" cx="100" cy="100" r="92"></circle>
+                                <!-- Leaf Pair 3 (Top) - Soft Rounded Leaves -->
+                                <g id="leaf-pair-3" class="plant-leaf-group">
+                                    <rect x="28" y="42" width="18" height="12" rx="6" fill="#059669"
+                                        transform="rotate(-15 37 48)" />
+                                    <rect x="54" y="42" width="18" height="12" rx="6" fill="#059669"
+                                        transform="rotate(15 63 48)" />
+                                </g>
 
-                                <!-- Orbit Particle -->
-                                <circle id="orbit-particle" cx="192" cy="100" r="6" fill="var(--accent-blue)" style="display: none; transition: transform 0.5s linear; transform-origin: 100px 100px;" />
+                                <!-- Top Golden Flower Bud -->
+                                <g id="plant-top-bud" class="plant-leaf-group">
+                                    <circle cx="50" cy="24" r="6" fill="#fbbf24" />
+                                    <rect x="42" y="27" width="16" height="10" rx="5" fill="#34d399" />
+                                </g>
                             </svg>
-                            <div class="gauge-center" id="gauge-clickable-area" title="Click to hide/show timer digits">
-                                <div id="timer-text-wrapper">
-                                    <div class="timer-time" id="active-timer-display">30:00</div>
-                                    <div class="timer-label" id="active-status-label">REMAINING</div>
-                                </div>
-                            </div>
                         </div>
 
-                        <!-- Control Buttons -->
-                        <div class="timer-action-bar">
-                            <button id="btn-pause" class="circle-btn accent">
-                                <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <rect x="6" y="4" width="4" height="16"></rect>
-                                    <rect x="14" y="4" width="4" height="16"></rect>
-                                </svg>
-                                <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
-                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                </svg>
-                            </button>
-                            <button id="btn-stop" class="circle-btn secondary" title="End Session">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                    <rect x="4" y="4" width="16" height="16"></rect>
-                                </svg>
-                            </button>
+                        <svg class="gauge-svg" viewBox="0 0 200 200">
+                            <!-- Theme Definitions (Clips, Masks) -->
+                            <defs>
+                                <!-- Liquid Wave Clip: Contained within the gauge circle -->
+                                <clipPath id="gauge-circle-clip">
+                                    <circle cx="100" cy="100" r="76" />
+                                </clipPath>
+
+                                <!-- Hourglass Top Clip -->
+                                <clipPath id="clip-hourglass-top">
+                                    <path d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z" />
+                                </clipPath>
+
+                                <!-- Hourglass Bottom Clip -->
+                                <clipPath id="clip-hourglass-bottom">
+                                    <path d="M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z" />
+                                </clipPath>
+
+                                <!-- Dot Matrix Mask -->
+                                <mask id="mask-dots">
+                                    <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="8"
+                                        stroke-dasharray="0 10" stroke-linecap="round" />
+                                </mask>
+
+                                <!-- Minimal Blocks Mask -->
+                                <mask id="mask-blocks">
+                                    <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="12"
+                                        stroke-dasharray="35 5" />
+                                </mask>
+                            </defs>
+
+                            <g class="gauge-ticks" id="gauge-ticks"></g>
+
+                            <!-- Base background for most themes -->
+                            <circle class="gauge-bg" cx="100" cy="100" r="76"></circle>
+
+                            <!-- Theme Layers -->
+                            <!-- 1. Liquid Wave Layer (Overhaul V5 - Seamless Loop) -->
+                            <g class="theme-layer layer-wave" style="display: none;"
+                                clip-path="url(#gauge-circle-clip)">
+                                <circle cx="100" cy="100" r="76" fill="var(--accent-blue)" opacity="0.1" />
+                                <g id="wave-level-group" style="transition: transform 1s linear;">
+                                    <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
+                                    <path class="liquid-wave wave-back"
+                                        d="M -100 100 Q -75 80 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                        fill="var(--accent-blue)" opacity="0.4" />
+                                    <path class="liquid-wave wave-front"
+                                        d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                        fill="var(--accent-blue)" opacity="0.8" />
+                                </g>
+                            </g>
+
+                            <!-- 2. Hourglass Layer (Overhaul V5 - Dual Sand Wave) -->
+                            <g class="theme-layer layer-hourglass" style="display: none;">
+                                <!-- Top and Bottom Caps -->
+                                <rect x="45" y="35" width="110" height="6" rx="3" fill="var(--accent-blue)"
+                                    opacity="0.3" />
+                                <rect x="45" y="160" width="110" height="6" rx="3" fill="var(--accent-blue)"
+                                    opacity="0.3" />
+
+                                <!-- Main Frame -->
+                                <path
+                                    d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
+                                    fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+
+                                <!-- Top Sand (Draining) -->
+                                <g clip-path="url(#clip-hourglass-top)">
+                                    <g id="sand-top-level-group" style="transition: transform 1s linear;">
+                                        <path class="liquid-wave wave-front"
+                                            d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                            fill="var(--accent-blue)" opacity="0.9" />
+                                    </g>
+                                </g>
+
+                                <!-- Bottom Sand (Filling) -->
+                                <g clip-path="url(#clip-hourglass-bottom)">
+                                    <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
+                                        <path class="liquid-wave wave-front"
+                                            d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                            fill="var(--accent-blue)" opacity="0.8" />
+                                    </g>
+                                </g>
+
+                                <!-- Falling Stream -->
+                                <rect id="sand-stream" x="98.5" y="98" width="3" height="5" fill="var(--accent-blue)"
+                                    opacity="1" style="display: none;" />
+                            </g>
+
+                            <!-- Progress Bars (used by Classic, Dots, Blocks, Orbit) -->
+                            <circle class="gauge-progress" id="gauge-progress-bar" cx="100" cy="100" r="76"></circle>
+
+                            <!-- Orbit Particle -->
+                            <circle id="orbit-particle" cx="176" cy="100" r="5" fill="var(--accent-blue)"
+                                style="display: none; transition: transform 0.5s linear; transform-origin: 100px 100px;" />
+                        </svg>
+                        <div class="gauge-center" id="gauge-clickable-area" title="Click to hide/show timer digits">
+                            <div id="timer-text-wrapper">
+                                <div class="timer-time" id="active-timer-display">30:00</div>
+                                <div class="timer-label" id="active-status-label">REMAINING</div>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Control Buttons -->
+                    <div class="timer-action-bar">
+                        <button id="btn-pause" class="circle-btn accent">
+                            <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
+                                style="display:none;">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+                        <button id="btn-stop" class="circle-btn secondary" title="End Session">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="4" y="4" width="16" height="16"></rect>
+                            </svg>
+                        </button>
                     </div>
 
                     <div class="up-next-info">
@@ -321,16 +393,20 @@
                     <div class="ytmusic-ticker" id="ytmusic-ticker-timer" style="display: none; margin-top: 8px;">
                         <div class="ytmusic-media-controls">
                             <button class="media-control-btn btn-yt-prev" title="Previous Track (YT Music)">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                                </svg>
                             </button>
                             <button class="media-control-btn btn-yt-playpause" title="Play/Pause (YT Music)">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                                    <path class="icon-pause-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                                    <path class="icon-play-path" d="M8 5v14l11-7z" style="display: none;"/>
+                                    <path class="icon-pause-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                                    <path class="icon-play-path" d="M8 5v14l11-7z" style="display: none;" />
                                 </svg>
                             </button>
                             <button class="media-control-btn btn-yt-next" title="Next Track (YT Music)">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                                </svg>
                             </button>
                         </div>
                         <div class="ticker-content">
@@ -347,14 +423,29 @@
                     <div class="card-header">
                         <h2>Daily progress</h2>
                         <div class="header-actions">
-                            <button class="icon-btn btn-options-trigger" id="btn-options-progress" title="Session & Ambient Options">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            <button class="icon-btn btn-options-trigger" id="btn-options-progress"
+                                title="Session & Ambient Options">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path
+                                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                </svg>
                             </button>
                             <button class="icon-btn" id="btn-open-stats" title="View Focus Statistics">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M18 20V10" />
+                                    <path d="M12 20V4" />
+                                    <path d="M6 20v-6" />
+                                </svg>
                             </button>
                             <button class="icon-btn" id="btn-edit-goal" title="Edit Daily Goal">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -394,76 +485,116 @@
                 </section>
 
                 <!-- Protection & Focus Guard Tabbed Card -->
-                <section class="card protection-card" style="flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; z-index: 1;">
+                <section class="card protection-card"
+                    style="flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; z-index: 1;">
                     <!-- Segmented Tab Header -->
-                    <div class="protection-tab-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 10px; position: relative; z-index: 10;">
-                        <div class="protection-tabs" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); position: relative; z-index: 20;">
-                            <button class="guard-tab-btn active" id="tab-btn-apps" data-tab="apps" style="background: var(--accent-blue); color: #000; border: none; font-weight: 700; padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; position: relative; z-index: 30;">
+                    <div class="protection-tab-header"
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 10px; position: relative; z-index: 10;">
+                        <div class="protection-tabs"
+                            style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); position: relative; z-index: 20;">
+                            <button class="guard-tab-btn active" id="tab-btn-apps" data-tab="apps"
+                                style="background: var(--accent-blue); color: #000; border: none; font-weight: 700; padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; position: relative; z-index: 30;">
                                 <span>🚫 Blocked Apps</span>
                             </button>
-                            <button class="guard-tab-btn" id="tab-btn-sites" data-tab="sites" style="background: transparent; color: var(--text-secondary); border: none; font-weight: 600; padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; position: relative; z-index: 30;">
+                            <button class="guard-tab-btn" id="tab-btn-sites" data-tab="sites"
+                                style="background: transparent; color: var(--text-secondary); border: none; font-weight: 600; padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; position: relative; z-index: 30;">
                                 <span>🌐 Restricted Sites</span>
                             </button>
                         </div>
                         <div class="tab-header-right" style="display: flex; align-items: center; gap: 8px;">
-                            <span id="ext-status-badge" style="font-size: 10px; padding: 2px 8px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600;">Extension Sync</span>
+                            <span id="ext-status-badge"
+                                style="font-size: 10px; padding: 2px 8px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600;">Extension
+                                Sync</span>
                             <button class="icon-btn" id="btn-refresh-apps" title="Refresh Applications">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M23 4v6h-6"></path>
+                                    <path d="M1 20v-6h6"></path>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15">
+                                    </path>
+                                </svg>
                             </button>
                         </div>
                     </div>
 
                     <!-- Tab 1: Blocked Apps Content -->
-                    <div class="tab-content active" id="tab-content-apps" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-                        <p class="subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Checked applications or browser tabs will be blocked during focus sessions. Unchecked apps will remain accessible.</p>
+                    <div class="tab-content active" id="tab-content-apps"
+                        style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                        <p class="subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                            Checked applications or browser tabs will be blocked during focus sessions. Unchecked apps
+                            will remain accessible.</p>
 
                         <!-- Search Input -->
                         <div class="search-box">
-                            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
-                            <input type="text" id="app-search-input" placeholder="Search applications or browser tabs...">
+                            <input type="text" id="app-search-input"
+                                placeholder="Search applications or browser tabs...">
                         </div>
 
                         <!-- App Filter Chips & Sorting Control Toolbar -->
-                        <div class="app-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
+                        <div class="app-toolbar"
+                            style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; margin-bottom: 8px;">
                             <div class="app-filter-chips" style="display: flex; gap: 4px;">
                                 <button class="filter-chip active" data-filter="all">All</button>
-                                <button class="filter-chip" data-filter="blocked" style="display: inline-flex; align-items: center; gap: 4px;">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff2a70" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                                <button class="filter-chip" data-filter="blocked"
+                                    style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff2a70"
+                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="15" y1="9" x2="9" y2="15" />
+                                    </svg>
                                     <span>Blocked</span>
                                 </button>
-                                <button class="filter-chip" data-filter="unblocked" style="display: inline-flex; align-items: center; gap: 4px;">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <button class="filter-chip" data-filter="unblocked"
+                                    style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00e676"
+                                        stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
                                     <span>Accessible</span>
                                 </button>
                             </div>
                             <div class="app-sort-wrapper" style="display: flex; align-items: center; gap: 4px;">
                                 <span style="font-size: 10px; color: var(--text-muted);">Sort:</span>
-                                <select id="app-sort-select" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary); font-size: 11px; padding: 3px 6px; border-radius: 6px; outline: none; cursor: pointer;">
+                                <select id="app-sort-select"
+                                    style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary); font-size: 11px; padding: 3px 6px; border-radius: 6px; outline: none; cursor: pointer;">
                                     <option value="latest">Latest Open</option>
                                     <option value="name">Name (A-Z)</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="app-list" id="app-list-container" style="flex: 1; min-height: 190px; max-height: 250px; overflow-y: auto;">
+                        <div class="app-list" id="app-list-container"
+                            style="flex: 1; min-height: 190px; max-height: 250px; overflow-y: auto;">
                             <!-- Populated dynamically via JS -->
                         </div>
                     </div>
 
                     <!-- Tab 2: Restricted Websites Content -->
-                    <div class="tab-content" id="tab-content-sites" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
-                        <p class="subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Websites locked during focus sessions. Allows 2 temporary passes (5m / 10m / 15m) per focus period.</p>
-                        
+                    <div class="tab-content" id="tab-content-sites"
+                        style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+                        <p class="subtitle" style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                            Websites locked during focus sessions. Allows 2 temporary passes (5m / 10m / 15m) per focus
+                            period.</p>
+
                         <div class="site-input-row" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                            <input type="text" id="restricted-site-input" placeholder="Enter domain (e.g. facebook.com, youtube.com, tiktok.com)..." style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 8px; outline: none;">
-                            <button class="small-action-btn" id="btn-add-restricted-site" style="background: var(--accent-blue); color: #000; font-weight: 600; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer;">+ Add Domain</button>
+                            <input type="text" id="restricted-site-input"
+                                placeholder="Enter domain (e.g. facebook.com, youtube.com, tiktok.com)..."
+                                style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 8px; outline: none;">
+                            <button class="small-action-btn" id="btn-add-restricted-site"
+                                style="background: var(--accent-blue); color: #000; font-weight: 600; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer;">+
+                                Add Domain</button>
                         </div>
 
-                        <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Active Restricted Domains:</div>
-                        <div class="restricted-site-tags" id="restricted-sites-container" style="display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; max-height: 200px; padding: 4px;">
+                        <div
+                            style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">
+                            Active Restricted Domains:</div>
+                        <div class="restricted-site-tags" id="restricted-sites-container"
+                            style="display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; max-height: 200px; padding: 4px;">
                             <!-- Dynamic website chips populated via JS -->
                         </div>
                     </div>
@@ -478,7 +609,10 @@
             <div class="modal-header">
                 <h3>Edit Daily Focus Goal</h3>
                 <button class="icon-btn modal-close" id="btn-close-goal-modal">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
             <div class="modal-body">
@@ -504,7 +638,10 @@
             <div class="modal-header">
                 <h3>Session & Ambient Options</h3>
                 <button class="icon-btn modal-close" id="btn-close-options-modal">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
             <div class="modal-body">
@@ -517,7 +654,8 @@
                 </div>
                 <div class="option-row">
                     <span>Notification Sound</span>
-                    <select id="select-notification-sound" class="small-action-btn" style="width: 120px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
+                    <select id="select-notification-sound" class="small-action-btn"
+                        style="width: 120px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
                         <option value="default" style="background: #242424; color: white;">Default</option>
                         <option value="reminder" style="background: #242424; color: white;">Reminder</option>
                         <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
@@ -536,26 +674,43 @@
                 <!-- Timer Ambient GIF Selection & Style Options -->
                 <div class="option-column">
                     <div class="option-title">Timer Ambient GIF Background</div>
-                    <div class="option-sub">Upload a GIF or image from your computer (Default: FocusGrow Plant Sprout):</div>
+                    <div class="option-sub">Upload a GIF or image from your computer (Default: FocusGrow Plant Sprout):
+                    </div>
                     <div class="gif-selector">
                         <button class="gif-chip active" data-gif="none">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M12 6v6l4 2"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399"
+                                stroke-width="2" stroke-linecap="round">
+                                <path
+                                    d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                                <path d="M12 6v6l4 2" />
+                            </svg>
                             <span>Default Plant Growth</span>
                         </button>
                         <button class="gif-chip" data-gif="ytmusic" id="btn-select-ytmusic-gif">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff0050" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff0050"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M12 2a10 10 0 0 1 10 10" />
+                            </svg>
                             <span>YT Music Vinyl</span>
                         </button>
                         <button class="gif-chip" id="btn-select-custom-gif">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff"
+                                stroke-width="2" stroke-linecap="round">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                                </path>
+                            </svg>
                             <span>Custom GIF File…</span>
                         </button>
-                        <input type="file" id="gif-file-input" accept="image/gif,image/webp,image/png,image/jpeg" style="display:none;">
+                        <input type="file" id="gif-file-input" accept="image/gif,image/webp,image/png,image/jpeg"
+                            style="display:none;">
                     </div>
 
                     <!-- Recent GIFs History List (Max 5 items) -->
                     <div id="recent-gifs-section" style="margin-top: 10px; display: none;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div
+                            style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
                             <span>Recent GIFs (Max 5):</span>
                             <button id="btn-clear-recent-gifs" class="text-link-btn">Clear history</button>
                         </div>
@@ -564,14 +719,21 @@
 
                     <!-- GIF Display Style Selector (Circle Inner vs Full Panel) -->
                     <div id="gif-style-section" style="margin-top: 10px; display: none;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">GIF Display Style:</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">GIF Display Style:
+                        </div>
                         <div class="gif-selector">
                             <button class="gif-mode-chip active" data-mode="circle">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
                                 <span>Circle Inner Ring</span>
                             </button>
                             <button class="gif-mode-chip" data-mode="full">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                </svg>
                                 <span>Full Panel Fill</span>
                             </button>
                         </div>
@@ -579,7 +741,8 @@
 
                     <!-- Vinyl Record Rotation Speed Setting -->
                     <div id="vinyl-speed-section" style="margin-top: 10px; display: none;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Vinyl Rotation Speed:</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Vinyl Rotation
+                            Speed:</div>
                         <div class="speed-selector">
                             <button class="speed-chip" data-speed="3">⚡ Fast (3s)</button>
                             <button class="speed-chip active" data-speed="6">🎵 Normal (6s)</button>
@@ -589,11 +752,14 @@
 
                         <!-- Realtime Vinyl Size Slider & Presets -->
                         <div style="margin-top: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                 <span style="font-size: 11px; color: var(--text-muted);">Vinyl Disc Size:</span>
-                                <span style="font-size: 11px; font-weight: 600; color: #ff6088;" id="vinyl-size-label">340px</span>
+                                <span style="font-size: 11px; font-weight: 600; color: #ff6088;"
+                                    id="vinyl-size-label">340px</span>
                             </div>
-                            <input type="range" id="vinyl-size-slider" min="120" max="850" step="10" value="340" class="custom-range" style="width: 100%;">
+                            <input type="range" id="vinyl-size-slider" min="120" max="850" step="10" value="340"
+                                class="custom-range" style="width: 100%;">
                             <div class="speed-selector" style="margin-top: 6px;">
                                 <button class="size-preset-chip" data-size="150">🔘 Small (150px)</button>
                                 <button class="size-preset-chip active" data-size="340">🎯 Medium (340px)</button>
@@ -603,7 +769,8 @@
 
                         <!-- Center Spindle Toggle -->
                         <div class="option-row" style="margin-top: 10px; background: none; padding: 0;">
-                            <span style="font-size: 11px; color: var(--text-muted);">Show Center Spindle (White Disc)</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">Show Center Spindle (White
+                                Disc)</span>
                             <label class="switch">
                                 <input type="checkbox" id="chk-vinyl-spindle-toggle" checked>
                                 <span class="slider"></span>
@@ -613,22 +780,28 @@
 
                     <!-- GIF Preview Thumbnail -->
                     <div id="gif-preview-wrapper" style="display:none; margin-top: 8px; text-align: center;">
-                        <div id="gif-preview-container" style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 72px; height: 72px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
-                            <img id="gif-preview-img" src="" alt="preview" style="width:100%; height:100%; object-fit:cover;">
+                        <div id="gif-preview-container"
+                            style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 72px; height: 72px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
+                            <img id="gif-preview-img" src="" alt="preview"
+                                style="width:100%; height:100%; object-fit:cover;">
                         </div>
-                        <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 4px;"></div>
+                        <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 4px;">
+                        </div>
                     </div>
 
                     <!-- Realtime Opacity Slider -->
                     <div id="gif-opacity-row" style="display: none; margin-top: 10px;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span id="opacity-label">78%</span></div>
-                        <input type="range" id="gif-opacity-slider" min="10" max="100" value="78" style="width: 100%; accent-color: var(--accent-blue);">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span
+                                id="opacity-label">78%</span></div>
+                        <input type="range" id="gif-opacity-slider" min="10" max="100" value="78"
+                            style="width: 100%; accent-color: var(--accent-blue);">
                     </div>
 
                     <!-- Timer Ring Visual Themes -->
                     <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
                         <div class="option-title">Timer Ring Theme</div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose a visual style for the focus timer:</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose a visual
+                            style for the focus timer:</div>
                         <div class="gif-selector">
                             <button class="ring-theme-chip active" data-theme="classic">⭕ Classic</button>
                             <button class="ring-theme-chip" data-theme="hourglass">⏳ Hourglass</button>
@@ -640,22 +813,32 @@
                     </div>
                 </div>
 
-                <div class="option-section" style="margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px;">
-                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Accent Color Theme</label>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose preset, pick custom color, or extract dynamically from YT Music album art:</div>
-                    
+                <div class="option-section"
+                    style="margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px;">
+                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Accent Color
+                        Theme</label>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose preset, pick
+                        custom color, or extract dynamically from YT Music album art:</div>
+
                     <div class="speed-selector" style="margin-bottom: 8px; flex-wrap: wrap;">
-                        <button class="accent-chip active" data-accent="#60cdff" style="border-left: 4px solid #60cdff;">🔷 Blue</button>
-                        <button class="accent-chip" data-accent="#ff2a70" style="border-left: 4px solid #ff2a70;">🌸 Pink</button>
-                        <button class="accent-chip" data-accent="#00e676" style="border-left: 4px solid #00e676;">🌿 Green</button>
-                        <button class="accent-chip" data-accent="#a855f7" style="border-left: 4px solid #a855f7;">🔮 Purple</button>
-                        <button class="accent-chip" data-accent="#f59e0b" style="border-left: 4px solid #f59e0b;">🍊 Orange</button>
-                        <button class="accent-chip" data-accent="ytmusic_dynamic" style="border-left: 4px solid #ff0050;">🎵 Dynamic Album</button>
+                        <button class="accent-chip active" data-accent="#60cdff"
+                            style="border-left: 4px solid #60cdff;">🔷 Blue</button>
+                        <button class="accent-chip" data-accent="#ff2a70" style="border-left: 4px solid #ff2a70;">🌸
+                            Pink</button>
+                        <button class="accent-chip" data-accent="#00e676" style="border-left: 4px solid #00e676;">🌿
+                            Green</button>
+                        <button class="accent-chip" data-accent="#a855f7" style="border-left: 4px solid #a855f7;">🔮
+                            Purple</button>
+                        <button class="accent-chip" data-accent="#f59e0b" style="border-left: 4px solid #f59e0b;">🍊
+                            Orange</button>
+                        <button class="accent-chip" data-accent="ytmusic_dynamic"
+                            style="border-left: 4px solid #ff0050;">🎵 Dynamic Album</button>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
                         <span style="font-size: 11px; color: var(--text-muted);">Custom Color Picker:</span>
-                        <input type="color" id="accent-color-picker" value="#60cdff" style="border: none; background: none; width: 32px; height: 32px; cursor: pointer;">
+                        <input type="color" id="accent-color-picker" value="#60cdff"
+                            style="border: none; background: none; width: 32px; height: 32px; cursor: pointer;">
                     </div>
                 </div>
 
@@ -669,7 +852,8 @@
                 </div>
                 <div class="option-row">
                     <span>Cleanup GIF Storage</span>
-                    <button class="small-action-btn" id="btn-cleanup-gifs" title="Remove unused cached GIFs">Clean</button>
+                    <button class="small-action-btn" id="btn-cleanup-gifs"
+                        title="Remove unused cached GIFs">Clean</button>
                 </div>
             </div>
         </div>
@@ -680,11 +864,20 @@
         <div class="modal-card stats-modal-card">
             <div class="modal-header">
                 <div class="stats-modal-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)"
+                        stroke-width="2" stroke-linecap="round">
+                        <path d="M18 20V10" />
+                        <path d="M12 20V4" />
+                        <path d="M6 20v-6" />
+                    </svg>
                     <h3>Focus Statistics & App Usage Analytics</h3>
                 </div>
                 <button class="icon-btn modal-close" id="btn-close-stats-modal">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
 
@@ -741,7 +934,8 @@
 
             <div class="stats-section-title">
                 <span>Application & Tool Breakdown</span>
-                <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Ranked by focus time</span>
+                <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Ranked by focus
+                    time</span>
             </div>
 
             <div class="stats-app-list" id="stats-app-list-container">
@@ -752,4 +946,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

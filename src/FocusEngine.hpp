@@ -88,6 +88,7 @@ private:
     OverlayWindow m_overlay;
     HINSTANCE m_hInstance = nullptr;
     HWND m_mainHwnd = nullptr;
+    HWND m_lastDismissedHwnd = nullptr;
 
     FocusStats m_stats;
 
