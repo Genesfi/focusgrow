@@ -11,6 +11,16 @@
 
 <body>
     <div class="app-container">
+        <!-- Transparent Edge & Corner Resize Handles -->
+        <div class="resize-handle top" data-edge="top"></div>
+        <div class="resize-handle bottom" data-edge="bottom"></div>
+        <div class="resize-handle left" data-edge="left"></div>
+        <div class="resize-handle right" data-edge="right"></div>
+        <div class="resize-handle top-left" data-edge="top-left"></div>
+        <div class="resize-handle top-right" data-edge="top-right"></div>
+        <div class="resize-handle bottom-left" data-edge="bottom-left"></div>
+        <div class="resize-handle bottom-right" data-edge="bottom-right"></div>
+
         <!-- Custom Win11 Frameless Titlebar -->
         <header class="titlebar" id="app-titlebar">
             <div class="brand">
@@ -198,6 +208,13 @@
                                     <path d="M15 3h6v6" />
                                     <path d="M10 14L21 3" />
                                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
+                            </button>
+                            <button class="icon-btn btn-pip-close" id="btn-pip-close" title="Close window" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
                             </button>
                         </div>

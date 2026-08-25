@@ -74,19 +74,32 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-min')?.addEventListener('click', () => sendToCpp({ action: 'minimize' }));
     document.getElementById('btn-max')?.addEventListener('click', () => sendToCpp({ action: 'maximize' }));
     document.getElementById('btn-close')?.addEventListener('click', () => sendToCpp({ action: 'close' }));
+    document.getElementById('btn-pip-close')?.addEventListener('click', () => sendToCpp({ action: 'close' }));
 
     // Native Window Drag Handler
     const setupDragArea = (element) => {
         if (!element) return;
         element.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && !e.target.closest('button, input, label, a, .switch, .window-controls')) {
+            if (e.button === 0 && !e.target.closest('button, input, label, a, .switch, .window-controls, #gauge-clickable-area, .gauge-center, .gauge-container, .timer-time, .up-next-info, .circle-btn, .icon-btn, .timer-action-bar')) {
                 sendToCpp({ action: 'startDrag' });
             }
         });
     };
 
+    document.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                sendToCpp({ action: 'startResize', edge: handle.dataset.edge });
+            }
+        });
+    });
+
     setupDragArea(document.getElementById('app-titlebar'));
     setupDragArea(document.querySelector('.titlebar'));
+    setupDragArea(document.getElementById('focus-period-title'));
+    setupDragArea(document.querySelector('#timer-view .card-header'));
 
     let isInitializingPip = false;
 
