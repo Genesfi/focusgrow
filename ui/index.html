@@ -362,6 +362,7 @@
                             <div id="timer-text-wrapper">
                                 <div class="timer-time" id="active-timer-display">30:00</div>
                                 <div class="timer-label" id="active-status-label">REMAINING</div>
+                                <div class="auto-pause-subtext" id="auto-pause-label" style="display: none;">Auto-paused</div>
                             </div>
                         </div>
                     </div>
@@ -669,6 +670,24 @@
                         <input type="checkbox" id="chk-auto-pip">
                         <span class="slider"></span>
                     </label>
+                </div>
+                <div class="option-row">
+                    <span>Auto-pause on Inactivity</span>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-auto-pause-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="option-row" id="auto-pause-sec-row">
+                    <span>Inactivity Threshold</span>
+                    <select id="select-auto-pause-sec" class="small-action-btn"
+                        style="width: 140px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
+                        <option value="5" style="background: #242424; color: white;">5 seconds</option>
+                        <option value="10" style="background: #242424; color: white;">10 seconds</option>
+                        <option value="15" selected style="background: #242424; color: white;">15 seconds (Default)</option>
+                        <option value="30" style="background: #242424; color: white;">30 seconds</option>
+                        <option value="60" style="background: #242424; color: white;">60 seconds</option>
+                    </select>
                 </div>
 
                 <!-- Timer Ambient GIF Selection & Style Options -->

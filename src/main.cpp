@@ -391,6 +391,13 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         if ((p = msg.find(L"\"completedMinutesToday\":")) != std::wstring::npos) comp = _wtoi(msg.c_str() + p + 24);
         if ((p = msg.find(L"\"dailyGoalMinutes\":")) != std::wstring::npos) goal = _wtoi(msg.c_str() + p + 19);
         if (g_focusEngine) g_focusEngine->SetInitialStats(comp, goal);
+    } else if (msg.find(L"\"action\":\"setAutoPauseConfig\"") != std::wstring::npos) {
+        bool enabled = true;
+        int sec = 15;
+        if (msg.find(L"\"enabled\":false") != std::wstring::npos) enabled = false;
+        size_t secPos = msg.find(L"\"sec\":");
+        if (secPos != std::wstring::npos) sec = _wtoi(msg.c_str() + secPos + 6);
+        if (g_focusEngine) g_focusEngine->SetAutoPauseConfig(enabled, sec);
     } else if (msg.find(L"\"action\":\"setBlacklist\"") != std::wstring::npos) {
         ParseAndSetBlacklist(msg);
     } else if (msg.find(L"\"action\":\"setRestrictedSites\"") != std::wstring::npos) {

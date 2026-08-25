@@ -40,6 +40,9 @@ private:
     int m_remainingSec = 0;
     bool m_skipBreaks = false;
     bool m_isPaused = false;
+    bool m_isAutoPaused = false;
+    bool m_autoPauseEnabled = true;
+    int m_autoPauseSec = 15;
 
     int m_totalPeriods = 1;
     int m_currentPeriod = 1;
@@ -326,6 +329,7 @@ public:
 
         m_state = SessionState::Focusing;
         m_isPaused = false;
+        m_isAutoPaused = false;
         m_lastTickTime = time(nullptr);
 
         m_overlay.Hide();
@@ -347,6 +351,7 @@ public:
         m_breakDurationSec = breakMins * 60;
         m_skipBreaks = skipBreaks;
         m_isPaused = true; // Always resume in paused state for safety
+        m_isAutoPaused = false;
         m_lastTickTime = time(nullptr);
 
         NotifyState();
@@ -355,6 +360,7 @@ public:
     void PauseSession() {
         if (m_state != SessionState::Idle) {
             m_isPaused = !m_isPaused;
+            m_isAutoPaused = false;
             if (!m_isPaused) m_lastTickTime = time(nullptr);
             NotifyState();
         }
@@ -363,6 +369,7 @@ public:
     void StopSession() {
         m_state = SessionState::Idle;
         m_isPaused = false;
+        m_isAutoPaused = false;
         m_remainingSec = 0;
         ResetSessionPasses();
         m_overlay.Hide();
@@ -375,10 +382,37 @@ public:
         NotifyState();
     }
 
+    void SetAutoPauseConfig(bool enabled, int sec) {
+        m_autoPauseEnabled = enabled;
+        m_autoPauseSec = (sec > 0) ? sec : 15;
+    }
+
     void TickOneSecond() {
         time_t now = time(nullptr);
         int delta = (m_lastTickTime == 0) ? 1 : (int)(now - m_lastTickTime);
         m_lastTickTime = now;
+
+        // Auto-pause detection on user inactivity (keyboard/mouse input) during Focusing state
+        if (m_state == SessionState::Focusing && m_autoPauseEnabled && m_autoPauseSec > 0) {
+            LASTINPUTINFO lii = { sizeof(LASTINPUTINFO) };
+            lii.cbSize = sizeof(LASTINPUTINFO);
+            if (GetLastInputInfo(&lii)) {
+                DWORD currentTick = GetTickCount();
+                DWORD idleMs = (currentTick >= lii.dwTime) ? (currentTick - lii.dwTime) : 0;
+                DWORD thresholdMs = (DWORD)m_autoPauseSec * 1000;
+
+                if (!m_isPaused && idleMs >= thresholdMs) {
+                    m_isPaused = true;
+                    m_isAutoPaused = true;
+                    NotifyState();
+                } else if (m_isPaused && m_isAutoPaused && idleMs < thresholdMs) {
+                    m_isPaused = false;
+                    m_isAutoPaused = false;
+                    m_lastTickTime = now;
+                    NotifyState();
+                }
+            }
+        }
 
         if (m_state == SessionState::Idle || m_isPaused) return;
 
@@ -531,6 +565,7 @@ public:
            << L"\"maxPeriodSec\":" << GetMaxPeriodSec() << L","
            << L"\"formattedTime\":\"" << GetFormattedTime() << L"\","
            << L"\"isPaused\":" << (m_isPaused ? L"true" : L"false") << L","
+           << L"\"isAutoPaused\":" << (m_isAutoPaused ? L"true" : L"false") << L","
            << L"\"currentPeriod\":" << m_currentPeriod << L","
            << L"\"totalPeriods\":" << m_totalPeriods << L","
            << L"\"completedMinutes\":" << m_stats.completedMinutesToday << L","

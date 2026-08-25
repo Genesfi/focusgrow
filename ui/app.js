@@ -219,6 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isStealthMode: false,
         showVinylSpindle: true,
         autoPipOnStart: false,
+        autoPauseEnabled: true,
+        autoPauseSec: 15,
         completedMinutesByDate: {} // { 'YYYY-MM-DD': minutes }
     };
 
@@ -1706,6 +1708,44 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
     });
 
+    const chkAutoPauseToggle = document.getElementById('chk-auto-pause-toggle');
+    const selectAutoPauseSec = document.getElementById('select-auto-pause-sec');
+    const autoPauseSecRow = document.getElementById('auto-pause-sec-row');
+
+    if (chkAutoPauseToggle) {
+        chkAutoPauseToggle.checked = userData.autoPauseEnabled !== false;
+        if (autoPauseSecRow) {
+            autoPauseSecRow.style.opacity = (userData.autoPauseEnabled !== false) ? '1' : '0.5';
+            autoPauseSecRow.style.pointerEvents = (userData.autoPauseEnabled !== false) ? 'auto' : 'none';
+        }
+        chkAutoPauseToggle.addEventListener('change', (e) => {
+            userData.autoPauseEnabled = e.target.checked;
+            if (autoPauseSecRow) {
+                autoPauseSecRow.style.opacity = userData.autoPauseEnabled ? '1' : '0.5';
+                autoPauseSecRow.style.pointerEvents = userData.autoPauseEnabled ? 'auto' : 'none';
+            }
+            saveUserData();
+            sendToCpp({
+                action: 'setAutoPauseConfig',
+                enabled: userData.autoPauseEnabled,
+                sec: userData.autoPauseSec || 15
+            });
+        });
+    }
+
+    if (selectAutoPauseSec) {
+        selectAutoPauseSec.value = String(userData.autoPauseSec || 15);
+        selectAutoPauseSec.addEventListener('change', (e) => {
+            userData.autoPauseSec = parseInt(e.target.value, 10) || 15;
+            saveUserData();
+            sendToCpp({
+                action: 'setAutoPauseConfig',
+                enabled: userData.autoPauseEnabled !== false,
+                sec: userData.autoPauseSec
+            });
+        });
+    }
+
     btnResetProgress.addEventListener('click', () => {
         userData.completedMinutesToday = 0;
         saveUserData();
@@ -2263,6 +2303,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateStatsUI();
 
+        const autoPauseLabel = document.getElementById('auto-pause-label');
+
         if (activeState === 'focusing') {
             setupView.classList.remove('active');
             timerView.classList.add('active');
@@ -2272,6 +2314,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             pauseIcon.style.display = isPaused ? 'none' : 'block';
             playIcon.style.display = isPaused ? 'block' : 'none';
+
+            if (autoPauseLabel) {
+                autoPauseLabel.style.display = (isPaused && data.isAutoPaused) ? 'block' : 'none';
+            }
             setTimeout(syncVinylCenterPosition, 20);
         } else if (activeState === 'resting') {
             setupView.classList.remove('active');
@@ -2279,10 +2325,18 @@ document.addEventListener('DOMContentLoaded', () => {
             activeStatusLabel.textContent = 'RESTING & STEP OUTSIDE';
             focusPeriodTitle.textContent = 'Mandatory Break';
             upNextText.textContent = 'Step away from screen & walk outside';
+
+            if (autoPauseLabel) {
+                autoPauseLabel.style.display = 'none';
+            }
             setTimeout(syncVinylCenterPosition, 20);
         } else {
             timerView.classList.remove('active');
             setupView.classList.add('active');
+
+            if (autoPauseLabel) {
+                autoPauseLabel.style.display = 'none';
+            }
             setTimeout(syncVinylCenterPosition, 20);
         }
 
@@ -2343,6 +2397,13 @@ document.addEventListener('DOMContentLoaded', () => {
         action: 'syncStats',
         completedMinutesToday: userData.completedMinutesToday || 0,
         dailyGoalMinutes: (userData.dailyGoalHours || 1) * 60
+    });
+
+    // Sync initial auto-pause config to C++
+    sendToCpp({
+        action: 'setAutoPauseConfig',
+        enabled: userData.autoPauseEnabled !== false,
+        sec: userData.autoPauseSec || 15
     });
 
     // --- Session Persistence: Resume session if one was active ---
