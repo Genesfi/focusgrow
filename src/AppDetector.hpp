@@ -10,6 +10,8 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <map>
+#include <mutex>
 
 #pragma comment(lib, "gdiplus.lib")
 
@@ -24,6 +26,10 @@ struct AppInfo {
 
 class AppDetector {
 private:
+    inline static std::map<std::wstring, std::wstring> s_iconCache;
+    inline static std::map<DWORD, std::wstring> s_processNameCache;
+    inline static std::mutex s_cacheMutex;
+
     static std::wstring Base64Encode(const BYTE* data, size_t len) {
         static const char lookup[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         std::string out;
@@ -64,23 +70,38 @@ private:
 public:
     static std::wstring GetProcessNameFromPid(DWORD pid, std::wstring& outFullPath) {
         outFullPath.clear();
+
+        {
+            std::lock_guard<std::mutex> lock(s_cacheMutex);
+            auto it = s_processNameCache.find(pid);
+            if (it != s_processNameCache.end()) {
+                return it->second;
+            }
+        }
+
         HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
         if (!hProcess) return L"";
 
         wchar_t path[MAX_PATH] = { 0 };
         DWORD size = MAX_PATH;
+        std::wstring result = L"";
         if (QueryFullProcessImageNameW(hProcess, 0, path, &size)) {
-            CloseHandle(hProcess);
             outFullPath = path;
             std::wstring fullPath(path);
             size_t pos = fullPath.find_last_of(L"\\/");
             if (pos != std::wstring::npos) {
-                return fullPath.substr(pos + 1);
+                result = fullPath.substr(pos + 1);
+            } else {
+                result = fullPath;
             }
-            return fullPath;
         }
         CloseHandle(hProcess);
-        return L"";
+
+        if (!result.empty()) {
+            std::lock_guard<std::mutex> lock(s_cacheMutex);
+            s_processNameCache[pid] = result;
+        }
+        return result;
     }
 
     static std::wstring GetProcessNameFromHwnd(HWND hwnd) {
@@ -93,6 +114,15 @@ public:
     }
 
     static std::wstring ExtractIconBase64(HWND hwnd, const std::wstring& exePath) {
+        if (exePath.empty()) return L"";
+
+        // Check cache first
+        {
+            std::lock_guard<std::mutex> lock(s_cacheMutex);
+            auto it = s_iconCache.find(exePath);
+            if (it != s_iconCache.end()) return it->second;
+        }
+
         HICON hIcon = nullptr;
 
         // 1. Try ExtractIconExW from full executable path (Most reliable for Win32 apps & Edge/Adobe/Chrome)
@@ -156,10 +186,21 @@ public:
         }
 
         DestroyIcon(hIcon);
+
+        // Store in cache
+        if (!base64Result.empty()) {
+            std::lock_guard<std::mutex> lock(s_cacheMutex);
+            s_iconCache[exePath] = base64Result;
+        }
+
         return base64Result;
     }
 
     static std::vector<AppInfo> GetRunningApps() {
+        {
+            std::lock_guard<std::mutex> lock(s_cacheMutex);
+            s_processNameCache.clear(); // PIDs are recycled, clear on every full scan
+        }
         std::vector<AppInfo> apps;
 
         EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {

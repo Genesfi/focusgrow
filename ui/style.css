@@ -1822,7 +1822,8 @@ body.pip-mode .ytmusic-ticker {
     height: 93%;
     border-radius: 50%;
     object-fit: cover;
-    transform: translate(-50%, -50%) rotate(0deg);
+    will-change: transform;
+    transform: translate3d(-50%, -50%, 0) rotate(0deg);
     animation: spinVinyl var(--vinyl-speed, 6s) linear infinite;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
     background-color: #111;
@@ -1865,11 +1866,11 @@ body.pip-mode .ytmusic-ticker {
 
 @keyframes spinVinyl {
     0% {
-        transform: translate(-50%, -50%) rotate(0deg);
+        transform: translate3d(-50%, -50%, 0) rotate(0deg);
     }
 
     100% {
-        transform: translate(-50%, -50%) rotate(360deg);
+        transform: translate3d(-50%, -50%, 0) rotate(360deg);
     }
 }
 

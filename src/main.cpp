@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "../packages/WebView2/build/native/include/WebView2.h"
+#include "../packages/WebView2/build/native/include/WebView2EnvironmentOptions.h"
 #include "FocusEngine.hpp"
 #include "AppDetector.hpp"
 
@@ -27,7 +28,11 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "winmm.lib")
 
+#include <atomic>
+
 using namespace Microsoft::WRL;
+
+#define WM_WEBVIEW_POST_JSON (WM_USER + 1)
 
 // Global Handles
 HWND g_hWnd = NULL;
@@ -77,27 +82,55 @@ void ParseAndSetBlacklist(const std::wstring& msg) {
 
 void PostStateToUi() {
     if (!g_webView || !g_focusEngine) return;
+    static std::wstring lastStateMsg = L"";
     std::wstring stateJson = g_focusEngine->GetStateJson();
     std::wstring msg = L"{\"type\":\"stateUpdate\",\"data\":" + stateJson + L",\"isPip\":" + (g_isPipMode ? L"true" : L"false") + L"}";
-    g_webView->PostWebMessageAsJson(msg.c_str());
+    if (msg != lastStateMsg) {
+        lastStateMsg = msg;
+        g_webView->PostWebMessageAsJson(msg.c_str());
+    }
 }
 
 void SendRunningAppsToUi() {
     if (!g_webView) return;
-    auto apps = AppDetector::GetRunningApps();
 
-    std::wstringstream ss;
-    ss << L"{\"type\":\"runningApps\",\"apps\":[";
-    for (size_t i = 0; i < apps.size(); ++i) {
-        if (i > 0) ss << L",";
-        ss << L"{"
-           << L"\"exeName\":\"" << EscapeJsonString(apps[i].exeName) << L"\","
-           << L"\"title\":\"" << EscapeJsonString(apps[i].title) << L"\","
-           << L"\"icon\":\"" << EscapeJsonString(apps[i].iconBase64) << L"\""
-           << L"}";
-    }
-    ss << L"]}";
-    g_webView->PostWebMessageAsJson(ss.str().c_str());
+    // Throttling: Max once per 3 seconds to avoid spamming the UI thread and WebView
+    static DWORD lastScanTime = 0;
+    static std::atomic<bool> isScanning(false);
+    static std::wstring lastSentAppsJson = L"";
+
+    DWORD now = GetTickCount();
+    if (isScanning.load() || (now - lastScanTime < 3000)) return;
+
+    isScanning.store(true);
+    lastScanTime = now;
+
+    std::thread([]() {
+        auto apps = AppDetector::GetRunningApps();
+
+        std::wstringstream ss;
+        ss << L"{\"type\":\"runningApps\",\"apps\":[";
+        for (size_t i = 0; i < apps.size(); ++i) {
+            if (i > 0) ss << L",";
+            ss << L"{"
+               << L"\"exeName\":\"" << EscapeJsonString(apps[i].exeName) << L"\","
+               << L"\"title\":\"" << EscapeJsonString(apps[i].title) << L"\","
+               << L"\"icon\":\"" << EscapeJsonString(apps[i].iconBase64) << L"\""
+               << L"}";
+        }
+        ss << L"]}";
+
+        std::wstring newJson = ss.str();
+        if (newJson != lastSentAppsJson) {
+            lastSentAppsJson = newJson;
+            std::wstring* msgPtr = new std::wstring(newJson);
+            if (!PostMessage(g_hWnd, WM_WEBVIEW_POST_JSON, 0, (LPARAM)msgPtr)) {
+                delete msgPtr;
+            }
+        }
+
+        isScanning.store(false);
+    }).detach();
 }
 
 void TogglePipMode(int width = 0, int height = 0) {
@@ -491,6 +524,17 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
+    case WM_WEBVIEW_POST_JSON:
+        {
+            std::wstring* msgPtr = (std::wstring*)lParam;
+            if (msgPtr) {
+                if (g_webView) {
+                    g_webView->PostWebMessageAsJson(msgPtr->c_str());
+                }
+                delete msgPtr;
+            }
+        }
+        return 0;
     case WM_GETMINMAXINFO:
         {
             LPMINMAXINFO lpmmi = (LPMINMAXINFO)lParam;
@@ -601,8 +645,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     std::filesystem::path currentPath(exePathBuf);
     std::filesystem::path uiPath = currentPath.parent_path() / "ui" / "index.html";
 
+    auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+    if (options) {
+        options->put_AdditionalBrowserArguments(
+            L"--disable-features=LayoutNG,MediaRouter,Translate,CalculateNativeWinOcclusion,InterestFeedContentSuggestions "
+            L"--enable-features=UseSkiaRenderer "
+            L"--js-flags=\"--max-old-space-size=128\" "
+            L"--disable-background-networking --disable-component-update --disable-domain-reliability"
+        );
+    }
+
     CreateCoreWebView2EnvironmentWithOptions(
-        nullptr, nullptr, nullptr,
+        nullptr, nullptr, options.Get(),
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [uiPath](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
                 if (FAILED(result)) return result;

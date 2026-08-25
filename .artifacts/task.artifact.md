@@ -1,0 +1,5 @@
+- `[x]` Implement Icon Caching in `AppDetector.hpp`
+- `[x]` Move App Scanning to Background Thread in `main.cpp`
+- `[x]` Implement Throttling for App List Updates
+- `[x]` Optimize `FocusEngine` callbacks
+- `[x]` Verification of performance improvement
