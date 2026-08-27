@@ -363,11 +363,14 @@
                                     d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
                                     fill="rgba(0,0,0,0.15)" stroke="var(--accent-blue)" stroke-width="2.5" opacity="0.9" />
 
-                                <!-- Top Sand (Draining) -->
+                                <!-- Top Sand (Draining Double Wave) -->
                                 <g clip-path="url(#clip-hourglass-top)">
                                     <g id="sand-top-level-group" style="transition: transform 1s linear;">
+                                        <path class="liquid-wave wave-back"
+                                            d="M -400 100 Q -375 80 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
+                                            fill="var(--accent-blue)" opacity="0.4" />
                                         <path class="liquid-wave wave-front"
-                                            d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                            d="M -400 100 Q -375 120 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
                                             fill="var(--accent-blue)" opacity="0.95" />
                                     </g>
                                 </g>
@@ -379,11 +382,14 @@
                                         fill="var(--accent-blue)" opacity="0.85" filter="url(#stream-feather-filter)" mask="url(#stream-feather-mask)" style="display: none;" />
                                 </g>
 
-                                <!-- Bottom Sand (Filling) (Soft Translucent 0.85) -->
+                                <!-- Bottom Sand (Filling Double Wave - Inverted Counter-Phase Curve) -->
                                 <g clip-path="url(#clip-hourglass-bottom)">
                                     <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
+                                        <path class="liquid-wave wave-back"
+                                            d="M -400 100 Q -375 120 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
+                                            fill="var(--accent-blue)" opacity="0.35" />
                                         <path class="liquid-wave wave-front"
-                                            d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                            d="M -400 100 Q -375 80 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
                                             fill="var(--accent-blue)" opacity="0.85" />
                                     </g>
                                 </g>
