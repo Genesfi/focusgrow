@@ -1056,6 +1056,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bottomY = 60 - (60 * progressRatio);
                 bottomGroup.style.transform = `translateY(${bottomY}px)`;
 
+                const bottomMaskGroup = document.getElementById('sand-bottom-mask-group');
+                if (bottomMaskGroup) {
+                    bottomMaskGroup.style.transform = `translateY(${bottomY}px)`;
+                }
+
                 const isFlowing = activeState === 'focusing' && !isPaused && ratio > 0;
                 updateSandStreamState(isFlowing);
             }

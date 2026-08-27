@@ -313,6 +313,17 @@
                                     <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.95" />
                                     <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0.45" />
                                 </linearGradient>
+                                <!-- Stream Dynamic Eraser Mask (Erases sand-stream inside bottom sand heap) -->
+                                <mask id="stream-above-sand-mask">
+                                    <rect x="0" y="0" width="200" height="200" fill="white" />
+                                    <g clip-path="url(#clip-hourglass-bottom)">
+                                        <g id="sand-bottom-mask-group" style="transition: transform 1s linear;">
+                                            <path class="liquid-wave wave-front"
+                                                d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
+                                                fill="black" />
+                                        </g>
+                                    </g>
+                                </mask>
                             </defs>
 
                             <g class="gauge-ticks" id="gauge-ticks"></g>
@@ -336,7 +347,7 @@
                                 </g>
                             </g>
 
-                            <!-- 2. Hourglass Layer (Overhaul V6 - Crisp Glass & Tapered Stream) -->
+                            <!-- 2. Hourglass Layer (Overhaul V6 - Crisp Glass & Masked Stream) -->
                             <g class="theme-layer layer-hourglass" style="display: none;">
                                 <!-- Top and Bottom Solid Caps -->
                                 <rect x="42" y="34" width="116" height="8" rx="4" fill="var(--accent-blue)"
@@ -358,16 +369,16 @@
                                     </g>
                                 </g>
 
-                                <!-- Realistic Tapered Falling Stream (Rendered BEHIND bottom sand heap) -->
+                                <!-- Realistic Tapered Falling Stream (Masked dynamically to stop at bottom sand wave surface) -->
                                 <path id="sand-stream" d="M 98 98 A 2 2 0 0 1 102 98 L 100.6 160 A 0.6 0.6 0 0 1 99.4 160 Z"
-                                    fill="var(--accent-blue)" opacity="0.9" style="display: none;" />
+                                    fill="var(--accent-blue)" opacity="0.8" mask="url(#stream-above-sand-mask)" style="display: none;" />
 
-                                <!-- Bottom Sand (Filling) (Opaque 1.0 - Rendered ON TOP of falling stream for 100% seamless wave coverage) -->
+                                <!-- Bottom Sand (Filling) (Soft Translucent 0.8) -->
                                 <g clip-path="url(#clip-hourglass-bottom)">
                                     <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
                                         <path class="liquid-wave wave-front"
                                             d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
-                                            fill="var(--accent-blue)" opacity="1.0" />
+                                            fill="var(--accent-blue)" opacity="0.8" />
                                     </g>
                                 </g>
                             </g>
