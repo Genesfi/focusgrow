@@ -2549,7 +2549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playIcon.style.display = isPaused ? 'block' : 'none';
 
             if (autoPauseLabel) {
-                autoPauseLabel.style.display = (isPaused && data.isAutoPaused) ? 'block' : 'none';
+                autoPauseLabel.classList.toggle('show', isPaused && data.isAutoPaused);
             }
             setTimeout(syncVinylCenterPosition, 20);
         } else if (activeState === 'resting') {
@@ -2560,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', () => {
             upNextText.textContent = 'Step away from screen & walk outside';
 
             if (autoPauseLabel) {
-                autoPauseLabel.style.display = 'none';
+                autoPauseLabel.classList.remove('show');
             }
             setTimeout(syncVinylCenterPosition, 20);
         } else {
@@ -2568,7 +2568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setupView.classList.add('active');
 
             if (autoPauseLabel) {
-                autoPauseLabel.style.display = 'none';
+                autoPauseLabel.classList.remove('show');
             }
             setTimeout(syncVinylCenterPosition, 20);
         }

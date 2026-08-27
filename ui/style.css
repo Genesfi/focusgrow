@@ -610,7 +610,16 @@ input[type="number"] {
 }
 
 .auto-pause-subtext {
-    font-size: 8.5px;
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.92);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3.5px;
+    font-size: 7.5px;
     letter-spacing: 1px;
     color: #fcd34d !important;
     font-weight: 800;
@@ -620,15 +629,35 @@ input[type="number"] {
         1px -1px 0 #000,
         -1px 1px 0 #000,
         1px 1px 0 #000,
-        0 2px 8px rgba(0, 0, 0, 0.95) !important;
-    margin-top: 3px;
-    animation: fadeInAutoPause 0.25s ease-in-out;
+        0 2px 5px rgba(0, 0, 0, 0.95) !important;
+    background: rgba(252, 211, 77, 0.14);
+    border: 1px solid rgba(252, 211, 77, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 2px 7px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 0 4px rgba(252, 211, 77, 0.1);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
 }
 
-@keyframes fadeInAutoPause {
-    from { opacity: 0; transform: translateY(-3px); }
-    to { opacity: 1; transform: translateY(0); }
+.auto-pause-subtext.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) scale(1);
 }
+
+.auto-pause-subtext .auto-pause-icon {
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+    flex-shrink: 0;
+    filter: drop-shadow(-1px -1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px 1px 0 #000) drop-shadow(1px 1px 0 #000);
+}
+
+
 
 .timer-action-bar {
     display: flex;
@@ -1610,6 +1639,35 @@ body.pip-mode .timer-label {
     letter-spacing: 0.5px;
 }
 
+/* PiP Mode Auto-Pause Subtext (Ultra Micro-Badge) */
+body.pip-mode .auto-pause-subtext {
+    top: calc(100% + 1px);
+    font-size: 5.5px;
+    letter-spacing: 0.5px;
+    padding: 1px 4px;
+    border-radius: 6px;
+    gap: 2px;
+    border-width: 0.5px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+body.pip-mode .auto-pause-subtext .auto-pause-icon {
+    width: 5px;
+    height: 5px;
+}
+
+body.pip-mode.stealth-active .auto-pause-subtext {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    padding: 2px 6px;
+    font-size: 6px;
+}
+
+body.pip-mode.stealth-active .auto-pause-subtext.show {
+    transform: translate(-50%, -50%) scale(1);
+}
+
 body.pip-mode .timer-action-bar {
     margin-bottom: 2px;
     gap: 12px;
@@ -2319,17 +2377,36 @@ body.pip-mode .ytmusic-ticker {
 /* Stealth Mode (Hidden Timer Text) */
 #timer-text-wrapper {
     pointer-events: none;
+    position: relative;
 }
 
 #active-timer-display,
 #active-status-label {
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: opacity;
 }
 
 body.stealth-active #active-timer-display,
 body.stealth-active #active-status-label {
     opacity: 0;
+}
+
+body.stealth-active .auto-pause-subtext {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.92);
+    margin-top: 0;
+    padding: 5px 12px;
+    font-size: 9px;
+    background: rgba(252, 211, 77, 0.18);
+    border-color: rgba(252, 211, 77, 0.5);
+    box-shadow: 0 4px 16px rgba(252, 211, 77, 0.2), 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+body.stealth-active .auto-pause-subtext.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
 }
 
 .gauge-center {
