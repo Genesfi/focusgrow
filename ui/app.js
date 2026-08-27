@@ -237,6 +237,60 @@ document.addEventListener('DOMContentLoaded', () => {
         completedMinutesByDate: {} // { 'YYYY-MM-DD': minutes }
     };
 
+    function isGoalMetWithTolerance(mins, targetMins, targetHours) {
+        if (!mins || mins <= 0) return false;
+        if (mins >= targetMins) return true;
+        // Rounding tolerance: e.g. 238 mins -> (238/60).toFixed(1) = "4.0" which matches "4.0" target hours!
+        const minsHoursFormatted = parseFloat((mins / 60).toFixed(1));
+        const targetHoursFormatted = parseFloat(parseFloat(targetHours).toFixed(1));
+        return minsHoursFormatted >= targetHoursFormatted;
+    }
+
+    function calculateStreakDays() {
+        const dailyGoalHours = parseFloat(userData.dailyGoalHours) || 1;
+        const dailyGoalMins = dailyGoalHours * 60;
+
+        let streak = 0;
+
+        // Check Today first: if today goal is met, include today in streak
+        const todayMins = userData.completedMinutesToday || 0;
+        const todayGoalMet = isGoalMetWithTolerance(todayMins, dailyGoalMins, dailyGoalHours);
+
+        if (todayGoalMet) {
+            streak += 1;
+        }
+
+        // Walk backwards starting from Yesterday (offset 1 day)
+        const todayObj = new Date();
+        for (let i = 1; i <= 365; i++) {
+            const d = new Date();
+            d.setDate(todayObj.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+
+            let mins = (userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr]) 
+                ? userData.completedMinutesByDate[dateStr] 
+                : 0;
+
+            if (mins === 0 && userData.appStatsByDate && userData.appStatsByDate[dateStr]) {
+                const dayApps = userData.appStatsByDate[dateStr];
+                let totalSec = 0;
+                for (const exe in dayApps) {
+                    totalSec += dayApps[exe];
+                }
+                mins = Math.floor(totalSec / 60);
+            }
+
+            if (isGoalMetWithTolerance(mins, dailyGoalMins, dailyGoalHours)) {
+                streak += 1;
+            } else {
+                // Break streak if a past day was missed
+                break;
+            }
+        }
+
+        return streak;
+    }
+
     function loadUserData() {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -254,32 +308,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     userData.completedMinutesByDate = userData.completedMinutesByDate || {};
                     userData.completedMinutesByDate[userData.lastDateStr] = yesterdayMins;
 
-                    userData.yesterdayHours = (yesterdayMins / 60).toFixed(1);
-
-                    const targetMins = userData.dailyGoalHours * 60;
-
-                    // --- STREAK LOGIC FIX ---
-                    const lastDate = new Date(userData.lastDateStr);
-                    const todayDate = new Date(todayDateStr);
-                    const diffTime = Math.abs(todayDate - lastDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                    if (diffDays === 1) {
-                        if (yesterdayMins >= targetMins) {
-                            userData.streakDays = (userData.streakDays || 0) + 1;
-                        } else {
-                            userData.streakDays = 0;
-                        }
-                    } else {
-                        // Missed one or more days entirely
-                        userData.streakDays = 0;
-                    }
-                    // -------------------------
-
                     userData.completedMinutesToday = 0;
                     userData.lastDateStr = todayDateStr;
-                    saveUserData();
                 }
+
+                // Compute Yesterday Hours dynamically from yesterday's actual date
+                const yesterdayObj = new Date();
+                yesterdayObj.setDate(new Date().getDate() - 1);
+                const yDateStr = yesterdayObj.toISOString().split('T')[0];
+                const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr]) 
+                    ? userData.completedMinutesByDate[yDateStr] 
+                    : 0;
+                userData.yesterdayHours = (yMins / 60).toFixed(1);
+
+                // Dynamically recalculate streak
+                userData.streakDays = calculateStreakDays();
+                saveUserData();
             }
         } catch (e) {
             console.error('Error loading local user data:', e);
@@ -391,22 +435,31 @@ document.addEventListener('DOMContentLoaded', () => {
             ytmpxSocket.onmessage = (evt) => {
                 try {
                     const data = JSON.parse(evt.data);
-                    if (data && data.metadata) {
+                    if (data) {
                         isUsingExtension = true; // Confirmed working extension
-                        ytTrackData.title = data.metadata.title || '';
-                        ytTrackData.author = data.metadata.author || '';
 
-                        console.log(`[YTMPX] Track Update: ${ytTrackData.title} — ${ytTrackData.author}`);
-
-                        // PRIORITIZE image from extension metadata
-                        if (data.metadata.image) {
-                            ytTrackData.image = data.metadata.image;
-                        }
-
-                        if (data.event === 'track' || data.event === 'resume') {
-                            ytTrackData.isPlaying = true;
-                        } else if (data.event === 'pause') {
+                        if (data.event === 'stop' || !data.metadata || (!data.metadata.title && !data.metadata.author)) {
+                            console.log('[YTMPX] Stopped / Cleared track event received');
+                            ytTrackData.title = '';
+                            ytTrackData.author = '';
+                            ytTrackData.image = '';
                             ytTrackData.isPlaying = false;
+                        } else if (data.metadata) {
+                            ytTrackData.title = data.metadata.title || '';
+                            ytTrackData.author = data.metadata.author || '';
+
+                            console.log(`[YTMPX] Track Update: ${ytTrackData.title} — ${ytTrackData.author}`);
+
+                            // PRIORITIZE image from extension metadata
+                            if (data.metadata.image) {
+                                ytTrackData.image = data.metadata.image;
+                            }
+
+                            if (data.event === 'track' || data.event === 'resume') {
+                                ytTrackData.isPlaying = true;
+                            } else if (data.event === 'pause') {
+                                ytTrackData.isPlaying = false;
+                            }
                         }
 
                         updateYtMusicUI();
@@ -417,7 +470,9 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             ytmpxSocket.onclose = () => {
+                console.log('[YTMPX] Extension websocket closed');
                 isUsingExtension = false;
+                detectYtMusicFromBrowserTabs(cachedAppList);
                 setTimeout(connectYtmpxWebSocket, 3000);
             };
 
@@ -482,60 +537,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function detectYtMusicFromBrowserTabs(apps) {
-        if (isUsingExtension) return; // Skip backup detection if high-quality extension is active
         if (!apps || !Array.isArray(apps)) return;
 
-        // Find all potential YouTube Music/YouTube tabs
+        // Find all potential YouTube Music/YouTube tabs or app processes
         const ytApps = apps.filter(app => {
-            if (!app.title) return false;
-            const t = app.title.toLowerCase();
-            // ONLY target YouTube Music or YT Music tabs
-            return t.includes('youtube music') || t.includes('yt music');
+            if (!app.title && !app.exeName) return false;
+            const t = (app.title || '').toLowerCase();
+            const e = (app.exeName || '').toLowerCase();
+            return t.includes('youtube music') || t.includes('yt music') || e.includes('youtube music');
         });
 
-        if (ytApps.length > 0) {
-            // Prefer a tab that looks like a track (has a separator) over a generic one
-            const ytApp = ytApps.find(app => app.title.includes(' - ') || app.title.includes(' | ')) || ytApps[0];
+        // 1. If NO YouTube Music tab/app exists on the system at all: clear track info immediately!
+        if (ytApps.length === 0) {
+            if (ytTrackData.title || ytTrackData.author || ytTrackData.isPlaying) {
+                console.log('[YTMusic Detection] No YouTube Music tab/app found running. Auto-clearing track.');
+                ytTrackData.title = '';
+                ytTrackData.author = '';
+                ytTrackData.image = '';
+                ytTrackData.isPlaying = false;
+                lastFetchedTrackKey = '';
+                updateYtMusicUI();
+            }
+            return;
+        }
 
-            let rawTitle = ytApp.title;
-            let cleaned = rawTitle.replace(/\s*[\-\|]\s*YouTube Music/gi, '')
-                                 .replace(/^YouTube Music\s*[\-\|]\s*/gi, '')
-                                 .replace(/\s*[\-\|]\s*YouTube/gi, '')
-                                 .trim();
+        // 2. If YouTube Music IS running, and high-quality extension is active:
+        if (isUsingExtension && ytTrackData.title) {
+            return; // Extension is actively providing track info, so trust extension metadata
+        }
 
-            // If the title is JUST a generic app name, it's likely just the home page or paused without track info
-            const isGeneric = !cleaned ||
-                              cleaned.toLowerCase() === 'youtube music' ||
-                              cleaned.toLowerCase() === 'yt music' ||
-                              cleaned.toLowerCase() === 'youtube';
+        // 3. Fallback: Parse track from browser tab title
+        const ytApp = ytApps.find(app => app.title.includes(' - ') || app.title.includes(' | ')) || ytApps[0];
 
-            if (!isGeneric) {
-                const parts = cleaned.split(/\s*[\-\|]\s*/);
-                let newTitle = '';
-                let newAuthor = '';
-                if (parts.length >= 2) {
-                    newTitle = parts[0].trim();
-                    newAuthor = parts[1].trim();
-                } else {
-                    newTitle = cleaned;
-                    newAuthor = 'YouTube Music';
+        let rawTitle = ytApp.title || '';
+        let cleaned = rawTitle.replace(/\s*[\-\|]\s*YouTube Music/gi, '')
+                             .replace(/^YouTube Music\s*[\-\|]\s*/gi, '')
+                             .replace(/\s*[\-\|]\s*YouTube/gi, '')
+                             .trim();
+
+        const isGeneric = !cleaned ||
+                          cleaned.toLowerCase() === 'youtube music' ||
+                          cleaned.toLowerCase() === 'yt music' ||
+                          cleaned.toLowerCase() === 'youtube';
+
+        if (!isGeneric) {
+            const parts = cleaned.split(/\s*[\-\|]\s*/);
+            let newTitle = '';
+            let newAuthor = '';
+            if (parts.length >= 2) {
+                newTitle = parts[0].trim();
+                newAuthor = parts[1].trim();
+            } else {
+                newTitle = cleaned;
+                newAuthor = 'YouTube Music';
+            }
+
+            if (ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor || !ytTrackData.isPlaying) {
+                const trackChanged = ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor;
+                ytTrackData.title = newTitle;
+                ytTrackData.author = newAuthor;
+                ytTrackData.isPlaying = true;
+
+                console.log(`[Backup] Track Update from Tab: ${ytTrackData.title} — ${ytTrackData.author}`);
+
+                if (trackChanged || !ytTrackData.image) {
+                    fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
                 }
-
-                // Update if the track changed OR if we were previously "not playing"
-                if (ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor || !ytTrackData.isPlaying) {
-                    const trackChanged = ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor;
-                    ytTrackData.title = newTitle;
-                    ytTrackData.author = newAuthor;
-                    ytTrackData.isPlaying = true;
-
-                    console.log(`[Backup] Track Update from Tab: ${ytTrackData.title} — ${ytTrackData.author}`);
-
-                    // ALWAYS try to fetch art if we don't have it, especially when track changes
-                    if (trackChanged || !ytTrackData.image) {
-                        fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
-                    }
-                    updateYtMusicUI();
-                }
+                updateYtMusicUI();
+            }
+        } else if (!isUsingExtension) {
+            if (ytTrackData.title || ytTrackData.author || ytTrackData.isPlaying) {
+                console.log('[Backup] Generic YT Music homepage (no track playing). Clearing track info.');
+                ytTrackData.title = '';
+                ytTrackData.author = '';
+                ytTrackData.image = '';
+                ytTrackData.isPlaying = false;
+                lastFetchedTrackKey = '';
+                updateYtMusicUI();
             }
         }
     }
@@ -553,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardVinylContainer = document.getElementById('card-vinyl-container');
 
         const isYtMode = (userData.ambientMode === 'ytmusic');
-        const hasTrack = (ytTrackData.title || ytTrackData.author);
+        const hasTrack = !!(ytTrackData.title || ytTrackData.author);
 
         const trackString = (hasTrack)
             ? `${ytTrackData.title} — ${ytTrackData.author}` 
@@ -562,8 +640,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textSetup) textSetup.textContent = trackString;
         if (textTimer) textTimer.textContent = trackString;
 
-        // FORCE SHOW ticker and album elements if we have track info OR in YT mode
-        const showTicker = isYtMode || hasTrack;
+        // Automatically HIDE the YT Music ticker & control buttons when YT Music is not open/playing
+        const showTicker = hasTrack;
         if (tickerSetup) tickerSetup.style.display = showTicker ? 'flex' : 'none';
         if (tickerTimer) tickerTimer.style.display = showTicker ? 'flex' : 'none';
 
@@ -1909,6 +1987,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function updateStatsUI() {
+        userData.streakDays = calculateStreakDays();
+
+        const yesterdayObj = new Date();
+        yesterdayObj.setDate(new Date().getDate() - 1);
+        const yDateStr = yesterdayObj.toISOString().split('T')[0];
+        const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr]) 
+            ? userData.completedMinutesByDate[yDateStr] 
+            : 0;
+        userData.yesterdayHours = (yMins / 60).toFixed(1);
+
         statGoalHours.textContent = userData.dailyGoalHours;
         statYesterday.textContent = userData.yesterdayHours;
         statStreak.textContent = userData.streakDays;
@@ -1917,6 +2005,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const goalMins = userData.dailyGoalHours * 60;
         const donutRatio = Math.min(1.0, userData.completedMinutesToday / goalMins);
         goalDonutFill.style.strokeDashoffset = 301.5 * (1 - donutRatio);
+
+        const statsKpiStreak = document.getElementById('stats-kpi-streak');
+        if (statsKpiStreak) {
+            statsKpiStreak.textContent = `${userData.streakDays || 0} Days`;
+        }
 
         renderWeeklyChart();
     }
@@ -1930,7 +2023,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
 
         // ALWAYS use the daily goal (e.g. 4 hrs) for the 7-day trend chart.
-        // This keeps the bar heights consistent even when switching tabs in the modal.
         const dailyGoalHours = parseFloat(userData.dailyGoalHours) || 1;
         const dailyGoalMins = dailyGoalHours * 60;
 
@@ -1959,7 +2051,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Visual logic: Ensure a minimum visible height (8%) even for small values > 0
             const displayPercent = mins > 0 ? (8 + (ratio * 92)) : 0;
-            const isGoalMet = mins >= dailyGoalMins;
+            const isGoalMet = isGoalMetWithTolerance(mins, dailyGoalMins, dailyGoalHours);
 
             barWrapper.innerHTML = `
                 <div class="chart-bar-container">
@@ -2444,8 +2536,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sendToCpp({ action: 'getRunningApps' });
     
-    // Auto-poll running browser apps every 4 seconds to sync YouTube Music track titles
+    // Auto-poll running browser apps every 2 seconds to sync YouTube Music track titles
     setInterval(() => {
         sendToCpp({ action: 'getRunningApps' });
-    }, 4000);
+    }, 2000);
 });

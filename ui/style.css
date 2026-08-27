@@ -1583,7 +1583,6 @@ body.pip-mode .ytmusic-ticker {
     margin-bottom: 2px !important;
     padding: 3px 6px !important;
     flex-shrink: 0 !important;
-    display: flex !important;
     width: 100% !important;
 }
 

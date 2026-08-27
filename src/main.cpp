@@ -114,7 +114,7 @@ void SendRunningAppsToUi() {
   static std::wstring lastSentAppsJson = L"";
 
   DWORD now = GetTickCount();
-  if (isScanning.load() || (now - lastScanTime < 3000))
+  if (isScanning.load() || (now - lastScanTime < 1500))
     return;
 
   isScanning.store(true);
@@ -150,15 +150,22 @@ void SendRunningAppsToUi() {
 
 void TogglePipMode(int width = 0, int height = 0) {
   g_isPipMode = !g_isPipMode;
+  BOOL enableShadow = TRUE;
+  DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/, &enableShadow, sizeof(enableShadow));
+
+  DWORD cornerPreference = DWMWCP_ROUND;
+  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+
+  MARGINS margins = { -1, -1, -1, -1 };
+  DwmExtendFrameIntoClientArea(g_hWnd, &margins);
+
   if (g_isPipMode) {
-    // Use provided dimensions if valid, otherwise fallback to defaults
     int w = (width > 100) ? width : 270;
     int h = (height > 100) ? height : 400;
-    SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, SWP_NOMOVE | SWP_SHOWWINDOW);
+    SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
   } else {
-    // Restore Normal Dashboard Mode (960 x 660, NOTOPMOST)
     SetWindowPos(g_hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
-                 SWP_NOMOVE | SWP_SHOWWINDOW);
+                 SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
   }
   PostStateToUi();
 }
@@ -761,17 +768,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   }
 
   BOOL useDarkMode = TRUE;
-  DwmSetWindowAttribute(g_hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode,
-                        sizeof(useDarkMode));
+  DwmSetWindowAttribute(g_hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode, sizeof(useDarkMode));
+
+  BOOL enableShadow = TRUE;
+  DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/, &enableShadow, sizeof(enableShadow));
+
   DWORD cornerPreference = DWMWCP_ROUND;
-  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE,
-                        &cornerPreference, sizeof(cornerPreference));
+  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
 
   DWORD noBorderColor = 0xFFFFFFFE; // DWMWA_COLOR_NONE
-  DwmSetWindowAttribute(g_hWnd, 34 /*DWMWA_BORDER_COLOR*/, &noBorderColor,
-                        sizeof(noBorderColor));
+  DwmSetWindowAttribute(g_hWnd, 34 /*DWMWA_BORDER_COLOR*/, &noBorderColor, sizeof(noBorderColor));
 
-  MARGINS margins = {-1, -1, -1, -1};
+  MARGINS margins = { -1, -1, -1, -1 };
   DwmExtendFrameIntoClientArea(g_hWnd, &margins);
 
   ShowWindow(g_hWnd, nCmdShow);

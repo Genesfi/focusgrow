@@ -47,6 +47,7 @@ private:
     int m_totalPeriods = 1;
     int m_currentPeriod = 1;
 
+    int m_focusSecAccumulator = 0;
     time_t m_lastTickTime = 0;
 
     std::vector<std::wstring> m_systemWhitelist = {
@@ -330,6 +331,7 @@ public:
         m_state = SessionState::Focusing;
         m_isPaused = false;
         m_isAutoPaused = false;
+        m_focusSecAccumulator = 0;
         m_lastTickTime = time(nullptr);
 
         m_overlay.Hide();
@@ -428,12 +430,16 @@ public:
         }
 
         if (m_remainingSec > 0) {
-            int oldMins = m_remainingSec / 60;
+            int oldSec = m_remainingSec;
             m_remainingSec = max(0, m_remainingSec - delta);
-            int newMins = m_remainingSec / 60;
+            int elapsedSec = oldSec - m_remainingSec;
 
-            if (m_state == SessionState::Focusing && oldMins > newMins) {
-                m_stats.completedMinutesToday += (oldMins - newMins);
+            if (m_state == SessionState::Focusing) {
+                m_focusSecAccumulator += elapsedSec;
+                if (m_focusSecAccumulator >= 60) {
+                    m_stats.completedMinutesToday += (m_focusSecAccumulator / 60);
+                    m_focusSecAccumulator %= 60;
+                }
             }
         }
 
@@ -444,6 +450,11 @@ public:
 
         if (m_remainingSec <= 0) {
             if (m_state == SessionState::Focusing) {
+                if (m_focusSecAccumulator >= 30) {
+                    m_stats.completedMinutesToday += 1;
+                }
+                m_focusSecAccumulator = 0;
+
                 if (!m_skipBreaks && m_breakDurationSec > 0 && m_currentPeriod < m_totalPeriods) {
                     // Work period done -> Start Rest Period
                     m_state = SessionState::Resting;
