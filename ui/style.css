@@ -1192,6 +1192,11 @@ input:checked+.slider:before {
     transform-origin: 100px 100px;
 }
 
+.gauge-svg.no-hourglass-rotate .layer-hourglass {
+    animation: none !important;
+    transform: rotate(90deg) !important;
+}
+
 .gauge-svg.theme-hourglass .gauge-progress,
 .gauge-svg.theme-hourglass .gauge-bg,
 .gauge-svg.theme-hourglass #gauge-ticks {

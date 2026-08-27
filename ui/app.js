@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         autoPauseEnabled: true,
         autoPauseSec: 15,
         useComplementaryColor: true,
+        hourglassAutoRotate: false,
         completedMinutesByDate: {} // { 'YYYY-MM-DD': minutes }
     };
 
@@ -926,6 +927,14 @@ document.addEventListener('DOMContentLoaded', () => {
             gaugeSvg.classList.add(`theme-${theme}`);
         }
 
+        // Toggle 5s hourglass rotation
+        gaugeSvg.classList.toggle('no-hourglass-rotate', !userData.hourglassAutoRotate);
+
+        const rowHourglassRotate = document.getElementById('row-hourglass-rotate');
+        if (rowHourglassRotate) {
+            rowHourglassRotate.style.display = (theme === 'hourglass') ? 'flex' : 'none';
+        }
+
         if (theme === 'wave') {
             const layer = document.querySelector('.layer-wave');
             if (layer) layer.style.display = 'block';
@@ -1405,6 +1414,17 @@ document.addEventListener('DOMContentLoaded', () => {
             userData.useComplementaryColor = e.target.checked;
             saveUserData();
             updateYtMusicUI();
+        });
+    }
+
+    // Auto-Rotate Hourglass Every 5s Toggle Listener
+    const chkHourglassRotate = document.getElementById('chk-hourglass-rotate');
+    if (chkHourglassRotate) {
+        chkHourglassRotate.checked = !!userData.hourglassAutoRotate;
+        chkHourglassRotate.addEventListener('change', (e) => {
+            userData.hourglassAutoRotate = e.target.checked;
+            saveUserData();
+            applyTimerTheme();
         });
     }
 

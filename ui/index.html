@@ -324,11 +324,11 @@
                                 <g id="wave-level-group" style="transition: transform 1s linear;">
                                     <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
                                     <path class="liquid-wave wave-back"
-                                        d="M -400 100 Q -375 80 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
-                                        fill="var(--accent-blue)" opacity="0.4" />
+                                        d="M -400 100 Q -375 85 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
+                                        fill="var(--accent-blue)" opacity="0.35" />
                                     <path class="liquid-wave wave-front"
-                                        d="M -400 100 Q -375 120 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
-                                        fill="var(--accent-blue)" opacity="0.8" />
+                                        d="M -400 100 Q -375 115 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
+                                        fill="var(--accent-blue)" opacity="0.75" />
                                 </g>
                             </g>
 
@@ -845,6 +845,14 @@
                             <button class="ring-theme-chip" data-theme="blocks">📊 Blocks</button>
                             <button class="ring-theme-chip" data-theme="dots">💬 Dots</button>
                             <button class="ring-theme-chip" data-theme="orbit">💫 Orbit</button>
+                        </div>
+
+                        <div class="option-row" id="row-hourglass-rotate" style="margin-top: 10px; display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                            <span>Auto-Rotate Hourglass Every 5s</span>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-hourglass-rotate">
+                                <span class="slider"></span>
+                            </label>
                         </div>
                     </div>
                 </div>
