@@ -308,7 +308,11 @@
                                 <mask id="mask-blocks">
                                     <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="12"
                                         stroke-dasharray="35 5" />
-                                </mask>
+                                </mask>                                <!-- Sand Stream Tapered Gradient -->
+                                <linearGradient id="sand-stream-gradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.95" />
+                                    <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0.45" />
+                                </linearGradient>
                             </defs>
 
                             <g class="gauge-ticks" id="gauge-ticks"></g>
@@ -324,48 +328,48 @@
                                 <g id="wave-level-group" style="transition: transform 1s linear;">
                                     <!-- Using a 100px period for more energetic waves, repeating to ensure seamlessness -->
                                     <path class="liquid-wave wave-back"
-                                        d="M -400 100 Q -375 85 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
+                                        d="M -400 100 Q -375 80 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
                                         fill="var(--accent-blue)" opacity="0.35" />
                                     <path class="liquid-wave wave-front"
-                                        d="M -400 100 Q -375 115 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
+                                        d="M -400 100 Q -375 120 -350 100 T -300 100 T -250 100 T -200 100 T -150 100 T -100 100 T -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 T 350 100 T 400 100 T 450 100 T 500 100 T 550 100 T 600 100 V 400 H -400 Z"
                                         fill="var(--accent-blue)" opacity="0.75" />
                                 </g>
                             </g>
 
-                            <!-- 2. Hourglass Layer (Overhaul V5 - Dual Sand Wave) -->
+                            <!-- 2. Hourglass Layer (Overhaul V6 - Crisp Glass & Tapered Stream) -->
                             <g class="theme-layer layer-hourglass" style="display: none;">
-                                <!-- Top and Bottom Caps -->
-                                <rect x="45" y="35" width="110" height="6" rx="3" fill="var(--accent-blue)"
-                                    opacity="0.3" />
-                                <rect x="45" y="160" width="110" height="6" rx="3" fill="var(--accent-blue)"
-                                    opacity="0.3" />
+                                <!-- Top and Bottom Solid Caps -->
+                                <rect x="42" y="34" width="116" height="8" rx="4" fill="var(--accent-blue)"
+                                    stroke="rgba(255,255,255,0.6)" stroke-width="1.5" opacity="0.9" />
+                                <rect x="42" y="158" width="116" height="8" rx="4" fill="var(--accent-blue)"
+                                    stroke="rgba(255,255,255,0.6)" stroke-width="1.5" opacity="0.9" />
 
-                                <!-- Main Frame -->
-                                <path
+                                <!-- Main Glass Frame Outline (Crisp Accent Stroke) -->
+                                <path class="hourglass-frame"
                                     d="M 50 40 H 150 C 150 40 120 100 105 100 H 95 C 80 100 50 40 50 40 Z M 95 100 H 105 C 120 100 150 160 150 160 H 50 C 50 160 80 100 95 100 Z"
-                                    fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+                                    fill="rgba(0,0,0,0.15)" stroke="var(--accent-blue)" stroke-width="2.5" opacity="0.9" />
 
                                 <!-- Top Sand (Draining) -->
                                 <g clip-path="url(#clip-hourglass-top)">
                                     <g id="sand-top-level-group" style="transition: transform 1s linear;">
                                         <path class="liquid-wave wave-front"
                                             d="M -100 100 Q -75 120 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
-                                            fill="var(--accent-blue)" opacity="0.9" />
+                                            fill="var(--accent-blue)" opacity="0.95" />
                                     </g>
                                 </g>
 
-                                <!-- Bottom Sand (Filling) -->
+                                <!-- Realistic Tapered Falling Stream (Rendered BEHIND bottom sand heap) -->
+                                <path id="sand-stream" d="M 98 98 A 2 2 0 0 1 102 98 L 100.6 160 A 0.6 0.6 0 0 1 99.4 160 Z"
+                                    fill="var(--accent-blue)" opacity="0.9" style="display: none;" />
+
+                                <!-- Bottom Sand (Filling) (Opaque 1.0 - Rendered ON TOP of falling stream for 100% seamless wave coverage) -->
                                 <g clip-path="url(#clip-hourglass-bottom)">
                                     <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
                                         <path class="liquid-wave wave-front"
                                             d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
-                                            fill="var(--accent-blue)" opacity="0.8" />
+                                            fill="var(--accent-blue)" opacity="1.0" />
                                     </g>
                                 </g>
-
-                                <!-- Falling Stream -->
-                                <rect id="sand-stream" x="98.5" y="98" width="3" height="5" fill="var(--accent-blue)"
-                                    opacity="1" style="display: none;" />
                             </g>
 
                             <!-- Progress Bars (used by Classic, Dots, Blocks, Orbit) -->

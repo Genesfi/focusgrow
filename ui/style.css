@@ -1264,11 +1264,55 @@ input:checked+.slider:before {
     animation: wave-drift-slow 5s infinite linear;
 }
 
+@keyframes stream-drop-in {
+    0% {
+        clip-path: inset(0 0 100% 0);
+    }
+    100% {
+        clip-path: inset(0 0 0% 0);
+    }
+}
+
+@keyframes stream-drain-out {
+    0% {
+        clip-path: inset(0% 0 0% 0);
+    }
+    100% {
+        clip-path: inset(100% 0 0% 0);
+    }
+}
+
+@keyframes stream-pulse {
+    0% {
+        filter: drop-shadow(0 0 1px var(--accent-blue));
+    }
+    100% {
+        filter: drop-shadow(0 0 3px var(--accent-blue));
+    }
+}
+
 #sand-top,
 #sand-bottom,
 #sand-stream {
     fill: var(--accent-blue);
-    filter: drop-shadow(0 0 12px var(--accent-blue));
+}
+
+#sand-stream {
+    clip-path: inset(0 0 0% 0);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 8px, black calc(100% - 8px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8px, black calc(100% - 8px), transparent 100%);
+}
+
+#sand-stream.stream-starting {
+    animation: stream-drop-in 0.42s cubic-bezier(0.25, 1, 0.4, 1) forwards;
+}
+
+#sand-stream.stream-draining {
+    animation: stream-drain-out 0.42s cubic-bezier(0.4, 0, 0.8, 0.5) forwards;
+}
+
+#sand-stream.stream-active {
+    animation: stream-pulse 1.2s ease-in-out infinite alternate;
 }
 
 #orbit-particle {

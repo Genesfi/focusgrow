@@ -935,6 +935,13 @@ document.addEventListener('DOMContentLoaded', () => {
             rowHourglassRotate.style.display = (theme === 'hourglass') ? 'flex' : 'none';
         }
 
+        if (theme === 'hourglass') {
+            const isFlowing = activeState === 'focusing' && !isPaused;
+            updateSandStreamState(isFlowing);
+        } else {
+            updateSandStreamState(false);
+        }
+
         if (theme === 'wave') {
             const layer = document.querySelector('.layer-wave');
             if (layer) layer.style.display = 'block';
@@ -949,6 +956,47 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.ring-theme-chip').forEach(chip => {
             chip.classList.toggle('active', chip.getAttribute('data-theme') === theme);
         });
+    }
+
+    let streamDrainTimer = null;
+
+    function updateSandStreamState(isFlowing) {
+        const sandStream = document.getElementById('sand-stream');
+        if (!sandStream) return;
+
+        if (streamDrainTimer) {
+            clearTimeout(streamDrainTimer);
+            streamDrainTimer = null;
+        }
+
+        if (isFlowing) {
+            sandStream.style.display = 'block';
+            if (!sandStream.classList.contains('stream-active')) {
+                sandStream.classList.remove('stream-draining', 'stream-active');
+                void sandStream.offsetWidth; // Force CSS reflow for clean re-trigger
+                sandStream.classList.add('stream-starting');
+
+                streamDrainTimer = setTimeout(() => {
+                    if (sandStream.classList.contains('stream-starting')) {
+                        sandStream.classList.remove('stream-starting');
+                        sandStream.classList.add('stream-active');
+                    }
+                    streamDrainTimer = null;
+                }, 420);
+            }
+        } else {
+            if (sandStream.style.display === 'block') {
+                sandStream.classList.remove('stream-starting', 'stream-active');
+                void sandStream.offsetWidth; // Force CSS reflow for clean re-trigger
+                sandStream.classList.add('stream-draining');
+
+                streamDrainTimer = setTimeout(() => {
+                    sandStream.style.display = 'none';
+                    sandStream.classList.remove('stream-draining');
+                    streamDrainTimer = null;
+                }, 420);
+            }
+        }
     }
 
     // Timer Ring Theme Switcher
@@ -996,7 +1044,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (theme === 'hourglass') {
             const topGroup = document.getElementById('sand-top-level-group');
             const bottomGroup = document.getElementById('sand-bottom-level-group');
-            const sandStream = document.getElementById('sand-stream');
 
             if (topGroup && bottomGroup) {
                 // Top chamber: Drains from full (y=40) to empty (y=100)
@@ -1009,10 +1056,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bottomY = 60 - (60 * progressRatio);
                 bottomGroup.style.transform = `translateY(${bottomY}px)`;
 
-                if (sandStream) {
-                    const isFlowing = activeState === 'focusing' && !isPaused && ratio > 0;
-                    sandStream.style.display = isFlowing ? 'block' : 'none';
-                }
+                const isFlowing = activeState === 'focusing' && !isPaused && ratio > 0;
+                updateSandStreamState(isFlowing);
             }
         } else if (theme === 'orbit') {
             const particle = document.getElementById('orbit-particle');
