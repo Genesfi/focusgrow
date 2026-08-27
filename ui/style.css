@@ -1228,7 +1228,6 @@ input:checked+.slider:before {
 #liquid-wave-path,
 .liquid-wave {
     fill: var(--accent-blue);
-    filter: drop-shadow(0 0 10px var(--accent-blue));
 }
 
 @keyframes wave-drift {
