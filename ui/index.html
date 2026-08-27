@@ -308,22 +308,25 @@
                                 <mask id="mask-blocks">
                                     <circle cx="100" cy="100" r="76" fill="none" stroke="white" stroke-width="12"
                                         stroke-dasharray="35 5" />
-                                </mask>                                <!-- Sand Stream Tapered Gradient -->
-                                <linearGradient id="sand-stream-gradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.95" />
-                                    <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0.45" />
-                                </linearGradient>
-                                <!-- Stream Dynamic Eraser Mask (Erases sand-stream inside bottom sand heap) -->
-                                <mask id="stream-above-sand-mask">
-                                    <rect x="0" y="0" width="200" height="200" fill="white" />
-                                    <g clip-path="url(#clip-hourglass-bottom)">
-                                        <g id="sand-bottom-mask-group" style="transition: transform 1s linear;">
-                                            <path class="liquid-wave wave-front"
-                                                d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
-                                                fill="black" />
-                                        </g>
-                                    </g>
                                 </mask>
+                                <!-- Feather Mask: Full opacity at top (neck clip hides above), smooth fade-out only at bottom -->
+                                <linearGradient id="stream-mask-grad" gradientUnits="userSpaceOnUse" x1="0" y1="100" x2="0" y2="162">
+                                    <stop offset="0%"   stop-color="white" stop-opacity="1" />
+                                    <stop offset="60%"  stop-color="white" stop-opacity="1" />
+                                    <stop offset="80%"  stop-color="white" stop-opacity="0.4" />
+                                    <stop offset="100%" stop-color="black" stop-opacity="0" />
+                                </linearGradient>
+                                <mask id="stream-feather-mask">
+                                    <rect x="0" y="0" width="200" height="200" fill="url(#stream-mask-grad)" />
+                                </mask>
+                                <!-- Feather Filter for Soft Stream Line Edges (Menghilangkan garis kaku vertikal) -->
+                                <filter id="stream-feather-filter" x="-50%" y="-20%" width="200%" height="140%">
+                                    <feGaussianBlur stdDeviation="1.2" />
+                                </filter>
+                                <!-- Stream Choke Clip: Ensures falling wave stream only emerges below neck choke point (y=100) -->
+                                <clipPath id="clip-stream-neck-choke">
+                                    <rect x="80" y="100" width="40" height="60" />
+                                </clipPath>
                             </defs>
 
                             <g class="gauge-ticks" id="gauge-ticks"></g>
@@ -347,7 +350,7 @@
                                 </g>
                             </g>
 
-                            <!-- 2. Hourglass Layer (Overhaul V6 - Crisp Glass & Masked Stream) -->
+                            <!-- 2. Hourglass Layer (Overhaul V6 - Crisp Glass & Clipped Stream) -->
                             <g class="theme-layer layer-hourglass" style="display: none;">
                                 <!-- Top and Bottom Solid Caps -->
                                 <rect x="42" y="34" width="116" height="8" rx="4" fill="var(--accent-blue)"
@@ -369,16 +372,19 @@
                                     </g>
                                 </g>
 
-                                <!-- Realistic Tapered Falling Stream (Masked dynamically to stop at bottom sand wave surface) -->
-                                <path id="sand-stream" d="M 98 98 A 2 2 0 0 1 102 98 L 100.6 160 A 0.6 0.6 0 0 1 99.4 160 Z"
-                                    fill="var(--accent-blue)" opacity="0.8" mask="url(#stream-above-sand-mask)" style="display: none;" />
+                                <!-- Tapered Falling Wave Stream (32px Seamless Period Wave) -->
+                                <g clip-path="url(#clip-stream-neck-choke)">
+                                    <path id="sand-stream" class="sand-stream-wave-anim"
+                                        d="M 97.2 36 Q 102.8 52 97.4 68 Q 102.6 84 97.6 100 Q 102.4 116 97.8 132 Q 102.2 148 98 164 Q 102 180 98.2 196 L 101.8 196 Q 98 180 102 164 Q 97.8 148 102.2 132 Q 97.6 116 102.4 100 Q 97.4 84 102.6 68 Q 97.2 52 102.8 36 Z"
+                                        fill="var(--accent-blue)" opacity="0.85" filter="url(#stream-feather-filter)" mask="url(#stream-feather-mask)" style="display: none;" />
+                                </g>
 
-                                <!-- Bottom Sand (Filling) (Soft Translucent 0.8) -->
+                                <!-- Bottom Sand (Filling) (Soft Translucent 0.85) -->
                                 <g clip-path="url(#clip-hourglass-bottom)">
                                     <g id="sand-bottom-level-group" style="transition: transform 1s linear;">
                                         <path class="liquid-wave wave-front"
                                             d="M -100 100 Q -75 90 -50 100 T 0 100 T 50 100 T 100 100 T 150 100 T 200 100 T 250 100 T 300 100 V 400 H -100 Z"
-                                            fill="var(--accent-blue)" opacity="0.8" />
+                                            fill="var(--accent-blue)" opacity="0.85" />
                                     </g>
                                 </g>
                             </g>

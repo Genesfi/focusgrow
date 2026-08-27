@@ -1297,20 +1297,23 @@ input:checked+.slider:before {
     fill: var(--accent-blue);
 }
 
-#sand-stream {
-    clip-path: inset(0 0 0% 0);
+@keyframes sand-stream-wave-fall {
+    0% {
+        transform: translateY(0px);
+    }
+    100% {
+        transform: translateY(32px);
+    }
 }
 
+#sand-stream.stream-active,
 #sand-stream.stream-starting {
-    animation: stream-drop-in 0.42s cubic-bezier(0.25, 1, 0.4, 1) forwards;
+    display: block;
+    animation: sand-stream-wave-fall 1.2s infinite linear !important;
 }
 
 #sand-stream.stream-draining {
     animation: stream-drain-out 0.42s cubic-bezier(0.4, 0, 0.8, 0.5) forwards;
-}
-
-#sand-stream.stream-active {
-    animation: stream-pulse 1.2s ease-in-out infinite alternate;
 }
 
 #orbit-particle {

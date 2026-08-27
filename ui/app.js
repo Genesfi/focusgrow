@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (theme === 'hourglass') {
-            const isFlowing = activeState === 'focusing' && !isPaused;
+            const isFlowing = activeState !== 'idle' && !isPaused;
             updateSandStreamState(isFlowing);
         } else {
             updateSandStreamState(false);
@@ -958,44 +958,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    let streamDrainTimer = null;
-
     function updateSandStreamState(isFlowing) {
         const sandStream = document.getElementById('sand-stream');
         if (!sandStream) return;
 
-        if (streamDrainTimer) {
-            clearTimeout(streamDrainTimer);
-            streamDrainTimer = null;
-        }
-
         if (isFlowing) {
             sandStream.style.display = 'block';
-            if (!sandStream.classList.contains('stream-active')) {
-                sandStream.classList.remove('stream-draining', 'stream-active');
-                void sandStream.offsetWidth; // Force CSS reflow for clean re-trigger
-                sandStream.classList.add('stream-starting');
-
-                streamDrainTimer = setTimeout(() => {
-                    if (sandStream.classList.contains('stream-starting')) {
-                        sandStream.classList.remove('stream-starting');
-                        sandStream.classList.add('stream-active');
-                    }
-                    streamDrainTimer = null;
-                }, 420);
-            }
+            sandStream.classList.remove('stream-draining', 'stream-starting');
+            sandStream.classList.add('stream-active');
         } else {
-            if (sandStream.style.display === 'block') {
-                sandStream.classList.remove('stream-starting', 'stream-active');
-                void sandStream.offsetWidth; // Force CSS reflow for clean re-trigger
-                sandStream.classList.add('stream-draining');
-
-                streamDrainTimer = setTimeout(() => {
-                    sandStream.style.display = 'none';
-                    sandStream.classList.remove('stream-draining');
-                    streamDrainTimer = null;
-                }, 420);
-            }
+            sandStream.style.display = 'none';
+            sandStream.classList.remove('stream-starting', 'stream-active', 'stream-draining');
         }
     }
 
@@ -1056,12 +1029,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bottomY = 60 - (60 * progressRatio);
                 bottomGroup.style.transform = `translateY(${bottomY}px)`;
 
-                const bottomMaskGroup = document.getElementById('sand-bottom-mask-group');
-                if (bottomMaskGroup) {
-                    bottomMaskGroup.style.transform = `translateY(${bottomY}px)`;
+                // Dynamically update stream feather mask endpoint (y2) to extend further down (+26px) into the sand wave
+                // Ensures stream penetrates deep into the wave with a seamless soft-feathered fade out
+                const streamMaskGrad = document.getElementById('stream-mask-grad');
+                if (streamMaskGrad) {
+                    const sandSurfaceY = Math.max(98, 160 - (60 * progressRatio));
+                    streamMaskGrad.setAttribute('y2', (sandSurfaceY + 26).toFixed(1));
                 }
 
-                const isFlowing = activeState === 'focusing' && !isPaused && ratio > 0;
+                const isFlowing = activeState !== 'idle' && !isPaused && ratio > 0;
                 updateSandStreamState(isFlowing);
             }
         } else if (theme === 'orbit') {
