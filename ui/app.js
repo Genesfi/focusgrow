@@ -234,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         autoPipOnStart: false,
         autoPauseEnabled: true,
         autoPauseSec: 15,
+        useComplementaryColor: true,
         completedMinutesByDate: {} // { 'YYYY-MM-DD': minutes }
     };
 
@@ -419,6 +420,29 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlaying: false
     };
 
+    let trackClearTimer = null;
+
+    function clearTrackDataGracefully(delayMs = 2500) {
+        if (trackClearTimer) return;
+        trackClearTimer = setTimeout(() => {
+            trackClearTimer = null;
+            console.log('[YTMusic] Grace period expired. Clearing track info.');
+            ytTrackData.title = '';
+            ytTrackData.author = '';
+            ytTrackData.image = '';
+            ytTrackData.isPlaying = false;
+            lastFetchedTrackKey = '';
+            updateYtMusicUI();
+        }, delayMs);
+    }
+
+    function cancelTrackDataClear() {
+        if (trackClearTimer) {
+            clearTimeout(trackClearTimer);
+            trackClearTimer = null;
+        }
+    }
+
     function connectYtmpxWebSocket() {
         if (ytmpxSocket && (ytmpxSocket.readyState === WebSocket.OPEN || ytmpxSocket.readyState === WebSocket.CONNECTING)) {
             return;
@@ -439,14 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         isUsingExtension = true; // Confirmed working extension
 
                         if (data.event === 'stop' || !data.metadata || (!data.metadata.title && !data.metadata.author)) {
-                            console.log('[YTMPX] Stopped / Cleared track event received');
-                            ytTrackData.title = '';
-                            ytTrackData.author = '';
-                            ytTrackData.image = '';
+                            console.log('[YTMPX] Transient stop/empty track event. Scheduling graceful clear...');
                             ytTrackData.isPlaying = false;
-                        } else if (data.metadata) {
-                            ytTrackData.title = data.metadata.title || '';
-                            ytTrackData.author = data.metadata.author || '';
+                            updateYtMusicUI();
+                            clearTrackDataGracefully(2500);
+                        } else if (data.metadata && (data.metadata.title || data.metadata.author)) {
+                            cancelTrackDataClear(); // New track info confirmed! Cancel any pending clear!
+
+                            ytTrackData.title = data.metadata.title || ytTrackData.title;
+                            ytTrackData.author = data.metadata.author || ytTrackData.author;
 
                             console.log(`[YTMPX] Track Update: ${ytTrackData.title} — ${ytTrackData.author}`);
 
@@ -460,9 +485,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             } else if (data.event === 'pause') {
                                 ytTrackData.isPlaying = false;
                             }
-                        }
 
-                        updateYtMusicUI();
+                            updateYtMusicUI();
+                        }
                     }
                 } catch (err) {
                     console.error('[YTMPX] Error parsing message:', err);
@@ -547,21 +572,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return t.includes('youtube music') || t.includes('yt music') || e.includes('youtube music');
         });
 
-        // 1. If NO YouTube Music tab/app exists on the system at all: clear track info immediately!
+        // 1. If NO YouTube Music tab/app exists on the system at all:
         if (ytApps.length === 0) {
             if (ytTrackData.title || ytTrackData.author || ytTrackData.isPlaying) {
-                console.log('[YTMusic Detection] No YouTube Music tab/app found running. Auto-clearing track.');
-                ytTrackData.title = '';
-                ytTrackData.author = '';
-                ytTrackData.image = '';
-                ytTrackData.isPlaying = false;
-                lastFetchedTrackKey = '';
-                updateYtMusicUI();
+                clearTrackDataGracefully(1500);
             }
             return;
         }
 
-        // 2. If YouTube Music IS running, and high-quality extension is active:
+        // 2. If YouTube Music IS running:
+        cancelTrackDataClear(); // Active YT Music app found! Cancel clear!
+
         if (isUsingExtension && ytTrackData.title) {
             return; // Extension is actively providing track info, so trust extension metadata
         }
@@ -582,15 +603,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!isGeneric) {
             const parts = cleaned.split(/\s*[\-\|]\s*/);
-            let newTitle = '';
-            let newAuthor = '';
-            if (parts.length >= 2) {
-                newTitle = parts[0].trim();
-                newAuthor = parts[1].trim();
-            } else {
-                newTitle = cleaned;
-                newAuthor = 'YouTube Music';
-            }
+            let newTitle = parts.length >= 2 ? parts[0].trim() : cleaned;
+            let newAuthor = parts.length >= 2 ? parts[1].trim() : 'YouTube Music';
 
             if (ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor || !ytTrackData.isPlaying) {
                 const trackChanged = ytTrackData.title !== newTitle || ytTrackData.author !== newAuthor;
@@ -598,21 +612,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ytTrackData.author = newAuthor;
                 ytTrackData.isPlaying = true;
 
-                console.log(`[Backup] Track Update from Tab: ${ytTrackData.title} — ${ytTrackData.author}`);
-
                 if (trackChanged || !ytTrackData.image) {
                     fetchAlbumArtFromiTunes(ytTrackData.title, ytTrackData.author);
                 }
-                updateYtMusicUI();
-            }
-        } else if (!isUsingExtension) {
-            if (ytTrackData.title || ytTrackData.author || ytTrackData.isPlaying) {
-                console.log('[Backup] Generic YT Music homepage (no track playing). Clearing track info.');
-                ytTrackData.title = '';
-                ytTrackData.author = '';
-                ytTrackData.image = '';
-                ytTrackData.isPlaying = false;
-                lastFetchedTrackKey = '';
                 updateYtMusicUI();
             }
         }
@@ -739,9 +741,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 chip.classList.remove('active');
             }
         });
+
+        // Show / Hide Dynamic Complementary Contrast Toggle Row in Options
+        const rowDynamicContrast = document.getElementById('row-dynamic-contrast');
+        if (rowDynamicContrast) {
+            rowDynamicContrast.style.display = (userData.accentMode === 'ytmusic_dynamic') ? 'flex' : 'none';
+        }
     }
 
-    // Extract Vibrant Dominant Color from Album Cover Canvas
+    // Color Utility: RGB to HSL conversion
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h, s, l];
+    }
+
+    // Color Utility: HSL to Hex conversion
+    function hslToHex(h, s, l) {
+        let r, g, b;
+        if (s === 0) {
+            r = g = b = l;
+        } else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        const toHex = x => {
+            const hex = Math.round(x * 255).toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        };
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    // Calculate High-Contrast Complementary Color (Opposite Hue on Color Wheel)
+    function getComplementaryColor(r, g, b) {
+        let [h, s, l] = rgbToHsl(r, g, b);
+        // Rotate hue by 180 degrees (0.5 in normalized 0-1 range)
+        h = (h + 0.5) % 1.0;
+        // Boost saturation & constrain lightness for max readability against album backdrop
+        s = Math.max(s, 0.75);
+        l = Math.max(0.55, Math.min(0.72, l));
+        return hslToHex(h, s, l);
+    }
+
+    // Extract Vibrant Dominant (or Complementary) Color from Album Cover Canvas
     function extractDominantColor(imageUrl, callback) {
         if (!imageUrl) return;
         const img = new Image();
@@ -769,7 +834,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const r = Math.round(rSum / count);
                     const g = Math.round(gSum / count);
                     const b = Math.round(bSum / count);
-                    const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+
+                    let hex = "";
+                    if (userData.useComplementaryColor !== false) {
+                        hex = getComplementaryColor(r, g, b);
+                    } else {
+                        hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                    }
                     callback(hex);
                 } else {
                     callback('#60cdff');
@@ -1325,6 +1396,17 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
         applyAccentTheme(hex);
     });
+
+    // High-Contrast Complementary Accent Toggle Listener
+    const chkDynamicContrast = document.getElementById('chk-dynamic-contrast');
+    if (chkDynamicContrast) {
+        chkDynamicContrast.checked = (userData.useComplementaryColor !== false);
+        chkDynamicContrast.addEventListener('change', (e) => {
+            userData.useComplementaryColor = e.target.checked;
+            saveUserData();
+            updateYtMusicUI();
+        });
+    }
 
     // YT Music Media Control Buttons (Prev, Play/Pause, Next)
     document.querySelectorAll('.btn-yt-prev').forEach(btn => {
