@@ -757,9 +757,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     break;
   case WM_TRAYICON: {
     if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK) {
-      if (g_isPipMode) {
-        TogglePipMode();
-      }
+      // Just show/restore the window. Do NOT toggle PIP mode.
       ShowWindow(hWnd, SW_RESTORE);
       SetForegroundWindow(hWnd);
     } else if (lParam == WM_RBUTTONUP) {
