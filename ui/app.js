@@ -2234,6 +2234,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const chkMinimizeTrayToggle = document.getElementById('chk-minimize-tray-toggle');
     if (chkMinimizeTrayToggle) {
         chkMinimizeTrayToggle.checked = userData.minimizeToTrayOnClose !== false;
+        // Sync setting to C++ immediately on startup
+        sendToCpp({
+            action: 'setMinimizeToTrayConfig',
+            enabled: userData.minimizeToTrayOnClose !== false
+        });
         chkMinimizeTrayToggle.addEventListener('change', (e) => {
             userData.minimizeToTrayOnClose = e.target.checked;
             saveUserData();

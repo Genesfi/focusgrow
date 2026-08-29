@@ -264,13 +264,24 @@ void RestoreWindowFromTray(HWND hWnd) {
     }
     SetTaskbarIconVisible(hWnd, !g_hideTaskbarInPip);
     ShowWindow(hWnd, SW_SHOW);
+    if (g_pipVinylOverlay) {
+      RECT rc;
+      if (GetWindowRect(hWnd, &rc)) {
+        g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+      }
+      g_pipVinylOverlay->SetVisible(true);
+    }
   } else {
     SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
                  SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     SetTaskbarIconVisible(hWnd, true);
     ShowWindow(hWnd, SW_RESTORE);
+    if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(false);
+    }
   }
   SetForegroundWindow(hWnd);
+  ResizeWebView(hWnd);
   PostStateToUi();
 }
 
@@ -710,6 +721,9 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     ReleaseCapture();
     PostMessage(g_hWnd, WM_SYSCOMMAND, SC_MOVE | 0x0002, 0);
   } else if (msg.find(L"\"action\":\"minimize\"") != std::wstring::npos) {
+    if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(false);
+    }
     ShowWindow(g_hWnd, SW_MINIMIZE);
   } else if (msg.find(L"\"action\":\"maximize\"") != std::wstring::npos) {
     if (IsZoomed(g_hWnd))
@@ -757,9 +771,12 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
 
     ShowWindowsToastNotification(title, body);
   } else if (msg.find(L"\"action\":\"close\"") != std::wstring::npos) {
-    bool isFocusActive =
-        (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
-    if (g_minimizeToTrayOnClose || isFocusActive) {
+    if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(false);
+    }
+    if (g_minimizeToTrayOnClose) {
+      bool isFocusActive =
+          (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
       ShowWindow(g_hWnd, SW_HIDE);
       if (!g_trayToastShownOnce && isFocusActive) {
         g_trayToastShownOnce = true;
@@ -909,8 +926,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     }
     break;
   }
+  case WM_SHOWWINDOW:
+    if (wParam == FALSE) {
+      if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
+    } else if (g_isPipMode && g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(true);
+    }
+    break;
   case WM_MOVE:
   case WM_SIZE:
+    if (message == WM_SIZE && wParam == SIZE_MINIMIZED) {
+      if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
+    } else if (message == WM_SIZE && wParam == SIZE_RESTORED && g_isPipMode) {
+      if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(true);
+    }
     ResizeWebView(hWnd);
     if (g_isPipMode) {
       RECT rc;
@@ -949,10 +978,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     }
     break;
   case WM_CLOSE: {
-    bool isFocusActive =
-        (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
-    if (g_minimizeToTrayOnClose || isFocusActive) {
+    if (g_minimizeToTrayOnClose) {
+      bool isFocusActive =
+          (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
       ShowWindow(hWnd, SW_HIDE);
+      if (g_pipVinylOverlay) {
+        g_pipVinylOverlay->SetVisible(false);
+      }
       if (!g_trayToastShownOnce && isFocusActive) {
         g_trayToastShownOnce = true;
         ShowWindowsToastNotification(
@@ -961,6 +993,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
             L"membuka kembali.");
       }
       return 0;
+    }
+    if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(false);
     }
     DestroyWindow(hWnd);
     return 0;

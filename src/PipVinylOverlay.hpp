@@ -117,16 +117,21 @@ public:
     }
 
     void SetVisible(bool visible, const std::string& side = "left") {
+        if (visible && (!IsWindowVisible(m_hParent) || IsIconic(m_hParent))) {
+            visible = false;
+        }
         m_visible = visible;
-        m_side = side;
+        if (!side.empty()) m_side = side;
         if (visible) {
             if (m_transitionState == VinylTransitionState::Normal) {
                 m_targetSlide = 1.0f;
             }
         } else {
-            // Animate sliding in smoothly into the card before hiding
             m_targetSlide = 0.0f;
             m_transitionState = VinylTransitionState::Normal;
+            if (m_hwnd) {
+                ShowWindow(m_hwnd, SW_HIDE);
+            }
         }
     }
 
@@ -254,6 +259,15 @@ public:
 
     void OnAnimFrame() {
         if (!m_hwnd) return;
+
+        // If parent window is hidden or minimized, force overlay hidden immediately
+        if (m_hParent && (!IsWindowVisible(m_hParent) || IsIconic(m_hParent))) {
+            if (IsWindowVisible(m_hwnd)) {
+                ShowWindow(m_hwnd, SW_HIDE);
+            }
+            m_visible = false;
+            return;
+        }
 
         // Smooth physical slide animation
         float diff = m_targetSlide - m_slideProgress;
