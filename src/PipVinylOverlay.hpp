@@ -135,6 +135,10 @@ public:
         }
     }
 
+    std::string GetSide() const {
+        return m_side;
+    }
+
     void SetParentPos(int x, int y, int w, int h) {
         bool sizeChanged = (m_parentW != w || m_parentH != h);
         m_parentX = x;

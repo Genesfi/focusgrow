@@ -783,17 +783,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePipPeekingVinyl() {
         const isPip = document.body.classList.contains('pip-mode');
-        const peekingContainer = document.getElementById('pip-peeking-vinyl-container');
-        const peekingDisc = document.getElementById('pip-peeking-vinyl-disc');
-        const peekingImg = document.getElementById('pip-peeking-vinyl-img');
-        const focusCard = document.getElementById('focus-card');
-        
         const isEnabled = !!userData.pipPeekingVinylEnabled;
         const side = userData.pipPeekingVinylSide || 'left';
         const hasTrack = !!(ytTrackData.title || ytTrackData.author);
         const isPlaying = !!ytTrackData.isPlaying;
 
-        const shouldShowPeeking = isPip && isEnabled && hasTrack;
+        // Show peeking vinyl whenever enabled and track is active
+        const shouldShowPeeking = isEnabled && hasTrack;
 
         // Sync with Native C++ Layered Vinyl Overlay
         sendToCpp({

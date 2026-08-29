@@ -691,7 +691,7 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         (msg.find(L"\"hideTaskbar\":true") != std::wstring::npos);
     TogglePipMode(w, h, hideTaskbar);
   } else if (msg.find(L"\"action\":\"updatePipVinylOverlay\"") != std::wstring::npos) {
-    if (g_pipVinylOverlay && g_isPipMode) {
+    if (g_pipVinylOverlay && IsWindowVisible(g_hWnd) && !IsIconic(g_hWnd)) {
       bool visible = (msg.find(L"\"visible\":true") != std::wstring::npos);
       bool isPlaying = (msg.find(L"\"isPlaying\":true") != std::wstring::npos);
       std::string side = (msg.find(L"\"side\":\"right\"") != std::wstring::npos) ? "right" : "left";
@@ -707,7 +707,15 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
 
       RECT rc;
       if (GetWindowRect(g_hWnd, &rc)) {
-        g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+        if (g_isPipMode) {
+          g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+        } else {
+          int cardW = 340;
+          int cardH = (rc.bottom - rc.top) - 48;
+          int cardX = (side == "right") ? (rc.right - cardW - 24) : (rc.left + 24);
+          int cardY = rc.top + 24;
+          g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
+        }
       }
       g_pipVinylOverlay->SetPlaying(isPlaying);
       if (!imageUrl.empty()) {
@@ -919,17 +927,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
   }
   case WM_MOVING: {
     RECT *pRect = (RECT *)lParam;
-    if (pRect && g_isPipMode && g_pipVinylOverlay) {
-      g_pipVinylOverlay->SetParentPos(pRect->left, pRect->top,
-                                      pRect->right - pRect->left,
-                                      pRect->bottom - pRect->top);
+    if (pRect && g_pipVinylOverlay) {
+      if (g_isPipMode) {
+        g_pipVinylOverlay->SetParentPos(pRect->left, pRect->top,
+                                        pRect->right - pRect->left,
+                                        pRect->bottom - pRect->top);
+      } else {
+        int cardW = 340;
+        int cardH = (pRect->bottom - pRect->top) - 48;
+        int cardX = (g_pipVinylOverlay->GetSide() == "right")
+                        ? (pRect->right - cardW - 24)
+                        : (pRect->left + 24);
+        int cardY = pRect->top + 24;
+        g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
+      }
     }
     break;
   }
   case WM_SHOWWINDOW:
     if (wParam == FALSE) {
       if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
-    } else if (g_isPipMode && g_pipVinylOverlay) {
+    } else if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(true);
     }
     break;
@@ -937,15 +955,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
   case WM_SIZE:
     if (message == WM_SIZE && wParam == SIZE_MINIMIZED) {
       if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
-    } else if (message == WM_SIZE && wParam == SIZE_RESTORED && g_isPipMode) {
+    } else if (message == WM_SIZE && wParam == SIZE_RESTORED) {
       if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(true);
     }
     ResizeWebView(hWnd);
-    if (g_isPipMode) {
-      RECT rc;
-      if (GetWindowRect(hWnd, &rc)) {
-        int w = rc.right - rc.left;
-        int h = rc.bottom - rc.top;
+    RECT rc;
+    if (GetWindowRect(hWnd, &rc)) {
+      int w = rc.right - rc.left;
+      int h = rc.bottom - rc.top;
+      if (g_isPipMode) {
         if (w > 120 && h > 120 && (w < 800 || h < 600)) {
           g_lastPipW = w;
           g_lastPipH = h;
@@ -955,6 +973,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
         if (g_pipVinylOverlay) {
           g_pipVinylOverlay->SetParentPos(rc.left, rc.top, w, h);
         }
+      } else if (g_pipVinylOverlay) {
+        int cardW = 340;
+        int cardH = h - 48;
+        int cardX = (g_pipVinylOverlay->GetSide() == "right")
+                        ? (rc.right - cardW - 24)
+                        : (rc.left + 24);
+        int cardY = rc.top + 24;
+        g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
       }
     }
     break;
