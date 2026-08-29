@@ -34,6 +34,10 @@
 using namespace Microsoft::WRL;
 
 #define WM_WEBVIEW_POST_JSON (WM_USER + 1)
+#define WM_TRAYICON          (WM_USER + 2)
+#define IDM_TRAY_RESTORE     10001
+#define IDM_TRAY_TOGGLE_PIP  10002
+#define IDM_TRAY_EXIT        10003
 
 // Global Handles
 HWND g_hWnd = NULL;
@@ -42,6 +46,8 @@ ComPtr<ICoreWebView2> g_webView;
 std::unique_ptr<FocusEngine> g_focusEngine;
 ULONG_PTR g_gdiplusToken = 0;
 bool g_isPipMode = false;
+NOTIFYICONDATAW g_trayNid = {};
+bool g_trayIconCreated = false;
 
 // Helper function to escape JSON strings
 std::wstring EscapeJsonString(const std::wstring &input) {
@@ -148,7 +154,44 @@ void SendRunningAppsToUi() {
   }).detach();
 }
 
-void TogglePipMode(int width = 0, int height = 0) {
+void SetTaskbarIconVisible(HWND hwnd, bool visible) {
+  ITaskbarList* pTaskbarList = NULL;
+  HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_ITaskbarList, (void**)&pTaskbarList);
+  if (SUCCEEDED(hr) && pTaskbarList) {
+    pTaskbarList->HrInit();
+    if (visible) {
+      pTaskbarList->AddTab(hwnd);
+    } else {
+      pTaskbarList->DeleteTab(hwnd);
+    }
+    pTaskbarList->Release();
+  }
+}
+
+void InitSystemTrayIcon(HWND hwnd) {
+  if (g_trayIconCreated) return;
+  g_trayNid = { sizeof(NOTIFYICONDATAW) };
+  g_trayNid.hWnd = hwnd;
+  g_trayNid.uID = 1002;
+  g_trayNid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+  g_trayNid.uCallbackMessage = WM_TRAYICON;
+  g_trayNid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
+  if (!g_trayNid.hIcon) {
+    g_trayNid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+  }
+  wcscpy_s(g_trayNid.szTip, L"FocusGrow - Pomodoro & Focus Timer");
+  Shell_NotifyIconW(NIM_ADD, &g_trayNid);
+  g_trayIconCreated = true;
+}
+
+void RemoveSystemTrayIcon() {
+  if (g_trayIconCreated) {
+    Shell_NotifyIconW(NIM_DELETE, &g_trayNid);
+    g_trayIconCreated = false;
+  }
+}
+
+void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
   g_isPipMode = !g_isPipMode;
   BOOL enableShadow = TRUE;
   DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/, &enableShadow, sizeof(enableShadow));
@@ -163,32 +206,32 @@ void TogglePipMode(int width = 0, int height = 0) {
     int w = (width > 100) ? width : 270;
     int h = (height > 100) ? height : 400;
     SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    if (hideTaskbar) {
+      SetTaskbarIconVisible(g_hWnd, false);
+    } else {
+      SetTaskbarIconVisible(g_hWnd, true);
+    }
   } else {
     SetWindowPos(g_hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
                  SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    SetTaskbarIconVisible(g_hWnd, true);
   }
   PostStateToUi();
 }
 
 void ShowWindowsToastNotification(const std::wstring &title,
                                   const std::wstring &body) {
-  NOTIFYICONDATAW nid = {sizeof(NOTIFYICONDATAW)};
-  nid.hWnd = g_hWnd;
-  nid.uID = 1001;
-  nid.uFlags = NIF_ICON | NIF_INFO | NIF_TIP;
-  nid.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101));
-  if (!nid.hIcon) {
-    nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-  }
-  wcscpy_s(nid.szTip, L"FocusGrow");
+  // Reuse the persistent tray icon (uID 1002) to show balloon notification.
+  // This avoids creating a duplicate icon in the system tray.
+  if (!g_trayIconCreated) return;
+
+  NOTIFYICONDATAW nid = g_trayNid;
+  nid.uFlags = NIF_INFO;
   wcsncpy_s(nid.szInfoTitle, title.c_str(), _TRUNCATE);
   wcsncpy_s(nid.szInfo, body.c_str(), _TRUNCATE);
-  nid.dwInfoFlags = NIIF_INFO | NIIF_LARGE_ICON;
+  nid.dwInfoFlags = NIIF_INFO | NIIF_LARGE_ICON | NIIF_NOSOUND;
 
-  if (!Shell_NotifyIconW(NIM_MODIFY, &nid)) {
-    Shell_NotifyIconW(NIM_ADD, &nid);
-  }
-  MessageBeep(MB_ICONASTERISK);
+  Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
 void StartTabSyncHttpServer() {
@@ -537,7 +580,8 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     size_t hPos = msg.find(L"\"height\":");
     if (hPos != std::wstring::npos)
       h = _wtoi(msg.c_str() + hPos + 9);
-    TogglePipMode(w, h);
+    bool hideTaskbar = (msg.find(L"\"hideTaskbar\":true") != std::wstring::npos);
+    TogglePipMode(w, h, hideTaskbar);
   } else if (msg.find(L"\"action\":\"startDrag\"") != std::wstring::npos) {
     ReleaseCapture();
     PostMessage(g_hWnd, WM_SYSCOMMAND, SC_MOVE | 0x0002, 0);
@@ -711,12 +755,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
       g_focusEngine->TickOneSecond();
     }
     break;
+  case WM_TRAYICON: {
+    if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK) {
+      if (g_isPipMode) {
+        TogglePipMode();
+      }
+      ShowWindow(hWnd, SW_RESTORE);
+      SetForegroundWindow(hWnd);
+    } else if (lParam == WM_RBUTTONUP) {
+      POINT pt;
+      GetCursorPos(&pt);
+      HMENU hMenu = CreatePopupMenu();
+      if (hMenu) {
+        InsertMenuW(hMenu, 0, MF_BYPOSITION | MF_STRING, IDM_TRAY_RESTORE, L"Restore Dashboard");
+        InsertMenuW(hMenu, 1, MF_BYPOSITION | MF_STRING, IDM_TRAY_TOGGLE_PIP, g_isPipMode ? L"Exit Floating Timer (PiP)" : L"Pop out Floating Timer (PiP)");
+        InsertMenuW(hMenu, 2, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);
+        InsertMenuW(hMenu, 3, MF_BYPOSITION | MF_STRING, IDM_TRAY_EXIT, L"Exit FocusGrow");
+        SetForegroundWindow(hWnd);
+        int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hWnd, NULL);
+        DestroyMenu(hMenu);
+        if (cmd == IDM_TRAY_RESTORE) {
+          if (g_isPipMode) TogglePipMode();
+          ShowWindow(hWnd, SW_RESTORE);
+          SetForegroundWindow(hWnd);
+        } else if (cmd == IDM_TRAY_TOGGLE_PIP) {
+          TogglePipMode();
+        } else if (cmd == IDM_TRAY_EXIT) {
+          DestroyWindow(hWnd);
+        }
+      }
+    }
+    break;
+  }
   case WM_SETTEXT:
     // Intercept any title change (e.g. from WebView2/Chromium URL changes)
     // and force window title to permanently remain "FocusGrow" for Taskbar
     // Thumbnail & Alt+Tab
     return DefWindowProcW(hWnd, WM_SETTEXT, wParam, (LPARAM)L"FocusGrow");
   case WM_DESTROY:
+    RemoveSystemTrayIcon();
     PostQuitMessage(0);
     break;
   default:
@@ -761,6 +838,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   if (!g_hWnd)
     return 0;
   SetWindowTextW(g_hWnd, L"FocusGrow");
+  InitSystemTrayIcon(g_hWnd);
 
   if (hAppIcon) {
     SendMessage(g_hWnd, WM_SETICON, ICON_BIG, (LPARAM)hAppIcon);

@@ -704,20 +704,61 @@
                     </label>
                 </div>
                 <div class="option-row">
-                    <span>Notification Sound</span>
-                    <select id="select-notification-sound" class="small-action-btn"
-                        style="width: 120px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
-                        <option value="default" style="background: #242424; color: white;">Default</option>
-                        <option value="reminder" style="background: #242424; color: white;">Reminder</option>
-                        <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
-                        <option value="chime" style="background: #242424; color: white;">Chime</option>
-                        <option value="none" style="background: #242424; color: white;">Silent</option>
-                    </select>
+                    <span>Work / Focus Sound</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <select id="select-focus-sound" class="small-action-btn sound-select"
+                            style="width: 130px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
+                            <option value="default" style="background: #242424; color: white;">Default</option>
+                            <option value="reminder" style="background: #242424; color: white;">Reminder</option>
+                            <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
+                            <option value="chime" style="background: #242424; color: white;">Chime</option>
+                            <option value="custom" style="background: #242424; color: white;">Custom (.mp3/.wav)...</option>
+                            <option value="none" style="background: #242424; color: white;">Silent</option>
+                        </select>
+                        <button id="btn-play-focus-sound" class="icon-btn small-btn" title="Test Focus Sound" style="width: 24px; height: 24px; padding: 0;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="option-row custom-sound-row" id="focus-custom-sound-row" style="display: none; padding-left: 12px; margin-top: -6px; margin-bottom: 6px;">
+                    <input type="file" id="focus-sound-file-input" accept="audio/*" style="display: none;">
+                    <button id="btn-browse-focus-sound" class="small-action-btn" style="font-size: 10px; padding: 2px 8px;">📁 Select File</button>
+                    <span id="focus-sound-file-name" style="font-size: 10px; color: var(--accent-blue); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file chosen</span>
+                </div>
+
+                <div class="option-row">
+                    <span>Break Session Sound</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <select id="select-break-sound" class="small-action-btn sound-select"
+                            style="width: 130px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
+                            <option value="chime" style="background: #242424; color: white;">Chime</option>
+                            <option value="default" style="background: #242424; color: white;">Default</option>
+                            <option value="reminder" style="background: #242424; color: white;">Reminder</option>
+                            <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
+                            <option value="custom" style="background: #242424; color: white;">Custom (.mp3/.wav)...</option>
+                            <option value="none" style="background: #242424; color: white;">Silent</option>
+                        </select>
+                        <button id="btn-play-break-sound" class="icon-btn small-btn" title="Test Break Sound" style="width: 24px; height: 24px; padding: 0;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="option-row custom-sound-row" id="break-custom-sound-row" style="display: none; padding-left: 12px; margin-top: -6px; margin-bottom: 6px;">
+                    <input type="file" id="break-sound-file-input" accept="audio/*" style="display: none;">
+                    <button id="btn-browse-break-sound" class="small-action-btn" style="font-size: 10px; padding: 2px 8px;">📁 Select File</button>
+                    <span id="break-sound-file-name" style="font-size: 10px; color: var(--accent-blue); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file chosen</span>
                 </div>
                 <div class="option-row">
                     <span>Auto-PIP on Session Start</span>
                     <label class="switch">
                         <input type="checkbox" id="chk-auto-pip">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="option-row">
+                    <span>Hide Taskbar Icon in PiP</span>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-hide-taskbar-pip">
                         <span class="slider"></span>
                     </label>
                 </div>

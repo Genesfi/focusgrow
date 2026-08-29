@@ -123,7 +123,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sendToCpp({
                 action: 'togglePip',
                 width: targetW,
-                height: targetH
+                height: targetH,
+                hideTaskbar: !!userData.hideTaskbarInPip
             });
         });
     });
@@ -219,9 +220,11 @@ document.addEventListener('DOMContentLoaded', () => {
         gifDisplayMode: 'circle', // 'circle' or 'full'
         ambientMode: 'plant', // 'plant', 'custom', or 'ytmusic'
         accentMode: 'preset', // 'preset', 'custom', or 'ytmusic_dynamic'
-        accentColor: '#60cdff',
         notificationSound: 'default', // 'default', 'reminder', 'alarm', 'chime', 'none'
-        customGifData: '',
+        focusNotificationSound: 'default', // 'default', 'reminder', 'alarm', 'chime', 'custom', 'none'
+        breakNotificationSound: 'chime',   // 'default', 'reminder', 'alarm', 'chime', 'custom', 'none'
+        focusSoundFileName: '',
+        breakSoundFileName: '',
         customGifName: '',
         recentGifs: [], // Stores up to 5 recently used custom GIFs: { id, name, data }
         blockedApps: ['facebook.exe', 'tiktok.exe', 'instagram.exe'],
@@ -232,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isStealthMode: false,
         showVinylSpindle: true,
         autoPipOnStart: false,
+        hideTaskbarInPip: false,
         autoPauseEnabled: true,
         autoPauseSec: 15,
         useComplementaryColor: true,
@@ -390,8 +394,49 @@ document.addEventListener('DOMContentLoaded', () => {
     let notifiedOneMinWarning = false;
     let cachedAppList = [];
 
-    // Notification Helper (Sends exclusively via C++ Native Windows Toast API)
-    function sendNotification(title, body) {
+    // Custom Notification Sound Loader & Playback
+    window._customFocusAudio = null;
+    window._customBreakAudio = null;
+
+    async function initCustomSounds() {
+        try {
+            const focusData = await gifDb.get('focus_sound');
+            if (focusData) {
+                window._customFocusAudio = new Audio(focusData);
+            }
+            const breakData = await gifDb.get('break_sound');
+            if (breakData) {
+                window._customBreakAudio = new Audio(breakData);
+            }
+        } catch (e) {
+            console.error('[Sound] Failed to initialize custom sounds:', e);
+        }
+    }
+    initCustomSounds();
+
+    function playNotificationSound(category = 'focus') {
+        const soundType = (category === 'break')
+            ? (userData.breakNotificationSound || 'chime')
+            : (userData.focusNotificationSound || 'default');
+
+        if (soundType === 'none') {
+            return 'none';
+        } else if (soundType === 'custom') {
+            const audioObj = (category === 'break') ? window._customBreakAudio : window._customFocusAudio;
+            if (audioObj) {
+                audioObj.currentTime = 0;
+                audioObj.play().catch(err => console.error('[Sound] Custom sound playback error:', err));
+            } else {
+                console.warn(`[Sound] Custom ${category} sound selected but no audio file is loaded.`);
+            }
+            return 'none'; // Return 'none' to Windows Toast so Windows doesn't double-play system chime
+        } else {
+            return soundType;
+        }
+    }
+
+    // Notification Helper
+    function sendNotification(title, body, category = 'focus') {
         if (!userData.notificationsEnabled) return;
 
         // Anti-spam: Don't send identical notification within 1 second
@@ -403,11 +448,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window._lastNotifKey = notifKey;
         window._lastNotifTime = now;
 
+        const soundToPlay = playNotificationSound(category);
+
         sendToCpp({
             action: 'notify',
             title: title,
             body: body,
-            sound: userData.notificationSound || 'default'
+            sound: soundToPlay
         });
     }
 
@@ -1808,7 +1855,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sendToCpp({
                 action: 'togglePip',
                 width: userData.pipWidth || 280,
-                height: userData.pipHeight || 400
+                height: userData.pipHeight || 400,
+                hideTaskbar: !!userData.hideTaskbarInPip
             });
         }
 
@@ -1851,11 +1899,29 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             chkNotificationsToggle.checked = userData.notificationsEnabled;
 
-            const soundSelect = document.getElementById('select-notification-sound');
-            if (soundSelect) soundSelect.value = userData.notificationSound || 'default';
+            const focusSoundSelect = document.getElementById('select-focus-sound');
+            if (focusSoundSelect) {
+                focusSoundSelect.value = userData.focusNotificationSound || 'default';
+                const focusCustomRow = document.getElementById('focus-custom-sound-row');
+                if (focusCustomRow) focusCustomRow.style.display = (focusSoundSelect.value === 'custom') ? 'flex' : 'none';
+            }
+            const focusFileName = document.getElementById('focus-sound-file-name');
+            if (focusFileName) focusFileName.textContent = userData.focusSoundFileName || 'No file chosen';
+
+            const breakSoundSelect = document.getElementById('select-break-sound');
+            if (breakSoundSelect) {
+                breakSoundSelect.value = userData.breakNotificationSound || 'chime';
+                const breakCustomRow = document.getElementById('break-custom-sound-row');
+                if (breakCustomRow) breakCustomRow.style.display = (breakSoundSelect.value === 'custom') ? 'flex' : 'none';
+            }
+            const breakFileName = document.getElementById('break-sound-file-name');
+            if (breakFileName) breakFileName.textContent = userData.breakSoundFileName || 'No file chosen';
 
             const chkAutoPip = document.getElementById('chk-auto-pip');
             if (chkAutoPip) chkAutoPip.checked = !!userData.autoPipOnStart;
+
+            const chkHideTaskbarPip = document.getElementById('chk-hide-taskbar-pip');
+            if (chkHideTaskbarPip) chkHideTaskbarPip.checked = !!userData.hideTaskbarInPip;
 
             applyGifTheme();
             optionsModal.classList.add('active');
@@ -1867,9 +1933,82 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
     });
 
-    document.getElementById('select-notification-sound')?.addEventListener('change', (e) => {
-        userData.notificationSound = e.target.value;
+    document.getElementById('chk-hide-taskbar-pip')?.addEventListener('change', (e) => {
+        userData.hideTaskbarInPip = e.target.checked;
         saveUserData();
+    });
+
+    // --- Work & Break Sound Option Handlers ---
+    const focusSoundSelect = document.getElementById('select-focus-sound');
+    const breakSoundSelect = document.getElementById('select-break-sound');
+    const focusCustomRow = document.getElementById('focus-custom-sound-row');
+    const breakCustomRow = document.getElementById('break-custom-sound-row');
+    const focusFileInput = document.getElementById('focus-sound-file-input');
+    const breakFileInput = document.getElementById('break-sound-file-input');
+    const focusFileName = document.getElementById('focus-sound-file-name');
+    const breakFileName = document.getElementById('break-sound-file-name');
+
+    focusSoundSelect?.addEventListener('change', (e) => {
+        userData.focusNotificationSound = e.target.value;
+        if (focusCustomRow) focusCustomRow.style.display = (e.target.value === 'custom') ? 'flex' : 'none';
+        if (e.target.value === 'custom' && !window._customFocusAudio) {
+            focusFileInput?.click();
+        }
+        saveUserData();
+    });
+
+    breakSoundSelect?.addEventListener('change', (e) => {
+        userData.breakNotificationSound = e.target.value;
+        if (breakCustomRow) breakCustomRow.style.display = (e.target.value === 'custom') ? 'flex' : 'none';
+        if (e.target.value === 'custom' && !window._customBreakAudio) {
+            breakFileInput?.click();
+        }
+        saveUserData();
+    });
+
+    document.getElementById('btn-browse-focus-sound')?.addEventListener('click', () => focusFileInput?.click());
+    document.getElementById('btn-browse-break-sound')?.addEventListener('click', () => breakFileInput?.click());
+
+    function handleCustomSoundFileSelect(inputElement, category) {
+        const file = inputElement?.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const dataUrl = e.target.result;
+            const dbKey = (category === 'break') ? 'break_sound' : 'focus_sound';
+            try {
+                await gifDb.save(dbKey, dataUrl);
+                if (category === 'break') {
+                    window._customBreakAudio = new Audio(dataUrl);
+                    userData.breakSoundFileName = file.name;
+                    if (breakFileName) breakFileName.textContent = file.name;
+                } else {
+                    window._customFocusAudio = new Audio(dataUrl);
+                    userData.focusSoundFileName = file.name;
+                    if (focusFileName) focusFileName.textContent = file.name;
+                }
+                saveUserData();
+                console.log(`[Sound] Successfully loaded custom ${category} sound: ${file.name}`);
+            } catch (err) {
+                console.error(`[Sound] Failed to save custom ${category} sound:`, err);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    focusFileInput?.addEventListener('change', () => handleCustomSoundFileSelect(focusFileInput, 'focus'));
+    breakFileInput?.addEventListener('change', () => handleCustomSoundFileSelect(breakFileInput, 'break'));
+
+    // Sound Test Play Buttons
+    document.getElementById('btn-play-focus-sound')?.addEventListener('click', () => {
+        playNotificationSound('focus');
+        sendNotification('Test Focus Sound', 'Testing your focus session notification sound.', 'focus');
+    });
+
+    document.getElementById('btn-play-break-sound')?.addEventListener('click', () => {
+        playNotificationSound('break');
+        sendNotification('Test Break Sound', 'Testing your break session notification sound.', 'break');
     });
 
     // --- GIF Maintenance Utility ---
@@ -2487,17 +2626,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (activeState !== previousState) {
             if (activeState === 'focusing' && previousState === 'idle') {
-                sendNotification('Focus Mode Started', `Session started! Period 1 of ${data.totalPeriods || 1}. Stay focused!`);
+                sendNotification('Focus Mode Started', `Session started! Period 1 of ${data.totalPeriods || 1}. Stay focused!`, 'focus');
                 updateRandomQuote('focus');
             } else if (activeState === 'resting') {
-                sendNotification('Time to Rest', `Focus period done! Step away from your computer for a ${selectedBreakMins} min break.`);
+                sendNotification('Time to Rest', `Focus period done! Step away from your computer for a ${selectedBreakMins} min break.`, 'break');
                 updateRandomQuote('rest');
             } else if (activeState === 'focusing' && previousState === 'resting') {
-                sendNotification('Focus Mode Active', `Break finished! Return to your work application.`);
+                sendNotification('Focus Mode Active', `Break finished! Return to your work application.`, 'focus');
                 updateRandomQuote('focus');
             } else if (activeState === 'idle' && (previousState === 'focusing' || previousState === 'resting')) {
-                sendNotification('Session Completed', `Great job! Focus session completed successfully.`);
+                sendNotification('Session Completed', `Great job! Focus session completed successfully.`, 'focus');
                 updateRandomQuote('focus');
+                
+                // Auto-exit PiP mode when focus session completes, restoring to full main window
+                if (document.body.classList.contains('pip-mode')) {
+                    sendToCpp({ action: 'togglePip' });
+                }
             }
             previousState = activeState;
             notifiedOneMinWarning = false;
@@ -2508,9 +2652,9 @@ document.addEventListener('DOMContentLoaded', () => {
             notifiedOneMinWarning = true;
             const warnText = (data.maxPeriodSec <= 60) ? '30 seconds' : '1 minute';
             if (activeState === 'focusing') {
-                sendNotification('Period Warning', `${warnText} left of focus period! Get ready to take a break.`);
+                sendNotification('Period Warning', `${warnText} left of focus period! Get ready to take a break.`, 'focus');
             } else if (activeState === 'resting') {
-                sendNotification('Break Warning', `${warnText} left of break! Prepare to resume focus.`);
+                sendNotification('Break Warning', `${warnText} left of break! Prepare to resume focus.`, 'break');
             }
         }
 
