@@ -42,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const statStreak = document.getElementById('stat-streak');
     const statCompletedMins = document.getElementById('stat-completed-mins');
     const goalDonutFill = document.getElementById('goal-donut-fill');
+    const goalDonutBg = document.getElementById('goal-donut-bg');
+    const goalDonutContainer = document.getElementById('goal-donut-container');
+    const donutTierBadge = document.getElementById('donut-tier-badge');
 
     const appListContainer = document.getElementById('app-list-container');
     const appSearchInput = document.getElementById('app-search-input');
@@ -106,18 +109,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-pip-toggle, #btn-pip-restore').forEach(btn => {
         btn.addEventListener('click', () => {
             const isCurrentlyPip = document.body.classList.contains('pip-mode');
-
             const isEnteringPip = !isCurrentlyPip;
+
+            // Enable cooldown to prevent capturing transition window resize (e.g. 960x660)
+            isInitializingPip = true;
+            setTimeout(() => { isInitializingPip = false; }, 1200);
+
             const targetW = isEnteringPip ? (userData.pipWidth || 280) : undefined;
             const targetH = isEnteringPip ? (userData.pipHeight || 400) : undefined;
 
             if (isEnteringPip) {
                 console.log(`[PIP] Entering PIP with target size: ${targetW}x${targetH}`);
-                // Enable cooldown to prevent capturing initial window snap
-                isInitializingPip = true;
-                setTimeout(() => { isInitializingPip = false; }, 1000); // 1s cooldown
             } else {
-                console.log(`[PIP] Exiting PIP. Keeping last manual resize: ${userData.pipWidth}x${userData.pipHeight}`);
+                console.log(`[PIP] Exiting PIP.`);
             }
 
             sendToCpp({
@@ -231,6 +235,10 @@ document.addEventListener('DOMContentLoaded', () => {
         restrictedSites: ['facebook.com', 'youtube.com', 'instagram.com', 'tiktok.com', 'twitter.com', 'x.com', 'reddit.com'],
         pipWidth: 280,
         pipHeight: 400,
+        pipVinylWidth: 440,
+        pipVinylHeight: 400,
+        pipPeekingVinylEnabled: false,
+        pipPeekingVinylSide: 'left',
         timerTheme: 'classic', // 'classic', 'hourglass', 'wave', 'blocks', 'dots', 'orbit'
         isStealthMode: false,
         showVinylSpindle: true,
@@ -240,7 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
         autoPauseSec: 15,
         useComplementaryColor: true,
         hourglassAutoRotate: false,
-        completedMinutesByDate: {} // { 'YYYY-MM-DD': minutes }
+        completedMinutesByDate: {}, // { 'YYYY-MM-DD': minutes }
+        prayerEnabled: true,
+        prayerBreakEnabled: true,
+        prayerAdvance: 5,
+        prayerLat: -2.8554,
+        prayerLng: 115.3283,
+        prayerTz: 8
     };
 
     function isGoalMetWithTolerance(mins, targetMins, targetHours) {
@@ -303,6 +317,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (saved) {
                 const parsed = JSON.parse(saved);
                 userData = { ...userData, ...parsed };
+
+                // Sanitize corrupted PIP dimensions (prevent huge dashboard size like 960x660)
+                if (userData.pipWidth > 480 || userData.pipWidth < 160 || userData.pipHeight > 550 || userData.pipHeight < 200) {
+                    userData.pipWidth = 280;
+                    userData.pipHeight = 400;
+                }
+                delete userData.pipVinylWidth;
+                delete userData.pipVinylHeight;
 
                 // Migration: Move base64 GIFs to IndexedDB
                 migrateGifsToIndexedDB();
@@ -737,20 +759,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Dynamic YT Music Album Accent Color Extraction Mode
-        if (userData.accentMode === 'ytmusic_dynamic') {
+        const isDynamicAlbum = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
+        if (isDynamicAlbum) {
             // Keep dynamic color if we have a track, even if paused
             if (hasTrack && coverSrc && coverSrc !== defaultCover) {
                 extractDominantColor(coverSrc, (dynamicHex) => {
                     applyAccentTheme(dynamicHex);
                 });
-            } else if (!hasTrack) {
-                // Only revert to default blue if no music is detected at all
-                applyAccentTheme('#60cdff');
+            } else {
+                // When no music is playing, seamlessly fallback to user's selected base accent color (e.g. Orange)!
+                applyAccentTheme(userData.accentColor || '#60cdff');
             }
-        } else if (userData.accentMode === 'custom' || userData.accentMode === 'preset') {
+        } else {
             applyAccentTheme(userData.accentColor || '#60cdff');
         }
 
+        // Update PIP Peeking Vinyl Disc
+        updatePipPeekingVinyl();
+    }
+
+    let lastPeekingTrackKey = "";
+    let isPeekingTransitioning = false;
+
+    function updatePipPeekingVinyl() {
+        const isPip = document.body.classList.contains('pip-mode');
+        const peekingContainer = document.getElementById('pip-peeking-vinyl-container');
+        const peekingDisc = document.getElementById('pip-peeking-vinyl-disc');
+        const peekingImg = document.getElementById('pip-peeking-vinyl-img');
+        const focusCard = document.getElementById('focus-card');
+        
+        const isEnabled = !!userData.pipPeekingVinylEnabled;
+        const side = userData.pipPeekingVinylSide || 'left';
+        const hasTrack = !!(ytTrackData.title || ytTrackData.author);
+        const isPlaying = !!ytTrackData.isPlaying;
+
+        const shouldShowPeeking = isPip && isEnabled && hasTrack;
+
+        // Sync with Native C++ Layered Vinyl Overlay
+        sendToCpp({
+            action: 'updatePipVinylOverlay',
+            visible: shouldShowPeeking,
+            side: side,
+            isPlaying: isPlaying,
+            imageUrl: ytTrackData.image || ''
+        });
     }
 
     // Dynamic Accent Color Manager & Realtime CSS Variable Applicator
@@ -766,34 +818,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let finalColor = hexColor;
         const lum = getLuminance(hexColor);
-        if (lum < 0.12) { // Too dark for dark theme
-            finalColor = '#80d8ff'; // Brighter blue fallback
-        } else if (lum > 0.9) { // Too bright
-            finalColor = '#4fc3f7';
+        if (lum < 0.12) { // Too dark for dark theme - brighten it
+            finalColor = '#80d8ff';
         }
 
         document.documentElement.style.setProperty('--accent-blue', finalColor);
         document.documentElement.style.setProperty('--accent-blue-hover', finalColor);
 
+        // Dynamic Heatmap shades from Accent Color
+        document.documentElement.style.setProperty('--heatmap-lvl-1', `color-mix(in srgb, ${finalColor} 25%, #161b22)`);
+        document.documentElement.style.setProperty('--heatmap-lvl-2', `color-mix(in srgb, ${finalColor} 50%, #161b22)`);
+        document.documentElement.style.setProperty('--heatmap-lvl-3', `color-mix(in srgb, ${finalColor} 75%, #161b22)`);
+        document.documentElement.style.setProperty('--heatmap-lvl-4', finalColor);
+        document.documentElement.style.setProperty('--heatmap-lvl-3-glow', `color-mix(in srgb, ${finalColor} 40%, transparent)`);
+        document.documentElement.style.setProperty('--heatmap-lvl-4-glow', `color-mix(in srgb, ${finalColor} 60%, transparent)`);
+
+        // Dynamic 24-Hour Productivity Flow SVG Wave Gradients & Peak Marker
+        const waveFillGrad = document.getElementById('waveFillGrad');
+        if (waveFillGrad) {
+            waveFillGrad.innerHTML = `
+                <stop offset="0%" stop-color="${finalColor}" stop-opacity="0.38"/>
+                <stop offset="60%" stop-color="${finalColor}" stop-opacity="0.10"/>
+                <stop offset="100%" stop-color="${finalColor}" stop-opacity="0.0"/>
+            `;
+        }
+        const waveStrokeGrad = document.getElementById('waveStrokeGrad');
+        if (waveStrokeGrad) {
+            waveStrokeGrad.innerHTML = `
+                <stop offset="0%" stop-color="${finalColor}"/>
+                <stop offset="65%" stop-color="${finalColor}"/>
+                <stop offset="100%" stop-color="${finalColor}"/>
+            `;
+        }
+        const markerPulse = document.getElementById('peak-marker-pulse');
+        if (markerPulse) markerPulse.setAttribute('fill', `color-mix(in srgb, ${finalColor} 35%, transparent)`);
+        const markerDot = document.getElementById('peak-marker-dot');
+        if (markerDot) markerDot.setAttribute('fill', finalColor);
+
         const picker = document.getElementById('accent-color-picker');
         if (picker && finalColor.startsWith('#')) picker.value = finalColor;
 
-        // Sync active state of chips
+        // Sync active state of chips with base accent color
         document.querySelectorAll('.accent-chip').forEach(chip => {
             const val = chip.getAttribute('data-accent');
-            if (userData.accentMode === 'ytmusic_dynamic') {
-                chip.classList.toggle('active', val === 'ytmusic_dynamic');
-            } else if (userData.accentMode === 'preset') {
-                chip.classList.toggle('active', val === hexColor);
-            } else {
-                chip.classList.remove('active');
-            }
+            chip.classList.toggle('active', val === (userData.accentColor || '#60cdff'));
         });
+
+        const chkDynamicAlbum = document.getElementById('chk-dynamic-album');
+        if (chkDynamicAlbum) {
+            chkDynamicAlbum.checked = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
+        }
 
         // Show / Hide Dynamic Complementary Contrast Toggle Row in Options
         const rowDynamicContrast = document.getElementById('row-dynamic-contrast');
         if (rowDynamicContrast) {
-            rowDynamicContrast.style.display = (userData.accentMode === 'ytmusic_dynamic') ? 'flex' : 'none';
+            const isDynamic = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
+            rowDynamicContrast.style.display = isDynamic ? 'flex' : 'none';
         }
     }
 
@@ -867,37 +947,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, 32, 32);
                 const data = ctx.getImageData(0, 0, 32, 32).data;
-                let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                
+                let rSum = 0, gSum = 0, bSum = 0, colorCount = 0;
+                let totalCount = 0;
+
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i], g = data[i+1], b = data[i+2];
                     const max = Math.max(r, g, b);
                     const min = Math.min(r, g, b);
                     const saturation = max === 0 ? 0 : (max - min) / max;
-                    if (max > 40 && max < 240 && saturation > 0.15) {
-                        rSum += r; gSum += g; bSum += b;
-                        count++;
+
+                    if (max > 20 && max < 250) {
+                        totalCount++;
+                        // Only count as colorful pixel if saturation is clearly visible (> 0.22)
+                        if (saturation > 0.22) {
+                            rSum += r; gSum += g; bSum += b;
+                            colorCount++;
+                        }
                     }
                 }
-                if (count > 0) {
-                    const r = Math.round(rSum / count);
-                    const g = Math.round(gSum / count);
-                    const b = Math.round(bSum / count);
 
-                    let hex = "";
-                    if (userData.useComplementaryColor !== false) {
-                        hex = getComplementaryColor(r, g, b);
-                    } else {
-                        hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-                    }
-                    callback(hex);
+                // If less than 10% of pixels have rich color, it is a Monochrome/Grayscale artwork!
+                if (colorCount < Math.max(12, totalCount * 0.10)) {
+                    // Monochrome / Black & White / Grayscale -> Clean Sleek Silver/Ice-White
+                    console.log('[Color] Monochrome/Grayscale album art detected -> applying #f1f5f9');
+                    callback('#f1f5f9');
+                    return;
+                }
+
+                const r = Math.round(rSum / colorCount);
+                const g = Math.round(gSum / colorCount);
+                const b = Math.round(bSum / colorCount);
+
+                let [h, s, l] = rgbToHsl(r, g, b);
+
+                if (userData.useComplementaryColor !== false && s > 0.35) {
+                    // High contrast complementary for vivid colorful covers
+                    h = (h + 0.5) % 1.0;
+                    s = Math.max(s, 0.70);
+                    l = Math.max(0.55, Math.min(0.72, l));
+                    callback(hslToHex(h, s, l));
                 } else {
-                    callback('#60cdff');
+                    // Dominant colorful tone with enhanced visibility
+                    s = Math.max(s, 0.65);
+                    l = Math.max(0.55, Math.min(0.75, l));
+                    callback(hslToHex(h, s, l));
                 }
             } catch (e) {
-                callback('#60cdff');
+                console.error('[Color] Error extracting dominant color:', e);
+                callback(userData.accentColor || '#f1f5f9');
             }
         };
-        img.onerror = () => callback('#60cdff');
+        img.onerror = () => callback(userData.accentColor || '#60cdff');
         img.src = imageUrl;
     }
 
@@ -927,20 +1028,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', () => {
         syncVinylCenterPosition();
 
-        // BUG FIX: Prevent saving PIP size when transition is happening or if window is huge (Dashboard size)
+        // Save PIP size when user resizes window manually
         if (document.body.classList.contains('pip-mode') && !isInitializingPip) {
             const w = document.documentElement.clientWidth;
             const h = document.documentElement.clientHeight;
 
-            // Only save if it's a valid small size (threshold is 600px to distinguish from Dashboard)
-            if (w > 120 && h > 120 && w < 600 && h < 600) {
+            // Allow flexible resizing up to large displays (guarding against transition snapshots)
+            if (w >= 160 && h >= 200 && !(w === 960 && h === 660)) {
                 userData.pipWidth = w;
                 userData.pipHeight = h;
                 saveUserData();
                 console.log(`[PIP] Manual Resize Saved: ${w}x${h}`);
-            } else {
-                console.log(`[PIP] Resize Ignored (Transition or too large): ${w}x${h}`);
             }
+            updatePipPeekingVinyl();
         }
     });
 
@@ -1449,35 +1549,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Accent Color Preset Chips Listener
+    // Accent Color Preset Chips Listener (Selects Base Color)
     document.querySelectorAll('.accent-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             const accentVal = chip.getAttribute('data-accent');
+            userData.accentColor = accentVal;
+            if (userData.accentMode !== 'ytmusic_dynamic' && !userData.dynamicAlbumEnabled) {
+                userData.accentMode = 'preset';
+            }
             document.querySelectorAll('.accent-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
-
-            if (accentVal === 'ytmusic_dynamic') {
-                userData.accentMode = 'ytmusic_dynamic';
-                saveUserData();
-                updateYtMusicUI();
-            } else {
-                userData.accentMode = 'preset';
-                userData.accentColor = accentVal;
-                saveUserData();
+            saveUserData();
+            updateYtMusicUI();
+            if (!userData.dynamicAlbumEnabled && userData.accentMode !== 'ytmusic_dynamic') {
                 applyAccentTheme(accentVal);
             }
         });
     });
 
-    // Custom Color Picker Listener
+    // Custom Color Picker Listener (Selects Base Color)
     document.getElementById('accent-color-picker')?.addEventListener('input', (e) => {
         const hex = e.target.value;
-        userData.accentMode = 'custom';
         userData.accentColor = hex;
+        if (userData.accentMode !== 'ytmusic_dynamic' && !userData.dynamicAlbumEnabled) {
+            userData.accentMode = 'custom';
+        }
         document.querySelectorAll('.accent-chip').forEach(c => c.classList.remove('active'));
         saveUserData();
-        applyAccentTheme(hex);
+        updateYtMusicUI();
+        if (!userData.dynamicAlbumEnabled && userData.accentMode !== 'ytmusic_dynamic') {
+            applyAccentTheme(hex);
+        }
     });
+
+    // Dynamic YT Music Album Sync Toggle Switch Listener
+    const chkDynamicAlbum = document.getElementById('chk-dynamic-album');
+    if (chkDynamicAlbum) {
+        chkDynamicAlbum.checked = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
+        chkDynamicAlbum.addEventListener('change', (e) => {
+            userData.dynamicAlbumEnabled = e.target.checked;
+            userData.accentMode = e.target.checked ? 'ytmusic_dynamic' : 'preset';
+            saveUserData();
+            updateYtMusicUI();
+            if (!e.target.checked) {
+                applyAccentTheme(userData.accentColor || '#60cdff');
+            }
+        });
+    }
 
     // High-Contrast Complementary Accent Toggle Listener
     const chkDynamicContrast = document.getElementById('chk-dynamic-contrast');
@@ -1500,6 +1618,30 @@ document.addEventListener('DOMContentLoaded', () => {
             applyTimerTheme();
         });
     }
+
+    // PIP Peeking Vinyl Toggle Listener
+    const chkPipPeekingVinyl = document.getElementById('chk-pip-peeking-vinyl');
+    if (chkPipPeekingVinyl) {
+        chkPipPeekingVinyl.checked = !!userData.pipPeekingVinylEnabled;
+        chkPipPeekingVinyl.addEventListener('change', (e) => {
+            userData.pipPeekingVinylEnabled = e.target.checked;
+            saveUserData();
+            updatePipPeekingVinyl();
+        });
+    }
+
+    // PIP Peeking Vinyl Side Selector Listeners
+    document.querySelectorAll('.pip-side-btn').forEach(btn => {
+        const side = btn.getAttribute('data-side');
+        btn.classList.toggle('active', side === (userData.pipPeekingVinylSide || 'left'));
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.pip-side-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            userData.pipPeekingVinylSide = side;
+            saveUserData();
+            updatePipPeekingVinyl();
+        });
+    });
 
     // YT Music Media Control Buttons (Prev, Play/Pause, Next)
     document.querySelectorAll('.btn-yt-prev').forEach(btn => {
@@ -1754,6 +1896,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeContent.style.display = 'flex';
                 activeContent.classList.add('active');
             }
+
+            // Reset Prayer Display to Next Prayer whenever switching tabs
+            if (window.allPrayerTimes && window.allPrayerTimes.length > 0 && typeof window.renderPrayerInfo === 'function') {
+                window.displayedPrayerIndex = window.allPrayerTimes.findIndex(p => p.name === window.actualNextPrayerName);
+                window.renderPrayerInfo();
+            }
         });
     });
 
@@ -1836,6 +1984,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncRestrictedSitesToExtension(userData.restrictedSites || []);
     sendToCpp({ action: 'setBlacklist', blacklist: blockedApps || [] });
     sendToCpp({ action: 'setRestrictedSites', restrictedSites: userData.restrictedSites || [] });
+    sendToCpp({ action: 'setAutoCloseBlocked', enabled: userData.autoCloseBlockedApps === true });
 
     // Start Focus Session
     btnStartFocus.addEventListener('click', () => {
@@ -2066,6 +2215,35 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
     });
 
+    const chkAutoCloseToggle = document.getElementById('chk-auto-close-toggle');
+    if (chkAutoCloseToggle) {
+        chkAutoCloseToggle.checked = userData.autoCloseBlockedApps === true;
+        chkAutoCloseToggle.addEventListener('change', (e) => {
+            userData.autoCloseBlockedApps = e.target.checked;
+            saveUserData();
+            sendToCpp({
+                action: 'setAutoCloseBlocked',
+                enabled: userData.autoCloseBlockedApps
+            });
+            if (userData.autoCloseBlockedApps) {
+                sendNotification('Auto-Close Enabled', 'Blocked apps will close automatically when opened during focus.', 'focus');
+            }
+        });
+    }
+
+    const chkMinimizeTrayToggle = document.getElementById('chk-minimize-tray-toggle');
+    if (chkMinimizeTrayToggle) {
+        chkMinimizeTrayToggle.checked = userData.minimizeToTrayOnClose !== false;
+        chkMinimizeTrayToggle.addEventListener('change', (e) => {
+            userData.minimizeToTrayOnClose = e.target.checked;
+            saveUserData();
+            sendToCpp({
+                action: 'setMinimizeToTrayConfig',
+                enabled: userData.minimizeToTrayOnClose !== false
+            });
+        });
+    }
+
     const chkAutoPauseToggle = document.getElementById('chk-auto-pause-toggle');
     const selectAutoPauseSec = document.getElementById('select-auto-pause-sec');
     const autoPauseSecRow = document.getElementById('auto-pause-sec-row');
@@ -2166,10 +2344,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!appListContainer) return;
         appListContainer.innerHTML = '';
 
+        const currentBlocked = userData.blockedApps || blockedApps || [];
+        blockedApps = currentBlocked;
+
+        // Combine currently open apps with any blocked apps (so blocked apps always show up in list)
+        const knownExes = new Set((cachedAppList || []).map(a => (a.exeName || '').toLowerCase()));
+        let combinedApps = [...(cachedAppList || [])];
+
+        currentBlocked.forEach(bExe => {
+            if (bExe && !knownExes.has(bExe.toLowerCase())) {
+                const lower = bExe.toLowerCase();
+                const icon = (userData.appIconMap && userData.appIconMap[lower]) || defaultIconSvg;
+                combinedApps.push({
+                    exeName: bExe,
+                    title: bExe,
+                    icon: icon
+                });
+            }
+        });
+
         const searchQuery = (appSearchInput.value || '').trim().toLowerCase();
 
-        let displayApps = cachedAppList.filter(app => {
-            const isBlocked = blockedApps.some(a =>
+        let displayApps = combinedApps.filter(app => {
+            const isBlocked = currentBlocked.some(a =>
                 a.toLowerCase() === app.exeName.toLowerCase()
             );
             if (currentAppFilter === 'blocked' && !isBlocked) return false;
@@ -2222,7 +2419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const chk = document.createElement('input');
             chk.type = 'checkbox';
-            chk.checked = blockedApps.some(a =>
+            chk.checked = currentBlocked.some(a =>
                 a.toLowerCase() === app.exeName.toLowerCase()
             );
 
@@ -2233,16 +2430,24 @@ document.addEventListener('DOMContentLoaded', () => {
             switchLabel.appendChild(sliderSpan);
 
             chk.addEventListener('change', (e) => {
+                let current = userData.blockedApps || blockedApps || [];
                 if (e.target.checked) {
-                    if (!blockedApps.includes(app.exeName)) blockedApps.push(app.exeName);
+                    if (!current.some(a => a.toLowerCase() === app.exeName.toLowerCase())) {
+                        current.push(app.exeName);
+                    }
                 } else {
-                    blockedApps = blockedApps.filter(a =>
+                    current = current.filter(a =>
                         a.toLowerCase() !== app.exeName.toLowerCase()
                     );
                 }
-                userData.blockedApps = blockedApps;
+                userData.blockedApps = current;
+                blockedApps = current;
                 saveUserData();
-                sendToCpp({ action: 'setBlacklist', blacklist: blockedApps });
+                sendToCpp({ action: 'setBlacklist', blacklist: current });
+                renderAppList(cachedAppList);
+                if (typeof renderStatsDashboard === 'function') {
+                    renderStatsDashboard(activeStatsRange);
+                }
             });
 
             item.appendChild(iconImg);
@@ -2252,6 +2457,16 @@ document.addEventListener('DOMContentLoaded', () => {
             appListContainer.appendChild(item);
         });
     };
+
+    // Daily Goal Multi-Tier Color Progression (Dual-Layer Clean Lap Rings)
+    const GOAL_TIERS = [
+        { name: 'Standard', color: 'rgba(255, 255, 255, 0.65)', baseColor: 'rgba(255, 255, 255, 0.1)' },
+        { name: 'Electric Blue', color: '#38bdf8', baseColor: 'rgba(255, 255, 255, 0.4)' },
+        { name: 'Emerald Green', color: '#22c55e', baseColor: '#38bdf8' },
+        { name: 'Neon Pink', color: '#ec4899', baseColor: '#22c55e' },
+        { name: 'Amber Gold', color: '#eab308', baseColor: '#ec4899' },
+        { name: 'Crimson Flame', color: '#ef4444', baseColor: '#eab308' }
+    ];
 
     function updateStatsUI() {
         userData.streakDays = calculateStreakDays();
@@ -2269,9 +2484,61 @@ document.addEventListener('DOMContentLoaded', () => {
         statStreak.textContent = userData.streakDays;
         statCompletedMins.textContent = userData.completedMinutesToday;
 
-        const goalMins = userData.dailyGoalHours * 60;
-        const donutRatio = Math.min(1.0, userData.completedMinutesToday / goalMins);
-        goalDonutFill.style.strokeDashoffset = 301.5 * (1 - donutRatio);
+        const goalMins = Math.max(1, (Number(userData.dailyGoalHours) || 1) * 60);
+        const completedMins = Math.max(0, Number(userData.completedMinutesToday) || 0);
+        const totalRatio = completedMins / goalMins;
+        const CIRCUMFERENCE = 301.5;
+
+        if (goalDonutFill) {
+            goalDonutFill.style.filter = 'none';
+
+            if (totalRatio <= 0) {
+                if (goalDonutBg) goalDonutBg.style.stroke = GOAL_TIERS[0].baseColor;
+                goalDonutFill.style.stroke = GOAL_TIERS[0].color;
+                goalDonutFill.style.strokeDashoffset = CIRCUMFERENCE;
+                if (donutTierBadge) donutTierBadge.style.display = 'none';
+                if (goalDonutContainer) goalDonutContainer.title = `Daily Goal: 0 / ${goalMins} mins (0%)`;
+            } else if (totalRatio < 1.0) {
+                if (goalDonutBg) goalDonutBg.style.stroke = GOAL_TIERS[0].baseColor;
+                goalDonutFill.style.stroke = GOAL_TIERS[0].color;
+                goalDonutFill.style.strokeDashoffset = (CIRCUMFERENCE * (1 - totalRatio)).toFixed(1);
+                if (donutTierBadge) donutTierBadge.style.display = 'none';
+                if (goalDonutContainer) goalDonutContainer.title = `Daily Goal: ${completedMins} / ${goalMins} mins (${Math.round(totalRatio * 100)}%)`;
+            } else {
+                const fullLaps = Math.floor(totalRatio);
+                const lapProgress = totalRatio - fullLaps;
+                const N = GOAL_TIERS.length - 1; // 5 colored tiers (Blue, Green, Pink, Yellow, Red)
+
+                let activeTierIdx, fillRatio;
+                if (lapProgress === 0) {
+                    activeTierIdx = ((fullLaps - 1) % N) + 1;
+                    fillRatio = 1.0;
+                } else {
+                    activeTierIdx = ((fullLaps - 1) % N) + 1;
+                    fillRatio = lapProgress;
+                }
+
+                const currentTier = GOAL_TIERS[activeTierIdx] || GOAL_TIERS[1];
+
+                if (goalDonutBg) goalDonutBg.style.stroke = currentTier.baseColor;
+                goalDonutFill.style.stroke = currentTier.color;
+                goalDonutFill.style.strokeDashoffset = (CIRCUMFERENCE * (1 - fillRatio)).toFixed(1);
+
+                if (donutTierBadge) {
+                    const multDisplay = totalRatio >= 10 ? totalRatio.toFixed(0) : totalRatio.toFixed(1);
+                    donutTierBadge.style.display = 'inline-block';
+                    donutTierBadge.style.color = currentTier.color;
+                    donutTierBadge.style.borderColor = currentTier.color;
+                    donutTierBadge.style.boxShadow = `0 2px 8px rgba(0, 0, 0, 0.6)`;
+                    donutTierBadge.textContent = `${multDisplay}x`;
+                }
+
+                if (goalDonutContainer) {
+                    const lapNumber = fullLaps + (lapProgress > 0 ? 1 : 0);
+                    goalDonutContainer.title = `Daily Goal: ${completedMins} / ${goalMins} mins (${totalRatio.toFixed(1)}x - Lap ${lapNumber}: ${currentTier.name})`;
+                }
+            }
+        }
 
         const statsKpiStreak = document.getElementById('stats-kpi-streak');
         if (statsKpiStreak) {
@@ -2279,57 +2546,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         renderWeeklyChart();
-    }
-
-    function renderWeeklyChart() {
-        const chartContainer = document.getElementById('stats-weekly-chart');
-        if (!chartContainer) return;
-
-        chartContainer.innerHTML = '';
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const today = new Date();
-
-        // ALWAYS use the daily goal (e.g. 4 hrs) for the 7-day trend chart.
-        const dailyGoalHours = parseFloat(userData.dailyGoalHours) || 1;
-        const dailyGoalMins = dailyGoalHours * 60;
-
-        // Get last 7 days
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(today.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            const dayName = dayNames[d.getDay()];
-
-            // Try to get minutes from dedicated history, fallback to summing appStats
-            let mins = (dateStr === todayDateStr) ? userData.completedMinutesToday : (userData.completedMinutesByDate[dateStr] || 0);
-
-            if (mins === 0 && userData.appStatsByDate && userData.appStatsByDate[dateStr]) {
-                const dayApps = userData.appStatsByDate[dateStr];
-                let totalSec = 0;
-                for (const exe in dayApps) {
-                    totalSec += dayApps[exe];
-                }
-                mins = Math.floor(totalSec / 60);
-            }
-
-            const ratio = Math.min(1.0, mins / dailyGoalMins);
-            const barWrapper = document.createElement('div');
-            barWrapper.className = 'chart-bar-wrapper';
-
-            // Visual logic: Ensure a minimum visible height (8%) even for small values > 0
-            const displayPercent = mins > 0 ? (8 + (ratio * 92)) : 0;
-            const isGoalMet = isGoalMetWithTolerance(mins, dailyGoalMins, dailyGoalHours);
-
-            barWrapper.innerHTML = `
-                <div class="chart-bar-container">
-                    <div class="chart-bar-fill ${isGoalMet ? 'goal-met' : ''}" style="height: ${Math.round(displayPercent)}%;" title="${mins} mins on ${dateStr}">
-                        ${mins >= (dailyGoalMins * 0.15) ? `<span class="bar-val-hint">${mins}m</span>` : ''}
-                    </div>
-                </div>
-                <div class="chart-day-label">${i === 0 ? 'Today' : dayName}</div>
-            `;
-            chartContainer.appendChild(barWrapper);
-        }
     }
 
     // Statistics Modal Elements
@@ -2455,6 +2671,477 @@ document.addEventListener('DOMContentLoaded', () => {
             renderStatsDashboard(range);
         });
     });
+
+    // Default classification for popular apps
+    const DEFAULT_APP_CATEGORIES = {
+        'afterfx.exe': 'productive',
+        'premiere.exe': 'productive',
+        'photoshop.exe': 'productive',
+        'illustrator.exe': 'productive',
+        'blender.exe': 'productive',
+        'figma.exe': 'productive',
+        'canva.exe': 'productive',
+        'audition.exe': 'productive',
+        'obs64.exe': 'productive',
+        'studio64.exe': 'productive',
+        'code.exe': 'productive',
+        'devenv.exe': 'productive',
+        'rider64.exe': 'productive',
+        'idea64.exe': 'productive',
+        'pycharm64.exe': 'productive',
+        'clion64.exe': 'productive',
+        'webstorm64.exe': 'productive',
+        'unity.exe': 'productive',
+        'unrealeditor.exe': 'productive',
+        'sublime_text.exe': 'productive',
+        'git-bash.exe': 'productive',
+        'windowsterminal.exe': 'productive',
+        'powershell.exe': 'productive',
+        'cmd.exe': 'productive',
+        'word.exe': 'productive',
+        'excel.exe': 'productive',
+        'powerpnt.exe': 'productive',
+        'notion.exe': 'productive',
+        'obsidian.exe': 'productive',
+        'steam.exe': 'distracting',
+        'epicgameslauncher.exe': 'distracting',
+        'discord.exe': 'distracting',
+        'spotify.exe': 'distracting',
+        'telegram.exe': 'distracting',
+        'whatsapp.exe': 'distracting',
+        'tiktok.exe': 'distracting'
+    };
+
+    function getAppCategory(exeName) {
+        if (!exeName) return 'neutral';
+        const lower = exeName.toLowerCase();
+        userData.appCategories = userData.appCategories || {};
+        if (userData.appCategories[lower]) {
+            return userData.appCategories[lower];
+        }
+        if (DEFAULT_APP_CATEGORIES[lower]) {
+            return DEFAULT_APP_CATEGORIES[lower];
+        }
+        return 'neutral';
+    }
+
+    function toggleAppCategory(exeName) {
+        if (!exeName) return;
+        const lower = exeName.toLowerCase();
+        const current = getAppCategory(exeName);
+        const next = current === 'productive' ? 'neutral' : (current === 'neutral' ? 'distracting' : 'productive');
+        userData.appCategories = userData.appCategories || {};
+        userData.appCategories[lower] = next;
+        saveUserData();
+        renderStatsDashboard(activeStatsRange);
+    }
+
+    function toggleQuickBlockApp(exeName) {
+        if (!exeName) return;
+        let blocked = userData.blockedApps || [];
+        const lower = exeName.toLowerCase();
+        const idx = blocked.findIndex(a => a.toLowerCase() === lower);
+        if (idx >= 0) {
+            blocked.splice(idx, 1);
+            sendNotification('App Unblocked', `${exeName} removed from restricted apps.`, 'focus');
+        } else {
+            blocked.push(exeName);
+            sendNotification('App Blocked', `${exeName} added to restricted apps list.`, 'focus');
+        }
+        userData.blockedApps = blocked;
+        blockedApps = blocked;
+        saveUserData();
+        sendToCpp({ action: 'setBlacklist', blacklist: blocked });
+        renderStatsDashboard(activeStatsRange);
+        if (typeof window.renderAppList === 'function') {
+            window.renderAppList(cachedAppList);
+        }
+    }
+
+    function renderWeeklyChart() {
+        const chartContainer = document.getElementById('stats-weekly-chart');
+        if (!chartContainer) return;
+
+        chartContainer.innerHTML = '';
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const today = new Date();
+
+        // Target daily goal in mins
+        const dailyGoalHours = parseFloat(userData.dailyGoalHours) || 1;
+        const dailyGoalMins = dailyGoalHours * 60;
+
+        // Gather 7 days data first to determine dynamic scale
+        const daysData = [];
+        let maxMins = dailyGoalMins;
+
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const dayName = dayNames[d.getDay()];
+
+            let mins = (dateStr === todayDateStr) ? (userData.completedMinutesToday || 0) : ((userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr]) || 0);
+
+            if (mins === 0 && userData.appStatsByDate && userData.appStatsByDate[dateStr]) {
+                const dayApps = userData.appStatsByDate[dateStr];
+                let totalSec = 0;
+                for (const exe in dayApps) {
+                    totalSec += dayApps[exe];
+                }
+                mins = Math.floor(totalSec / 60);
+            }
+
+            if (mins > maxMins) {
+                maxMins = mins;
+            }
+
+            daysData.push({
+                index: i,
+                dateStr,
+                dayName: (i === 0 ? 'Today' : dayName),
+                mins
+            });
+        }
+
+        if (maxMins <= 0) maxMins = 60;
+
+        daysData.forEach(item => {
+            const ratio = item.mins / maxMins;
+            const barWrapper = document.createElement('div');
+            barWrapper.className = 'chart-bar-wrapper';
+
+            const displayPercent = item.mins > 0 ? Math.max(6, Math.round(ratio * 100)) : 0;
+            const isGoalMet = isGoalMetWithTolerance(item.mins, dailyGoalMins, dailyGoalHours);
+            const hoursPart = Math.floor(item.mins / 60);
+            const minsPart = item.mins % 60;
+            const timeFormattedStr = `${hoursPart}h ${minsPart}m`;
+
+            barWrapper.innerHTML = `
+                <div class="chart-tooltip">
+                    <div class="chart-tooltip-title">${item.dayName} (${item.dateStr})</div>
+                    <div class="chart-tooltip-time">⏱️ ${timeFormattedStr} (${item.mins}m)</div>
+                    <div class="chart-tooltip-status">${isGoalMet ? '🎉 Goal Met!' : '⏳ Target: ' + dailyGoalHours + 'h'}</div>
+                </div>
+                <div class="chart-bar-container">
+                    <div class="chart-bar-fill ${isGoalMet ? 'goal-met' : ''}" style="height: ${displayPercent}%;">
+                        ${item.mins >= (maxMins * 0.12) ? `<span class="bar-val-hint">${item.mins}m</span>` : ''}
+                    </div>
+                </div>
+                <div class="chart-day-label">${item.dayName}</div>
+            `;
+            chartContainer.appendChild(barWrapper);
+        });
+    }
+
+    let heatmapWeekOffset = 0;
+
+    function renderHeatmapMatrix() {
+        const matrix = document.getElementById('stats-github-heatmap-matrix');
+        const monthsBar = document.getElementById('github-heatmap-months');
+        const totalText = document.getElementById('heatmap-total-contributions-text');
+        const periodLabel = document.getElementById('heatmap-period-label');
+        if (!matrix || !monthsBar) return;
+        matrix.innerHTML = '';
+        monthsBar.innerHTML = '';
+
+        const WEEKS_TO_SHOW = 34; // 34 weeks distributed with justify-content: space-between fills 100% width
+        const dailyGoalMins = (userData.dailyGoalHours || 1) * 60;
+
+        // End date adjusted by heatmapWeekOffset
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + (heatmapWeekOffset * 7));
+        
+        // Find the Saturday of that week (end of week column)
+        const endDayOfWeek = endDate.getDay();
+        const currentSaturday = new Date(endDate);
+        currentSaturday.setDate(currentSaturday.getDate() + (6 - endDayOfWeek));
+
+        // Start date: (WEEKS_TO_SHOW * 7 - 1) days before currentSaturday
+        const totalDays = WEEKS_TO_SHOW * 7;
+        const startDate = new Date(currentSaturday);
+        startDate.setDate(startDate.getDate() - (totalDays - 1));
+
+        let totalPeriodMins = 0;
+        let activeDaysCount = 0;
+        const monthPositions = [];
+        let lastMonth = -1;
+
+        // Render columns (weeks) and rows (days 0..6: Sun..Sat)
+        for (let col = 0; col < WEEKS_TO_SHOW; col++) {
+            const weekCol = document.createElement('div');
+            weekCol.className = 'github-week-col';
+
+            for (let row = 0; row < 7; row++) {
+                const dayIndex = col * 7 + row;
+                const cellDate = new Date(startDate);
+                cellDate.setDate(cellDate.getDate() + dayIndex);
+
+                const dateStr = cellDate.toISOString().split('T')[0];
+                const dayName = cellDate.toLocaleDateString('en-US', { weekday: 'short' });
+                const monthName = cellDate.toLocaleDateString('en-US', { month: 'short' });
+                const monthNum = cellDate.getMonth();
+
+                // Detect month header boundary
+                if (row === 0 && monthNum !== lastMonth) {
+                    monthPositions.push({ name: monthName, colIndex: col });
+                    lastMonth = monthNum;
+                }
+
+                let mins = (dateStr === todayDateStr) ? (userData.completedMinutesToday || 0) : ((userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr]) || 0);
+
+                if (mins === 0 && userData.appStatsByDate && userData.appStatsByDate[dateStr]) {
+                    let totalSec = 0;
+                    for (const exe in userData.appStatsByDate[dateStr]) {
+                        totalSec += userData.appStatsByDate[dateStr][exe];
+                    }
+                    mins = Math.floor(totalSec / 60);
+                }
+
+                totalPeriodMins += mins;
+                if (mins > 0) activeDaysCount++;
+
+                let lvl = 'lvl-0';
+                if (mins > 0) {
+                    if (mins >= dailyGoalMins || mins >= 120) lvl = 'lvl-4';
+                    else if (mins >= 60) lvl = 'lvl-3';
+                    else if (mins >= 30) lvl = 'lvl-2';
+                    else lvl = 'lvl-1';
+                }
+
+                const cell = document.createElement('div');
+                cell.className = `github-cell ${lvl}`;
+                const hoursPart = Math.floor(mins / 60);
+                const minsPart = mins % 60;
+                const formattedTime = (hoursPart > 0 ? `${hoursPart}h ` : '') + `${minsPart}m`;
+
+                cell.title = `${dateStr} (${dayName}): ${mins > 0 ? formattedTime + ' focused' : 'No focus recorded'}`;
+                weekCol.appendChild(cell);
+            }
+            matrix.appendChild(weekCol);
+        }
+
+        // Render Month Headers aligned with columns percentage
+        monthPositions.forEach(m => {
+            const span = document.createElement('span');
+            span.className = 'github-month-label';
+            span.textContent = m.name;
+            const pct = (m.colIndex / (WEEKS_TO_SHOW - 1)) * 96;
+            span.style.left = `${pct}%`;
+            monthsBar.appendChild(span);
+        });
+
+        // Update header summary text
+        const totalHours = (totalPeriodMins / 60).toFixed(1);
+        if (totalText) {
+            totalText.textContent = `${totalHours} hours focused in ${WEEKS_TO_SHOW} weeks (${activeDaysCount} active days)`;
+        }
+
+        // Update period label
+        if (periodLabel) {
+            const startMonthStr = startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const endMonthStr = currentSaturday.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            periodLabel.textContent = `${startMonthStr} — ${endMonthStr}`;
+        }
+    }
+
+    document.getElementById('btn-heatmap-prev')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        heatmapWeekOffset -= 12; // Go back ~3 months
+        renderHeatmapMatrix();
+    });
+
+    document.getElementById('btn-heatmap-next')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        heatmapWeekOffset = Math.min(0, heatmapWeekOffset + 12); // Advance towards today
+        renderHeatmapMatrix();
+    });
+
+    function renderPeakHoursChart(range = activeStatsRange) {
+        const svg = document.getElementById('peak-wave-svg');
+        const areaPath = document.getElementById('peak-wave-area');
+        const linePath = document.getElementById('peak-wave-line');
+        const markerGroup = document.getElementById('peak-marker-group');
+        const markerDot = document.getElementById('peak-marker-dot');
+        const markerPulse = document.getElementById('peak-marker-pulse');
+        const hoverLine = document.getElementById('wave-hover-line');
+        const hoverDot = document.getElementById('wave-hover-dot');
+        const hoverTooltip = document.getElementById('wave-hover-tooltip');
+        const waveContainer = document.getElementById('stats-peak-wave-container');
+        const badge = document.getElementById('stats-chronotype-badge');
+        const insight = document.getElementById('stats-peak-hours-insight');
+        if (!areaPath || !linePath) return;
+
+        const targetDates = getDateRangeArray(range);
+        const hourlyBuckets = new Array(24).fill(0);
+
+        // Aggregate hourly focus time
+        targetDates.forEach(dateStr => {
+            if (userData.hourlyFocusStats && userData.hourlyFocusStats[dateStr]) {
+                const dayHours = userData.hourlyFocusStats[dateStr];
+                for (let h = 0; h < 24; h++) {
+                    if (dayHours[h]) hourlyBuckets[h] += dayHours[h];
+                }
+            } else {
+                let dayMins = (dateStr === todayDateStr) ? (userData.completedMinutesToday || 0) : ((userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr]) || 0);
+                if (dayMins > 0) {
+                    const rangeInfo = (userData.workTimeRangesByDate && userData.workTimeRangesByDate[dateStr]);
+                    let startH = 9, endH = 18;
+                    if (rangeInfo && rangeInfo.firstStart && rangeInfo.lastActive) {
+                        const parseH = (tStr) => {
+                            const match = tStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+                            if (match) {
+                                let h = parseInt(match[1], 10);
+                                const isPM = (match[3] || '').toUpperCase() === 'PM';
+                                const isAM = (match[3] || '').toUpperCase() === 'AM';
+                                if (isPM && h < 12) h += 12;
+                                if (isAM && h === 12) h = 0;
+                                return h;
+                            }
+                            return 9;
+                        };
+                        startH = parseH(rangeInfo.firstStart);
+                        endH = parseH(rangeInfo.lastActive);
+                        if (endH < startH) endH = Math.min(23, startH + 4);
+                    }
+                    const numHours = Math.max(1, (endH - startH + 1));
+                    const minsPerHour = Math.round(dayMins / numHours);
+                    let rem = dayMins;
+                    for (let h = startH; h <= endH; h++) {
+                        const chunk = (h === endH) ? rem : Math.min(rem, minsPerHour);
+                        hourlyBuckets[h] += chunk;
+                        rem -= chunk;
+                    }
+                }
+            }
+        });
+
+        let maxH = Math.max(1, ...hourlyBuckets);
+        let peakWindowStart = 0;
+        let peakWindowSum = 0;
+        let highestSingleHour = 0;
+        let highestSingleVal = 0;
+
+        for (let h = 0; h < 24; h++) {
+            const twoHourSum = hourlyBuckets[h] + hourlyBuckets[(h + 1) % 24];
+            if (twoHourSum > peakWindowSum) {
+                peakWindowSum = twoHourSum;
+                peakWindowStart = h;
+            }
+            if (hourlyBuckets[h] > highestSingleVal) {
+                highestSingleVal = hourlyBuckets[h];
+                highestSingleHour = h;
+            }
+        }
+
+        let peakHour = peakWindowStart;
+        let peakWindow = `${String(peakHour).padStart(2, '0')}:00 — ${String((peakHour + 2) % 24).padStart(2, '0')}:00`;
+
+        // Chronotype classification
+        let persona = '🌙 Night Owl Coder';
+        let personaColor = '#c084fc';
+        if (peakHour >= 5 && peakHour < 12) {
+            persona = '🌅 Early Bird Champion';
+            personaColor = '#fbbf24';
+        } else if (peakHour >= 12 && peakHour < 18) {
+            persona = '⚡ Afternoon Flow Master';
+            personaColor = '#60cdff';
+        } else if (peakHour >= 18 && peakHour <= 23) {
+            persona = '🌙 Night Owl Coder';
+            personaColor = '#c084fc';
+        } else {
+            persona = '🌌 Midnight Hacker';
+            personaColor = '#a78bfa';
+        }
+
+        if (badge) {
+            badge.textContent = persona;
+            badge.style.color = personaColor;
+        }
+
+        if (insight) {
+            if (peakWindowSum > 0) {
+                const peakHPart = Math.floor(peakWindowSum / 60);
+                const peakMPart = peakWindowSum % 60;
+                const formattedPeak = (peakHPart > 0 ? `${peakHPart}h ` : '') + `${peakMPart}m`;
+                insight.innerHTML = `🔥 Your peak concentration flow is around <strong>${peakWindow}</strong> (${formattedPeak} focused).`;
+            } else {
+                insight.innerHTML = `💡 Start focus sessions throughout the day to calculate your peak productivity curve.`;
+            }
+        }
+
+        // Calculate 24 points for the SVG (viewBox 0 0 500 100)
+        // Baseline Y = 88, Peak Y = 16
+        const points = [];
+        for (let h = 0; h < 24; h++) {
+            const x = (h / 23) * 500;
+            const val = hourlyBuckets[h];
+            const y = (maxH > 0 && val > 0) ? (88 - ((val / maxH) * 70)) : 88;
+            points.push({ x, y, val, hour: h });
+        }
+
+        // Generate Monotone Spline Path
+        let lineD = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i === 0 ? 0 : i - 1];
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const p3 = points[i + 2 >= points.length ? points.length - 1 : i + 2];
+
+            const cp1x = p1.x + (p2.x - p0.x) / 5;
+            const cp1y = p1.y + (p2.y - p0.y) / 5;
+            const cp2x = p2.x - (p3.x - p1.x) / 5;
+            const cp2y = p2.y - (p3.y - p1.y) / 5;
+
+            lineD += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+        }
+
+        const areaD = lineD + ` L 500 88 L 0 88 Z`;
+        linePath.setAttribute('d', lineD);
+        areaPath.setAttribute('d', areaD);
+
+        // Position Peak Pulse Marker
+        if (markerGroup && highestSingleVal > 0) {
+            const peakPt = points[highestSingleHour];
+            markerGroup.style.display = 'block';
+            markerDot.setAttribute('cx', peakPt.x);
+            markerDot.setAttribute('cy', peakPt.y);
+            markerPulse.setAttribute('cx', peakPt.x);
+            markerPulse.setAttribute('cy', peakPt.y);
+        } else if (markerGroup) {
+            markerGroup.style.display = 'none';
+        }
+
+        // Interactive Tooltip & Crosshair on Hover
+        if (waveContainer && hoverLine && hoverDot && hoverTooltip) {
+            waveContainer.onmousemove = (e) => {
+                const rect = waveContainer.getBoundingClientRect();
+                const mouseX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                const ratio = mouseX / rect.width;
+                const hourIndex = Math.round(ratio * 23);
+                const pt = points[hourIndex];
+
+                const svgX = (hourIndex / 23) * 500;
+                hoverLine.setAttribute('x1', svgX);
+                hoverLine.setAttribute('x2', svgX);
+                hoverLine.style.display = 'block';
+
+                hoverDot.setAttribute('cx', svgX);
+                hoverDot.setAttribute('cy', pt.y);
+                hoverDot.style.display = 'block';
+
+                hoverTooltip.textContent = `${String(pt.hour).padStart(2, '0')}:00 — ${pt.val} min focused`;
+                hoverTooltip.style.left = `${(svgX / 500) * rect.width}px`;
+                hoverTooltip.classList.add('show');
+            };
+
+            waveContainer.onmouseleave = () => {
+                hoverLine.style.display = 'none';
+                hoverDot.style.display = 'none';
+                hoverTooltip.classList.remove('show');
+            };
+        }
+    }
+
     function renderStatsDashboard(range = activeStatsRange) {
         activeStatsRange = range;
         
@@ -2501,6 +3188,29 @@ document.addEventListener('DOMContentLoaded', () => {
             workWinElem.textContent = 'Not started';
         }
 
+        // Productivity Score Calculation
+        const sortedApps = Object.keys(appMap)
+            .map(exe => ({ exe, secs: appMap[exe] }))
+            .sort((a, b) => b.secs - a.secs);
+
+        let productiveSecs = 0;
+        let neutralSecs = 0;
+        let distractingSecs = 0;
+
+        sortedApps.forEach(item => {
+            const cat = getAppCategory(item.exe);
+            if (cat === 'productive') productiveSecs += item.secs;
+            else if (cat === 'neutral') neutralSecs += item.secs;
+            else distractingSecs += item.secs;
+        });
+
+        const prodScore = totalSecs > 0 ? Math.min(100, Math.round(((productiveSecs * 1.0 + neutralSecs * 0.5) / totalSecs) * 100)) : 100;
+        const prodScoreElem = document.getElementById('stats-kpi-prod-score');
+        if (prodScoreElem) {
+            prodScoreElem.textContent = `${prodScore}%`;
+            prodScoreElem.style.color = prodScore >= 80 ? 'var(--accent-green)' : (prodScore >= 50 ? 'var(--accent-blue)' : '#f87171');
+        }
+
         // Goal Bar
         document.getElementById('stats-goal-target-text').textContent = `${(targetGoalMins / 60).toFixed(1)} hrs (${range})`;
         const remMins = Math.max(0, targetGoalMins - totalMins);
@@ -2511,25 +3221,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const statsAppListContainer = document.getElementById('stats-app-list-container');
         statsAppListContainer.innerHTML = '';
 
-        const sortedApps = Object.keys(appMap)
-            .map(exe => ({ exe, secs: appMap[exe] }))
-            .sort((a, b) => b.secs - a.secs);
-
         if (sortedApps.length === 0) {
             statsAppListContainer.innerHTML = `<div style="text-align:center; padding:24px; color:var(--text-muted); font-size:12px;">No focus data recorded for this period yet. Start a focus session to track app statistics!</div>`;
             return;
         }
 
         const maxAppSecs = sortedApps[0].secs || 1;
+        const blockedList = (userData.blockedApps || []).map(a => a.toLowerCase());
 
         renderWeeklyChart();
+        renderHeatmapMatrix();
+        renderPeakHoursChart(range);
 
         sortedApps.forEach(item => {
             const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
             const relativePercent = Math.round((item.secs / maxAppSecs) * 100);
+            const lowerExe = item.exe.toLowerCase();
+            const category = getAppCategory(item.exe);
+            const isBlocked = blockedList.includes(lowerExe);
 
             // Lookup real extracted icon from userData.appIconMap or cachedAppList
-            const lowerExe = item.exe.toLowerCase();
             let appIcon = (userData.appIconMap && userData.appIconMap[lowerExe]) || '';
             if (!appIcon && cachedAppList && cachedAppList.length > 0) {
                 const found = cachedAppList.find(a => a.exeName && a.exeName.toLowerCase() === lowerExe);
@@ -2558,12 +3269,40 @@ document.addEventListener('DOMContentLoaded', () => {
             nameDiv.appendChild(imgNode);
             nameDiv.appendChild(spanNode);
 
+            // Category Pill (Clickable)
+            const catPill = document.createElement('span');
+            catPill.className = `cat-pill ${category}`;
+            const catIcon = category === 'productive' ? '🟢' : (category === 'neutral' ? '🔵' : '🔴');
+            catPill.innerHTML = `<span>${catIcon}</span> <span>${category}</span>`;
+            catPill.title = 'Click to toggle category (Productive / Neutral / Distracting)';
+            catPill.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleAppCategory(item.exe);
+            });
+            nameDiv.appendChild(catPill);
+
+            // Right side: Time and Quick Block Button
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'stats-app-actions';
+
             const timeDiv = document.createElement('div');
             timeDiv.className = 'stats-app-time';
             timeDiv.textContent = `${formatSecs(item.secs)} (${percent}%)`;
 
+            const blockBtn = document.createElement('button');
+            blockBtn.className = `btn-quick-block ${isBlocked ? 'blocked' : ''}`;
+            blockBtn.innerHTML = isBlocked ? '🔒 Blocked' : '🚫 Block';
+            blockBtn.title = isBlocked ? 'App is restricted during focus. Click to unblock.' : 'Click to restrict this app during focus sessions.';
+            blockBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleQuickBlockApp(item.exe);
+            });
+
+            actionsDiv.appendChild(timeDiv);
+            actionsDiv.appendChild(blockBtn);
+
             topDiv.appendChild(nameDiv);
-            topDiv.appendChild(timeDiv);
+            topDiv.appendChild(actionsDiv);
 
             const barBgDiv = document.createElement('div');
             barBgDiv.className = 'stats-app-bar-bg';
@@ -2580,6 +3319,316 @@ document.addEventListener('DOMContentLoaded', () => {
             statsAppListContainer.appendChild(div);
         });
     }
+
+    // ============================================================
+    // Share / Report Card Modal Logic & Canvas Image Exporter
+    // ============================================================
+    const btnOpenShareCard = document.getElementById('btn-open-share-card');
+    const shareCardModal = document.getElementById('share-card-modal');
+    const btnCloseShareModal = document.getElementById('btn-close-share-modal');
+    const btnCopyShareText = document.getElementById('btn-copy-share-text');
+    const btnDownloadShareCard = document.getElementById('btn-download-share-card');
+
+    function openShareCardModal() {
+        if (!shareCardModal) return;
+        shareCardModal.classList.add('active');
+
+        const todayStats = (userData.appStatsByDate && userData.appStatsByDate[todayDateStr]) || {};
+        let totalSecs = 0;
+        const appMap = {};
+        Object.keys(todayStats).forEach(exe => {
+            const sec = todayStats[exe] || 0;
+            totalSecs += sec;
+            appMap[exe] = sec;
+        });
+
+        const sortedApps = Object.keys(appMap)
+            .map(exe => ({ exe, secs: appMap[exe] }))
+            .sort((a, b) => b.secs - a.secs);
+
+        let productiveSecs = 0;
+        let neutralSecs = 0;
+        sortedApps.forEach(item => {
+            const cat = getAppCategory(item.exe);
+            if (cat === 'productive') productiveSecs += item.secs;
+            else if (cat === 'neutral') neutralSecs += item.secs;
+        });
+
+        const prodScore = totalSecs > 0 ? Math.min(100, Math.round(((productiveSecs * 1.0 + neutralSecs * 0.5) / totalSecs) * 100)) : 100;
+        const totalMins = Math.floor(totalSecs / 60);
+        const targetGoalMins = (userData.dailyGoalHours || 1) * 60;
+        const goalPercent = Math.min(100, Math.round((totalMins / targetGoalMins) * 100));
+
+        // Format Date
+        const now = new Date();
+        const dateOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+        document.getElementById('share-card-date-badge').textContent = now.toLocaleDateString('en-US', dateOptions);
+
+        // Fill Hero
+        document.getElementById('share-hero-time').textContent = formatSecs(totalSecs);
+        document.getElementById('share-card-score-badge').textContent = `${prodScore}% Focus Score`;
+        document.getElementById('share-card-streak-badge').textContent = `${userData.streakDays || 0} Days Streak`;
+
+        // Fill Progress
+        const todayRange = (userData.workTimeRangesByDate && userData.workTimeRangesByDate[todayDateStr]) || {};
+        const winStr = todayRange.firstStart ? `${todayRange.firstStart} - ${todayRange.lastActive}` : '09:00 AM - Current';
+        document.getElementById('share-card-goal-label').textContent = `Goal Met: ${goalPercent}% (${(userData.dailyGoalHours || 1).toFixed(1)} hrs)`;
+        document.getElementById('share-card-window-label').textContent = `Window: ${winStr}`;
+        document.getElementById('share-card-bar-fill').style.width = `${goalPercent}%`;
+
+        // Fill Top 3 Apps
+        const appsListContainer = document.getElementById('share-card-apps-list');
+        appsListContainer.innerHTML = '';
+
+        const top3 = sortedApps.slice(0, 3);
+        if (top3.length === 0) {
+            appsListContainer.innerHTML = `<div style="text-align:center; font-size:10px; color:var(--text-muted); padding:6px;">No focus apps logged today yet.</div>`;
+        } else {
+            top3.forEach(item => {
+                const lowerExe = item.exe.toLowerCase();
+                let appIcon = (userData.appIconMap && userData.appIconMap[lowerExe]) || '';
+                if (!appIcon && cachedAppList && cachedAppList.length > 0) {
+                    const found = cachedAppList.find(a => a.exeName && a.exeName.toLowerCase() === lowerExe);
+                    if (found && found.icon && found.icon.length > 30) appIcon = found.icon;
+                }
+                if (!appIcon) appIcon = defaultIconSvg;
+
+                const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
+                const row = document.createElement('div');
+                row.className = 'share-app-row';
+                row.innerHTML = `
+                    <div class="share-app-row-left">
+                        <img src="${appIcon}" class="share-app-row-icon" onerror="this.src='${defaultIconSvg}'" />
+                        <span class="share-app-row-name">${item.exe}</span>
+                    </div>
+                    <span class="share-app-row-time">${formatSecs(item.secs)} (${percent}%)</span>
+                `;
+                appsListContainer.appendChild(row);
+            });
+        }
+    }
+
+    btnOpenShareCard?.addEventListener('click', openShareCardModal);
+    btnCloseShareModal?.addEventListener('click', () => {
+        if (shareCardModal) shareCardModal.classList.remove('active');
+    });
+
+    // Copy formatted report text
+    btnCopyShareText?.addEventListener('click', () => {
+        const todayStats = (userData.appStatsByDate && userData.appStatsByDate[todayDateStr]) || {};
+        let totalSecs = 0;
+        const appMap = {};
+        Object.keys(todayStats).forEach(exe => {
+            const sec = todayStats[exe] || 0;
+            totalSecs += sec;
+            appMap[exe] = sec;
+        });
+
+        const sortedApps = Object.keys(appMap)
+            .map(exe => ({ exe, secs: appMap[exe] }))
+            .sort((a, b) => b.secs - a.secs);
+
+        let productiveSecs = 0;
+        let neutralSecs = 0;
+        sortedApps.forEach(item => {
+            const cat = getAppCategory(item.exe);
+            if (cat === 'productive') productiveSecs += item.secs;
+            else if (cat === 'neutral') neutralSecs += item.secs;
+        });
+        const prodScore = totalSecs > 0 ? Math.min(100, Math.round(((productiveSecs * 1.0 + neutralSecs * 0.5) / totalSecs) * 100)) : 100;
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        const todayRange = (userData.workTimeRangesByDate && userData.workTimeRangesByDate[todayDateStr]) || {};
+        const winStr = todayRange.firstStart ? `${todayRange.firstStart} - ${todayRange.lastActive}` : 'Active session';
+
+        let appText = '';
+        sortedApps.slice(0, 3).forEach((item, idx) => {
+            const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
+            appText += `\n  ${idx + 1}. ${item.exe} — ${formatSecs(item.secs)} (${percent}%)`;
+        });
+
+        const textReport = `🌱 FocusGrow Productivity Report — ${dateStr}
+⏱️ Total Focus: ${formatSecs(totalSecs)}
+⚡ Focus Efficiency: ${prodScore}%
+🔥 Streak: ${userData.streakDays || 0} Days
+🕒 Active Window: ${winStr}
+🏆 Top Applications:${appText || ' None yet'}
+
+#StayFocused #FocusGrow`;
+
+        navigator.clipboard.writeText(textReport).then(() => {
+            sendNotification('Report Copied', 'Daily focus report copied to clipboard!', 'focus');
+        }).catch(() => {
+            sendNotification('Copy Failed', 'Unable to access clipboard.', 'focus');
+        });
+    });
+
+    // High-Resolution Canvas Card Exporter
+    btnDownloadShareCard?.addEventListener('click', () => {
+        const todayStats = (userData.appStatsByDate && userData.appStatsByDate[todayDateStr]) || {};
+        let totalSecs = 0;
+        const appMap = {};
+        Object.keys(todayStats).forEach(exe => {
+            const sec = todayStats[exe] || 0;
+            totalSecs += sec;
+            appMap[exe] = sec;
+        });
+
+        const sortedApps = Object.keys(appMap)
+            .map(exe => ({ exe, secs: appMap[exe] }))
+            .sort((a, b) => b.secs - a.secs);
+
+        let productiveSecs = 0;
+        let neutralSecs = 0;
+        sortedApps.forEach(item => {
+            const cat = getAppCategory(item.exe);
+            if (cat === 'productive') productiveSecs += item.secs;
+            else if (cat === 'neutral') neutralSecs += item.secs;
+        });
+        const prodScore = totalSecs > 0 ? Math.min(100, Math.round(((productiveSecs * 1.0 + neutralSecs * 0.5) / totalSecs) * 100)) : 100;
+
+        const canvas = document.createElement('canvas');
+        const width = 800;
+        const height = 520;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Background gradient
+        const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+        bgGrad.addColorStop(0, '#121824');
+        bgGrad.addColorStop(1, '#080c10');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Neon ambient glow circles
+        const glow1 = ctx.createRadialGradient(width - 50, 50, 10, width - 50, 50, 220);
+        glow1.addColorStop(0, 'rgba(96, 205, 255, 0.28)');
+        glow1.addColorStop(1, 'rgba(96, 205, 255, 0)');
+        ctx.fillStyle = glow1;
+        ctx.fillRect(0, 0, width, height);
+
+        const glow2 = ctx.createRadialGradient(50, height - 50, 10, 50, height - 50, 220);
+        glow2.addColorStop(0, 'rgba(74, 222, 128, 0.24)');
+        glow2.addColorStop(1, 'rgba(74, 222, 128, 0)');
+        ctx.fillStyle = glow2;
+        ctx.fillRect(0, 0, width, height);
+
+        // Card Border
+        ctx.strokeStyle = 'rgba(96, 205, 255, 0.4)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(10, 10, width - 20, height - 20);
+
+        // Header: Brand & Date
+        ctx.fillStyle = '#60cdff';
+        ctx.font = 'bold 28px "Segoe UI", sans-serif';
+        ctx.fillText('🌱 FocusGrow', 40, 60);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.font = '14px "Segoe UI", sans-serif';
+        ctx.fillText('Daily Focus Intelligence', 40, 82);
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = 'bold 16px "Segoe UI", sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(dateStr, width - 40, 60);
+        ctx.textAlign = 'left';
+
+        // Horizontal Separator
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(40, 100);
+        ctx.lineTo(width - 40, 100);
+        ctx.stroke();
+
+        // Hero Metric: Big Time
+        ctx.fillStyle = '#8899a6';
+        ctx.font = 'bold 14px "Segoe UI", sans-serif';
+        ctx.fillText('TOTAL FOCUS TIME', 40, 140);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 56px "Segoe UI", sans-serif';
+        ctx.fillText(formatSecs(totalSecs), 40, 200);
+
+        // Badges on Right
+        // Efficiency Badge
+        ctx.fillStyle = 'rgba(74, 222, 128, 0.15)';
+        ctx.fillRect(width - 260, 125, 220, 36);
+        ctx.strokeStyle = 'rgba(74, 222, 128, 0.4)';
+        ctx.strokeRect(width - 260, 125, 220, 36);
+        ctx.fillStyle = '#4ade80';
+        ctx.font = 'bold 15px "Segoe UI", sans-serif';
+        ctx.fillText(`⚡ ${prodScore}% Efficiency Score`, width - 245, 149);
+
+        // Streak Badge
+        ctx.fillStyle = 'rgba(251, 146, 60, 0.15)';
+        ctx.fillRect(width - 260, 170, 220, 36);
+        ctx.strokeStyle = 'rgba(251, 146, 60, 0.4)';
+        ctx.strokeRect(width - 260, 170, 220, 36);
+        ctx.fillStyle = '#fb923c';
+        ctx.font = 'bold 15px "Segoe UI", sans-serif';
+        ctx.fillText(`🔥 ${userData.streakDays || 0} Days Streak`, width - 245, 194);
+
+        // Top Apps Section
+        ctx.fillStyle = '#8899a6';
+        ctx.font = 'bold 13px "Segoe UI", sans-serif';
+        ctx.fillText('TOP FOCUS APPLICATIONS', 40, 250);
+
+        const top3 = sortedApps.slice(0, 3);
+        let startY = 270;
+        if (top3.length === 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.font = '14px "Segoe UI", sans-serif';
+            ctx.fillText('No focus activity recorded today.', 40, startY + 20);
+        } else {
+            top3.forEach((item, idx) => {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+                ctx.fillRect(40, startY, width - 80, 40);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.strokeRect(40, startY, width - 80, 40);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px "Segoe UI", sans-serif';
+                ctx.fillText(`${idx + 1}.  ${item.exe}`, 60, startY + 25);
+
+                const percent = totalSecs > 0 ? Math.round((item.secs / totalSecs) * 100) : 0;
+                ctx.fillStyle = '#60cdff';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${formatSecs(item.secs)} (${percent}%)`, width - 60, startY + 25);
+                ctx.textAlign = 'left';
+
+                startY += 48;
+            });
+        }
+
+        // Footer
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(40, height - 55);
+        ctx.lineTo(width - 40, height - 55);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.font = 'italic 13px "Segoe UI", sans-serif';
+        ctx.fillText('"Deep focus creates masterpiece results."', 40, height - 30);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(96, 205, 255, 0.7)';
+        ctx.font = 'bold 12px "Segoe UI", sans-serif';
+        ctx.fillText('FocusGrow OS • Windows', width - 40, height - 30);
+
+        // Trigger Download
+        const link = document.createElement('a');
+        link.download = `FocusGrow-Productivity-Card-${todayDateStr}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        sendNotification('Card Downloaded', 'Focus productivity card exported as PNG image!', 'focus');
+    });
 
     // Process C++ IPC Messages & Trigger Notifications
     window.onCppStateUpdate = function(data, isPip) {
@@ -2604,6 +3653,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             delete userData.activeSession;
         }
+
+        // --- Prayer Times State Sync ---
+        if (data.prayer) {
+            const prevActualNext = window.actualNextPrayerName;
+            window.allPrayerTimes = data.prayer.allTimes || [];
+            window.actualNextPrayerName = data.prayer.nextName;
+
+            const isViewingActualNext = window.displayedPrayerIndex !== -1 &&
+                window.allPrayerTimes[window.displayedPrayerIndex]?.name === prevActualNext;
+
+            if (window.displayedPrayerIndex === undefined || window.displayedPrayerIndex === -1 || isViewingActualNext) {
+                window.displayedPrayerIndex = window.allPrayerTimes.findIndex(p => p.name === window.actualNextPrayerName);
+            }
+
+            if (typeof window.renderPrayerInfo === 'function') window.renderPrayerInfo();
+        }
+
         saveUserData();
 
         // Record per-app focus time tick (1 sec) & work hours window
@@ -2665,6 +3731,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.body.classList.remove('pip-mode');
         }
+        updatePipPeekingVinyl();
         setTimeout(syncVinylCenterPosition, 10);
         setTimeout(syncVinylCenterPosition, 50);
         if (titlebarText) titlebarText.textContent = 'FocusGrow';
@@ -2807,9 +3874,972 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     sendToCpp({ action: 'getRunningApps' });
-    
+
+    // --- Prayer Times UI Feature ---
+    const prayerClockDisplay = document.getElementById('prayer-digital-clock');
+    const prayerDateDisplay = document.getElementById('prayer-today-date');
+    const prayerNextName = document.getElementById('prayer-next-name-val');
+    const prayerNextTime = document.getElementById('prayer-next-time-val');
+
+    const chkPrayerEnabled = document.getElementById('chk-prayer-enabled');
+    const chkPrayerBreakEnabled = document.getElementById('chk-prayer-break-enabled');
+    const inputPrayerAdvance = document.getElementById('input-prayer-advance');
+    const inputPrayerLat = document.getElementById('input-prayer-lat');
+    const inputPrayerLng = document.getElementById('input-prayer-lng');
+    const inputPrayerTz = document.getElementById('input-prayer-tz');
+    const btnSavePrayerConfig = document.getElementById('btn-save-prayer-config');
+
+    const btnPrayerGps = document.getElementById('btn-prayer-gps');
+    const inputCitySearch = document.getElementById('input-prayer-city-search');
+    const btnCitySearch = document.getElementById('btn-prayer-city-search');
+
+    window.allPrayerTimes = [];
+    window.displayedPrayerIndex = -1;
+    window.actualNextPrayerName = "";
+
+    window.renderPrayerInfo = function() {
+        if (window.displayedPrayerIndex === -1 || !window.allPrayerTimes.length) return;
+        const p = window.allPrayerTimes[window.displayedPrayerIndex];
+        const label = document.getElementById('prayer-display-label');
+        if (label) {
+            label.textContent = (p.name === window.actualNextPrayerName) ? "Next Prayer" : "Prayer Time";
+            label.style.color = (p.name === window.actualNextPrayerName) ? "var(--accent-blue)" : "var(--text-muted)";
+        }
+        const nameEl = document.getElementById('prayer-next-name-val');
+        const timeEl = document.getElementById('prayer-next-time-val');
+        if (nameEl) {
+            nameEl.textContent = p.name;
+            nameEl.style.cursor = "pointer";
+            nameEl.title = "Click to reset to Next Prayer";
+        }
+        if (timeEl) timeEl.textContent = p.time;
+    };
+
+    document.getElementById('btn-prayer-prev')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!window.allPrayerTimes.length) return;
+        window.displayedPrayerIndex = (window.displayedPrayerIndex - 1 + window.allPrayerTimes.length) % window.allPrayerTimes.length;
+        window.renderPrayerInfo();
+    });
+
+    document.getElementById('btn-prayer-next')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!window.allPrayerTimes.length) return;
+        window.displayedPrayerIndex = (window.displayedPrayerIndex + 1) % window.allPrayerTimes.length;
+        window.renderPrayerInfo();
+    });
+
+    document.getElementById('prayer-next-name-val')?.addEventListener('click', () => {
+        window.displayedPrayerIndex = window.allPrayerTimes.findIndex(p => p.name === window.actualNextPrayerName);
+        window.renderPrayerInfo();
+    });
+
+    if (chkPrayerEnabled) {
+        chkPrayerEnabled.checked = !!userData.prayerEnabled;
+        chkPrayerBreakEnabled.checked = !!userData.prayerBreakEnabled;
+        inputPrayerAdvance.value = userData.prayerAdvance || 5;
+        inputPrayerLat.value = userData.prayerLat || -2.8554;
+        inputPrayerLng.value = userData.prayerLng || 115.3283;
+        inputPrayerTz.value = userData.prayerTz || 8;
+
+        // Initial sync to Native
+        sendToCpp({
+            action: 'setPrayerConfig',
+            enabled: userData.prayerEnabled,
+            breakEnabled: userData.prayerBreakEnabled,
+            advance: userData.prayerAdvance,
+            breakDuration: 15,
+            lat: userData.prayerLat,
+            lng: userData.prayerLng,
+            tz: userData.prayerTz
+        });
+    }
+
+    function savePrayerSettings() {
+        if (!chkPrayerEnabled) return;
+        userData.prayerEnabled = chkPrayerEnabled.checked;
+        userData.prayerBreakEnabled = chkPrayerBreakEnabled.checked;
+        userData.prayerAdvance = parseInt(inputPrayerAdvance.value);
+        userData.prayerLat = parseFloat(inputPrayerLat.value);
+        userData.prayerLng = parseFloat(inputPrayerLng.value);
+        userData.prayerTz = parseInt(inputPrayerTz.value);
+        saveUserData();
+
+        sendToCpp({
+            action: 'setPrayerConfig',
+            enabled: userData.prayerEnabled,
+            breakEnabled: userData.prayerBreakEnabled,
+            advance: userData.prayerAdvance,
+            breakDuration: 15,
+            lat: userData.prayerLat,
+            lng: userData.prayerLng,
+            tz: userData.prayerTz
+        });
+    }
+
+    [chkPrayerEnabled, chkPrayerBreakEnabled, inputPrayerAdvance, inputPrayerLat, inputPrayerLng, inputPrayerTz].forEach(el => {
+        el?.addEventListener('change', savePrayerSettings);
+    });
+
+    btnPrayerGps?.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by this browser.");
+            return;
+        }
+        btnPrayerGps.textContent = "⌛ Locating...";
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            inputPrayerLat.value = lat.toFixed(6);
+            inputPrayerLng.value = lng.toFixed(6);
+
+            // Auto-Guess Timezone based on Longitude
+            if (lng < 109) inputPrayerTz.value = 7;
+            else if (lng < 126) inputPrayerTz.value = 8;
+            else inputPrayerTz.value = 9;
+
+            if (inputCitySearch) inputCitySearch.value = ""; // Clear search box to avoid confusion
+            btnPrayerGps.textContent = "✅ Success";
+            savePrayerSettings();
+            setTimeout(() => btnPrayerGps.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Auto GPS', 2000);
+        }, (err) => {
+            alert("Failed to get GPS location. Please try searching for your city instead.");
+            btnPrayerGps.textContent = "❌ Failed";
+        });
+    });
+
+    const cityResultsDiv = document.getElementById('prayer-city-results');
+
+    async function searchCity(query) {
+        if (!query) {
+            if (cityResultsDiv) cityResultsDiv.style.display = 'none';
+            return;
+        }
+        btnCitySearch.textContent = "⌛";
+        try {
+            // Increase limit and add countrycodes=id to prioritize Indonesia
+            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=10&countrycodes=id`);
+            const data = await resp.json();
+
+            if (data && data.length > 0) {
+                if (cityResultsDiv) {
+                    cityResultsDiv.innerHTML = '';
+                    cityResultsDiv.style.display = 'block';
+
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.style.padding = '8px 10px';
+                        div.style.fontSize = '10px';
+                        div.style.color = '#eee';
+                        div.style.cursor = 'pointer';
+                        div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                        div.style.transition = 'background 0.2s';
+                        div.textContent = item.display_name;
+
+                        div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.1)';
+                        div.onmouseout = () => div.style.background = 'transparent';
+
+                        div.onclick = () => {
+                            const lat = parseFloat(item.lat);
+                            const lng = parseFloat(item.lon);
+                            inputPrayerLat.value = lat.toFixed(6);
+                            inputPrayerLng.value = lng.toFixed(6);
+
+                            if (lng < 109) inputPrayerTz.value = 7;
+                            else if (lng < 126) inputPrayerTz.value = 8;
+                            else inputPrayerTz.value = 9;
+
+                            savePrayerSettings();
+                            cityResultsDiv.style.display = 'none';
+                            inputCitySearch.value = item.display_name.split(',')[0];
+                        };
+                        cityResultsDiv.appendChild(div);
+                    });
+                }
+                btnCitySearch.textContent = "🔍";
+            } else {
+                alert("City not found. Try with a more specific name.");
+                btnCitySearch.textContent = "🔍";
+                if (cityResultsDiv) cityResultsDiv.style.display = 'none';
+            }
+        } catch (e) {
+            console.error("Search failed", e);
+            btnCitySearch.textContent = "🔍";
+            if (cityResultsDiv) cityResultsDiv.style.display = 'none';
+        }
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (cityResultsDiv && !cityResultsDiv.contains(e.target) && e.target !== btnCitySearch && e.target !== inputCitySearch) {
+            cityResultsDiv.style.display = 'none';
+        }
+    });
+
+    btnCitySearch?.addEventListener('click', () => searchCity(inputCitySearch.value));
+    inputCitySearch?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchCity(inputCitySearch.value);
+    });
+
+    // ========================================================
+    // Procedural Web Audio Ambient Soundscapes Engine
+    // ========================================================
+    class AmbientAudioEngine {
+        constructor() {
+            this.ctx = null;
+            this.masterGain = null;
+            this.tracks = {};
+            this.isPlaying = false;
+            this.isMasterMuted = false;
+            this.typingTimer = null;
+            this.nightCricketTimer = null;
+            this.settings = userData.ambientSettings || {
+                enabled: true,
+                autoPlay: true,
+                masterVolume: 80,
+                activePreset: 'night_coder',
+                tracks: {
+                    typing: { active: true, volume: 65 },
+                    night: { active: true, volume: 50 },
+                    rain: { active: false, volume: 55 },
+                    vinyl: { active: false, volume: 40 },
+                    ocean: { active: false, volume: 45 },
+                    alpha: { active: false, volume: 30 }
+                }
+            };
+        }
+
+        initContext() {
+            if (!this.ctx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContextClass();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.setValueAtTime((this.settings.masterVolume / 100) * (this.isMasterMuted ? 0 : 1), this.ctx.currentTime);
+                this.masterGain.connect(this.ctx.destination);
+            }
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        }
+
+        createNoiseBuffer(type = 'pink', duration = 5) {
+            const sampleRate = this.ctx ? this.ctx.sampleRate : 44100;
+            const bufferSize = sampleRate * duration;
+            const buffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            if (type === 'white') {
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+            } else if (type === 'pink') {
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+                    b6 = white * 0.115926;
+                }
+            } else if (type === 'brown') {
+                let lastOut = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = data[i];
+                    data[i] *= 3.5;
+                }
+            }
+            return buffer;
+        }
+
+        createMechanicalKeyBuffer(isSpace = false) {
+            const sampleRate = this.ctx ? this.ctx.sampleRate : 44100;
+            const length = Math.floor(sampleRate * (isSpace ? 0.038 : 0.024));
+            const buffer = this.ctx.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            // Creamy Lubed Mechanical Switch ASMR (Warm, soothing, zero harsh piercing spikes)
+            let prev = 0;
+            let smooth = 0;
+            const decay = isSpace ? 120 : 190;
+
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                const white = (Math.random() * 2 - 1);
+
+                // Smooth 2ms attack to eliminate any sharp ear-piercing click
+                const attack = Math.min(1, t / 0.0022);
+                const env = attack * Math.exp(-t * decay);
+
+                // Soft tactile friction
+                smooth = smooth * 0.7 + white * 0.3;
+                const tactile = smooth * env * 1.6;
+
+                // Warm keycap body tap
+                const tap = (white - prev) * Math.exp(-t * 900) * 0.85;
+                prev = white;
+
+                data[i] = (tactile * 0.9 + tap * 0.35) * (0.85 + Math.random() * 0.25);
+            }
+            return buffer;
+        }
+
+        createMouseClickBuffer(isUpstroke = false) {
+            const sampleRate = this.ctx ? this.ctx.sampleRate : 44100;
+            const length = Math.floor(sampleRate * (isUpstroke ? 0.012 : 0.018));
+            const buffer = this.ctx.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            // Tactile Microswitch Mouse Click (Omron switch acoustic profile)
+            let prev = 0;
+            const decay = isUpstroke ? 750 : 480;
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                const white = (Math.random() * 2 - 1);
+                const click = (white - prev) * Math.exp(-t * decay) * (isUpstroke ? 0.8 : 1.5);
+                prev = white;
+                data[i] = click * 0.7;
+            }
+            return buffer;
+        }
+
+        playMouseClick(isDoubleClick = false) {
+            if (!this.tracks.typing || !this.tracks.typing.active || !this.isPlaying || this.isMasterMuted) return;
+            const now = this.ctx.currentTime;
+
+            const playClick = (timeOffset = 0) => {
+                const clickTime = now + timeOffset;
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.createMouseClickBuffer(false);
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(2350 + Math.random() * 300, clickTime);
+                filter.Q.setValueAtTime(1.4, clickTime);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.42 + Math.random() * 0.16, clickTime);
+
+                src.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.tracks.typing.gainNode);
+                src.start(clickTime);
+
+                // Upstroke release click (~22ms later)
+                const upSrc = this.ctx.createBufferSource();
+                upSrc.buffer = this.createMouseClickBuffer(true);
+                upSrc.connect(filter);
+                upSrc.start(clickTime + 0.022);
+            };
+
+            playClick(0);
+            if (isDoubleClick) {
+                playClick(0.095);
+            }
+        }
+
+        startTypingTrack() {
+            if (this.tracks.typing) return;
+            const gainNode = this.ctx.createGain();
+            gainNode.gain.setValueAtTime((this.settings.tracks.typing.volume / 100), this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            this.tracks.typing = { gainNode, active: true };
+
+            const playSingleKeystroke = (isSpace = false) => {
+                if (!this.tracks.typing || !this.tracks.typing.active || !this.isPlaying || this.isMasterMuted) return;
+                const now = this.ctx.currentTime;
+
+                const source = this.ctx.createBufferSource();
+                source.buffer = this.createMechanicalKeyBuffer(isSpace);
+                source.playbackRate.setValueAtTime(isSpace ? 0.88 : (0.94 + Math.random() * 0.14), now);
+
+                // Warm Low-pass filter (removes any harsh/ear-piercing frequencies above 1500Hz)
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(isSpace ? 1100 : (1450 + Math.random() * 250), now);
+                filter.Q.setValueAtTime(0.7, now);
+
+                const keyGain = this.ctx.createGain();
+                const vel = (0.5 + Math.random() * 0.3) * (isSpace ? 1.2 : 1.0);
+                keyGain.gain.setValueAtTime(vel, now);
+
+                source.connect(filter);
+                filter.connect(keyGain);
+                keyGain.connect(gainNode);
+
+                source.start(now);
+            };
+
+            const scheduleTypingBurst = () => {
+                if (!this.tracks.typing || !this.isPlaying) return;
+
+                // 25% chance of doing mouse actions instead of typing (e.g. clicking links, selecting code, scrolling)
+                if (Math.random() < 0.25) {
+                    const isDouble = Math.random() < 0.35;
+                    this.playMouseClick(isDouble);
+                    const nextActionDelay = 500 + Math.random() * 900;
+                    this.typingTimer = setTimeout(scheduleTypingBurst, nextActionDelay);
+                    return;
+                }
+
+                // Random keystrokes count (from 3 to 12 strokes per burst)
+                const keystrokesCount = 3 + Math.floor(Math.random() * 10);
+                let delay = 0;
+
+                for (let i = 0; i < keystrokesCount; i++) {
+                    const isSpace = (i === keystrokesCount - 1) || (Math.random() < 0.18);
+                    setTimeout(() => {
+                        playSingleKeystroke(isSpace);
+                    }, delay);
+                    // Realistic typing speed: 70ms - 150ms per keystroke (human cadence)
+                    delay += 70 + Math.floor(Math.random() * 80);
+                }
+
+                // Occasional mouse click immediately after typing a line (35% chance)
+                if (Math.random() < 0.35) {
+                    setTimeout(() => {
+                        this.playMouseClick(Math.random() < 0.3);
+                    }, delay + 120 + Math.floor(Math.random() * 200));
+                }
+
+                // Natural human thinking pause between words & sentences (0.4s - 2.2s)
+                const nextBurstDelay = delay + (Math.random() < 0.3 ? (1100 + Math.random() * 1200) : (380 + Math.random() * 600));
+                this.typingTimer = setTimeout(scheduleTypingBurst, nextBurstDelay);
+            };
+
+            scheduleTypingBurst();
+        }
+
+        stopTypingTrack() {
+            if (this.typingTimer) clearTimeout(this.typingTimer);
+            if (this.tracks.typing) {
+                delete this.tracks.typing;
+            }
+        }
+
+        startNightTrack() {
+            if (this.tracks.night) return;
+            const gainNode = this.ctx.createGain();
+            gainNode.gain.setValueAtTime(this.settings.tracks.night.volume / 100, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            const windNoise = this.ctx.createBufferSource();
+            windNoise.buffer = this.createNoiseBuffer('brown', 6);
+            windNoise.loop = true;
+
+            const windFilter = this.ctx.createBiquadFilter();
+            windFilter.type = 'lowpass';
+            windFilter.frequency.setValueAtTime(280, this.ctx.currentTime);
+
+            const windGain = this.ctx.createGain();
+            windGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+
+            windNoise.connect(windFilter);
+            windFilter.connect(windGain);
+            windGain.connect(gainNode);
+            windNoise.start();
+
+            const playCricketChirp = () => {
+                if (!this.tracks.night || !this.tracks.night.active || !this.isPlaying || this.isMasterMuted) return;
+                const now = this.ctx.currentTime;
+                const chirps = 2 + Math.floor(Math.random() * 3);
+                let t = now;
+
+                for (let i = 0; i < chirps; i++) {
+                    const osc1 = this.ctx.createOscillator();
+                    const osc2 = this.ctx.createOscillator();
+                    const chirpGain = this.ctx.createGain();
+
+                    osc1.type = 'sine';
+                    osc1.frequency.setValueAtTime(4550 + (Math.random() * 80), t);
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(4820 + (Math.random() * 80), t);
+
+                    chirpGain.gain.setValueAtTime(0.001, t);
+                    chirpGain.gain.linearRampToValueAtTime(0.07, t + 0.015);
+                    chirpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+
+                    osc1.connect(chirpGain);
+                    osc2.connect(chirpGain);
+                    chirpGain.connect(gainNode);
+
+                    osc1.start(t);
+                    osc1.stop(t + 0.06);
+                    osc2.start(t);
+                    osc2.stop(t + 0.06);
+
+                    t += 0.075;
+                }
+
+                const nextChirp = 1200 + Math.random() * 2200;
+                this.nightCricketTimer = setTimeout(playCricketChirp, nextChirp);
+            };
+
+            playCricketChirp();
+
+            this.tracks.night = { gainNode, nodes: [windNoise], active: true };
+        }
+
+        stopNightTrack() {
+            if (this.nightCricketTimer) clearTimeout(this.nightCricketTimer);
+            if (this.tracks.night) {
+                if (this.tracks.night.nodes) {
+                    this.tracks.night.nodes.forEach(n => {
+                        try { n.stop(); } catch(e){}
+                    });
+                }
+                delete this.tracks.night;
+            }
+        }
+
+        startRainTrack() {
+            if (this.tracks.rain) return;
+            const gainNode = this.ctx.createGain();
+            gainNode.gain.setValueAtTime(this.settings.tracks.rain.volume / 100, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.createNoiseBuffer('pink', 6);
+            noise.loop = true;
+
+            const bandpass = this.ctx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.setValueAtTime(1100, this.ctx.currentTime);
+            bandpass.Q.setValueAtTime(0.8, this.ctx.currentTime);
+
+            const lowpass = this.ctx.createBiquadFilter();
+            lowpass.type = 'lowpass';
+            lowpass.frequency.setValueAtTime(3200, this.ctx.currentTime);
+
+            noise.connect(bandpass);
+            bandpass.connect(lowpass);
+            lowpass.connect(gainNode);
+            noise.start();
+
+            this.tracks.rain = { gainNode, nodes: [noise], active: true };
+        }
+
+        stopRainTrack() {
+            if (this.tracks.rain) {
+                if (this.tracks.rain.nodes) {
+                    this.tracks.rain.nodes.forEach(n => {
+                        try { n.stop(); } catch(e){}
+                    });
+                }
+                delete this.tracks.rain;
+            }
+        }
+
+        startVinylTrack() {
+            if (this.tracks.vinyl) return;
+            const gainNode = this.ctx.createGain();
+            gainNode.gain.setValueAtTime(this.settings.tracks.vinyl.volume / 100, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            const hiss = this.ctx.createBufferSource();
+            hiss.buffer = this.createNoiseBuffer('pink', 5);
+            hiss.loop = true;
+
+            const hissFilter = this.ctx.createBiquadFilter();
+            hissFilter.type = 'lowpass';
+            hissFilter.frequency.setValueAtTime(550, this.ctx.currentTime);
+
+            const hissGain = this.ctx.createGain();
+            hissGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+
+            hiss.connect(hissFilter);
+            hissFilter.connect(hissGain);
+            hissGain.connect(gainNode);
+            hiss.start();
+
+            const popInterval = setInterval(() => {
+                if (!this.tracks.vinyl || !this.isPlaying || this.isMasterMuted) return;
+                if (Math.random() < 0.6) {
+                    const now = this.ctx.currentTime;
+                    const pop = this.ctx.createBufferSource();
+                    pop.buffer = this.createNoiseBuffer('white', 0.015);
+                    const popGain = this.ctx.createGain();
+                    popGain.gain.setValueAtTime(0.12 + Math.random() * 0.28, now);
+                    popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
+                    pop.connect(popGain);
+                    popGain.connect(gainNode);
+                    pop.start(now);
+                }
+            }, 80);
+
+            this.tracks.vinyl = { gainNode, nodes: [hiss], interval: popInterval, active: true };
+        }
+
+        stopVinylTrack() {
+            if (this.tracks.vinyl) {
+                if (this.tracks.vinyl.interval) clearInterval(this.tracks.vinyl.interval);
+                if (this.tracks.vinyl.nodes) {
+                    this.tracks.vinyl.nodes.forEach(n => {
+                        try { n.stop(); } catch(e){}
+                    });
+                }
+                delete this.tracks.vinyl;
+            }
+        }
+
+        startOceanTrack() {
+            if (this.tracks.ocean) return;
+            const gainNode = this.ctx.createGain();
+            gainNode.gain.setValueAtTime(this.settings.tracks.ocean.volume / 100, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.createNoiseBuffer('brown', 6);
+            noise.loop = true;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(250, this.ctx.currentTime);
+
+            const lfo = this.ctx.createOscillator();
+            lfo.frequency.setValueAtTime(0.09, this.ctx.currentTime);
+            const lfoGain = this.ctx.createGain();
+            lfoGain.gain.setValueAtTime(350, this.ctx.currentTime);
+            lfo.connect(lfoGain);
+            lfoGain.connect(filter.frequency);
+
+            noise.connect(filter);
+            filter.connect(gainNode);
+
+            noise.start();
+            lfo.start();
+
+            this.tracks.ocean = { gainNode, nodes: [noise, lfo], active: true };
+        }
+
+        stopOceanTrack() {
+            if (this.tracks.ocean) {
+                if (this.tracks.ocean.nodes) {
+                    this.tracks.ocean.nodes.forEach(n => {
+                        try { n.stop(); } catch(e){}
+                    });
+                }
+                delete this.tracks.ocean;
+            }
+        }
+
+        startAlphaTrack() {
+            if (this.tracks.alpha) return;
+            const gainNode = this.ctx.createGain();
+            gainNode.gain.setValueAtTime(this.settings.tracks.alpha.volume / 100, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            const merger = this.ctx.createChannelMerger(2);
+
+            const oscLeft = this.ctx.createOscillator();
+            oscLeft.type = 'sine';
+            oscLeft.frequency.setValueAtTime(432, this.ctx.currentTime);
+
+            const oscRight = this.ctx.createOscillator();
+            oscRight.type = 'sine';
+            oscRight.frequency.setValueAtTime(442, this.ctx.currentTime);
+
+            oscLeft.connect(merger, 0, 0);
+            oscRight.connect(merger, 0, 1);
+            merger.connect(gainNode);
+
+            oscLeft.start();
+            oscRight.start();
+
+            this.tracks.alpha = { gainNode, nodes: [oscLeft, oscRight], active: true };
+        }
+
+        stopAlphaTrack() {
+            if (this.tracks.alpha) {
+                if (this.tracks.alpha.nodes) {
+                    this.tracks.alpha.nodes.forEach(n => {
+                        try { n.stop(); } catch(e){}
+                    });
+                }
+                delete this.tracks.alpha;
+            }
+        }
+
+        startAllActiveTracks() {
+            this.initContext();
+            this.isPlaying = true;
+            if (this.settings.tracks.typing && this.settings.tracks.typing.active) this.startTypingTrack();
+            if (this.settings.tracks.night && this.settings.tracks.night.active) this.startNightTrack();
+            if (this.settings.tracks.rain && this.settings.tracks.rain.active) this.startRainTrack();
+            if (this.settings.tracks.vinyl && this.settings.tracks.vinyl.active) this.startVinylTrack();
+            if (this.settings.tracks.ocean && this.settings.tracks.ocean.active) this.startOceanTrack();
+            if (this.settings.tracks.alpha && this.settings.tracks.alpha.active) this.startAlphaTrack();
+        }
+
+        stopAllTracks() {
+            this.isPlaying = false;
+            this.stopTypingTrack();
+            this.stopNightTrack();
+            this.stopRainTrack();
+            this.stopVinylTrack();
+            this.stopOceanTrack();
+            this.stopAlphaTrack();
+        }
+
+        setTrackVolume(soundKey, vol) {
+            if (!this.settings.tracks[soundKey]) this.settings.tracks[soundKey] = { active: false, volume: 50 };
+            this.settings.tracks[soundKey].volume = vol;
+            if (this.tracks[soundKey] && this.tracks[soundKey].gainNode && this.ctx) {
+                this.tracks[soundKey].gainNode.gain.setValueAtTime(vol / 100, this.ctx.currentTime);
+            }
+            this.save();
+        }
+
+        setTrackActive(soundKey, active) {
+            if (!this.settings.tracks[soundKey]) this.settings.tracks[soundKey] = { active: false, volume: 50 };
+            this.settings.tracks[soundKey].active = active;
+            if (active) {
+                if (this.isPlaying) {
+                    if (soundKey === 'typing') this.startTypingTrack();
+                    else if (soundKey === 'night') this.startNightTrack();
+                    else if (soundKey === 'rain') this.startRainTrack();
+                    else if (soundKey === 'vinyl') this.startVinylTrack();
+                    else if (soundKey === 'ocean') this.startOceanTrack();
+                    else if (soundKey === 'alpha') this.startAlphaTrack();
+                }
+            } else {
+                if (soundKey === 'typing') this.stopTypingTrack();
+                else if (soundKey === 'night') this.stopNightTrack();
+                else if (soundKey === 'rain') this.stopRainTrack();
+                else if (soundKey === 'vinyl') this.stopVinylTrack();
+                else if (soundKey === 'ocean') this.stopOceanTrack();
+                else if (soundKey === 'alpha') this.stopAlphaTrack();
+            }
+            this.save();
+        }
+
+        setMasterVolume(vol) {
+            this.settings.masterVolume = vol;
+            if (this.masterGain && this.ctx) {
+                this.masterGain.gain.setValueAtTime((vol / 100) * (this.isMasterMuted ? 0 : 1), this.ctx.currentTime);
+            }
+            this.save();
+        }
+
+        toggleMasterMute() {
+            this.isMasterMuted = !this.isMasterMuted;
+            if (this.masterGain && this.ctx) {
+                const vol = this.isMasterMuted ? 0 : (this.settings.masterVolume / 100);
+                this.masterGain.gain.setValueAtTime(vol, this.ctx.currentTime);
+            }
+            return this.isMasterMuted;
+        }
+
+        applyPreset(presetName) {
+            const presets = {
+                night_coder: { typing: { active: true, volume: 65 }, night: { active: true, volume: 50 }, rain: { active: false, volume: 55 }, vinyl: { active: false, volume: 40 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
+                rainy_cafe: { typing: { active: false, volume: 60 }, night: { active: false, volume: 40 }, rain: { active: true, volume: 70 }, vinyl: { active: true, volume: 45 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
+                office_flow: { typing: { active: true, volume: 75 }, night: { active: false, volume: 40 }, rain: { active: false, volume: 50 }, vinyl: { active: false, volume: 35 }, ocean: { active: false, volume: 45 }, alpha: { active: true, volume: 35 } },
+                zen_mind: { typing: { active: false, volume: 50 }, night: { active: false, volume: 40 }, rain: { active: false, volume: 40 }, vinyl: { active: false, volume: 30 }, ocean: { active: true, volume: 40 }, alpha: { active: true, volume: 55 } },
+                ocean_night: { typing: { active: false, volume: 50 }, night: { active: true, volume: 45 }, rain: { active: false, volume: 40 }, vinyl: { active: false, volume: 30 }, ocean: { active: true, volume: 65 }, alpha: { active: false, volume: 30 } }
+            };
+
+            const p = presets[presetName];
+            if (!p) return;
+
+            this.settings.activePreset = presetName;
+            for (const key in p) {
+                this.setTrackVolume(key, p[key].volume);
+                this.setTrackActive(key, p[key].active);
+            }
+            this.save();
+        }
+
+        save() {
+            userData.ambientSettings = this.settings;
+            saveUserData();
+        }
+    }
+
+    const ambientEngine = new AmbientAudioEngine();
+    window.ambientEngine = ambientEngine;
+
+    // Ambient Mixer Modal UI Binding
+    const ambientModal = document.getElementById('ambient-mixer-modal');
+    const btnCloseAmbientModal = document.getElementById('btn-close-ambient-modal');
+    const btnAmbientMasterToggle = document.getElementById('btn-ambient-master-toggle');
+    const ambientMasterStatusText = document.getElementById('ambient-master-status-text');
+    const ambientMasterVolume = document.getElementById('ambient-master-volume');
+    const ambientMasterVolLabel = document.getElementById('ambient-master-vol-label');
+    const btnAmbientMuteAll = document.getElementById('btn-ambient-mute-all');
+    const chkAmbientAutoplay = document.getElementById('chk-ambient-autoplay');
+
+    // Open Ambient Modal triggers
+    document.querySelectorAll('#btn-open-ambient-mixer, .btn-open-ambient-trigger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e?.stopPropagation();
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+            syncAmbientUI();
+            if (ambientModal) ambientModal.classList.add('active');
+            ambientEngine.initContext();
+            if (!ambientEngine.isPlaying) {
+                ambientEngine.startAllActiveTracks();
+                syncAmbientUI();
+            }
+        });
+    });
+
+    if (btnCloseAmbientModal && ambientModal) {
+        btnCloseAmbientModal.addEventListener('click', () => {
+            ambientModal.classList.remove('active');
+        });
+    }
+
+    function syncAmbientUI() {
+        if (!ambientEngine) return;
+        const s = ambientEngine.settings;
+        if (ambientMasterVolume) ambientMasterVolume.value = s.masterVolume || 80;
+        if (ambientMasterVolLabel) ambientMasterVolLabel.textContent = `${s.masterVolume || 80}%`;
+        if (chkAmbientAutoplay) chkAmbientAutoplay.checked = (s.autoPlay !== false);
+
+        if (btnAmbientMasterToggle) {
+            if (ambientEngine.isMasterMuted || !ambientEngine.isPlaying) {
+                btnAmbientMasterToggle.className = 'ambient-master-btn muted';
+                if (ambientMasterStatusText) ambientMasterStatusText.textContent = 'Audio Muted';
+            } else {
+                btnAmbientMasterToggle.className = 'ambient-master-btn active';
+                if (ambientMasterStatusText) ambientMasterStatusText.textContent = 'Audio Active';
+            }
+        }
+
+        // Preset Chips
+        document.querySelectorAll('.ambient-preset-chip').forEach(chip => {
+            const preset = chip.getAttribute('data-preset');
+            if (preset === s.activePreset) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+
+        // Tracks Cards & Sliders
+        document.querySelectorAll('.ambient-track-card').forEach(card => {
+            const soundKey = card.getAttribute('data-sound');
+            const trackCfg = s.tracks[soundKey] || { active: false, volume: 50 };
+            const toggle = card.querySelector('.track-toggle');
+            const slider = card.querySelector('.track-volume-slider');
+            const volText = card.querySelector('.track-vol-text');
+
+            if (toggle) toggle.checked = !!trackCfg.active;
+            if (slider) slider.value = trackCfg.volume || 50;
+            if (volText) volText.textContent = `${trackCfg.volume || 50}%`;
+
+            if (trackCfg.active && ambientEngine.isPlaying && !ambientEngine.isMasterMuted) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+    }
+
+    // Preset Chips Click
+    document.querySelectorAll('.ambient-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const preset = chip.getAttribute('data-preset');
+            ambientEngine.applyPreset(preset);
+            syncAmbientUI();
+        });
+    });
+
+    // Track Toggles & Volume Sliders
+    document.querySelectorAll('.track-toggle').forEach(toggle => {
+        toggle.addEventListener('change', (e) => {
+            const soundKey = e.target.getAttribute('data-sound');
+            ambientEngine.setTrackActive(soundKey, e.target.checked);
+            syncAmbientUI();
+        });
+    });
+
+    document.querySelectorAll('.track-volume-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const soundKey = e.target.getAttribute('data-sound');
+            const vol = parseInt(e.target.value, 10) || 0;
+            ambientEngine.setTrackVolume(soundKey, vol);
+            const volText = document.querySelector(`.track-vol-text[data-sound="${soundKey}"]`);
+            if (volText) volText.textContent = `${vol}%`;
+        });
+    });
+
+    // Master Controls
+    if (btnAmbientMasterToggle) {
+        btnAmbientMasterToggle.addEventListener('click', () => {
+            if (!ambientEngine.isPlaying) {
+                ambientEngine.startAllActiveTracks();
+            } else {
+                ambientEngine.toggleMasterMute();
+            }
+            syncAmbientUI();
+        });
+    }
+
+    if (btnAmbientMuteAll) {
+        btnAmbientMuteAll.addEventListener('click', () => {
+            ambientEngine.toggleMasterMute();
+            syncAmbientUI();
+        });
+    }
+
+    if (ambientMasterVolume) {
+        ambientMasterVolume.addEventListener('input', (e) => {
+            const vol = parseInt(e.target.value, 10) || 0;
+            ambientEngine.setMasterVolume(vol);
+            if (ambientMasterVolLabel) ambientMasterVolLabel.textContent = `${vol}%`;
+        });
+    }
+
+    if (chkAmbientAutoplay) {
+        chkAmbientAutoplay.addEventListener('change', (e) => {
+            ambientEngine.settings.autoPlay = e.target.checked;
+            ambientEngine.save();
+        });
+    }
+
+    // Hook ambient audio playback into Focus Session events
+    const originalStartSession = btnStartFocus.onclick;
+    btnStartFocus.addEventListener('click', () => {
+        if (ambientEngine.settings.autoPlay !== false) {
+            ambientEngine.startAllActiveTracks();
+        }
+    });
+
+    btnStop.addEventListener('click', () => {
+        ambientEngine.stopAllTracks();
+        syncAmbientUI();
+    });
+
+    btnPause.addEventListener('click', () => {
+        if (isPaused) {
+            if (ambientEngine.settings.autoPlay !== false) {
+                ambientEngine.startAllActiveTracks();
+            }
+        } else {
+            ambientEngine.stopAllTracks();
+        }
+        syncAmbientUI();
+    });
+
+    function updatePrayerClock() {
+        if (!prayerClockDisplay) return;
+        const now = new Date();
+        prayerClockDisplay.textContent = now.toLocaleTimeString();
+        if (prayerDateDisplay) prayerDateDisplay.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    setInterval(updatePrayerClock, 1000);
+
     // Auto-poll running browser apps every 2 seconds to sync YouTube Music track titles
     setInterval(() => {
         sendToCpp({ action: 'getRunningApps' });
     }, 2000);
 });
+

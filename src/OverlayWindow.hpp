@@ -5,8 +5,10 @@
 
 enum class OverlayMode {
     None,
-    FocusBlock,  // Block unapproved app during focus work session
-    RestBreak    // Strict mandatory break mode - walk outside!
+    FocusBlock,        // Block unapproved app during focus work session
+    RestBreak,         // Strict mandatory break mode - walk outside!
+    PrayerBreak,       // Special break for Prayer Times
+    AutoCloseWarning   // 5s countdown before auto-closing blocked app
 };
 
 class OverlayWindow {
@@ -114,7 +116,10 @@ private:
             RECT rc;
             GetClientRect(hwnd, &rc);
 
-            COLORREF bgColor = (m_mode == OverlayMode::RestBreak) ? RGB(15, 23, 42) : RGB(20, 20, 20);
+            COLORREF bgColor = RGB(20, 20, 20);
+            if (m_mode == OverlayMode::RestBreak) bgColor = RGB(15, 23, 42);
+            else if (m_mode == OverlayMode::PrayerBreak) bgColor = RGB(13, 41, 33); // Dark Greenish for Prayer
+
             HBRUSH hBrush = CreateSolidBrush(bgColor);
             FillRect(hdc, &rc, hBrush);
             DeleteObject(hBrush);
@@ -134,12 +139,17 @@ private:
             rcTitle.bottom = rcTitle.top + 50;
 
             if (m_mode == OverlayMode::RestBreak) {
-                DrawTextW(hdc, L"TIME TO REST & TAKE A BREAK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(hdc, L"TIME TO REST & TAKE A BREAK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            } else if (m_mode == OverlayMode::PrayerBreak) {
+                DrawTextW(hdc, L"WAKTUNYA SHOLAT & ISTIRAHAT", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            } else if (m_mode == OverlayMode::AutoCloseWarning) {
+                std::wstring mainTitle = L"[!] RESTRICTED APPLICATION: " + m_blockedDomain;
+                DrawTextW(hdc, mainTitle.c_str(), -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
             } else if (!m_blockedDomain.empty()) {
                 std::wstring mainTitle = L"RESTRICTED SITE: " + m_blockedDomain;
-                DrawTextW(hdc, mainTitle.c_str(), -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(hdc, mainTitle.c_str(), -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
             } else {
-                DrawTextW(hdc, L"STAY FOCUSED ON YOUR WORK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(hdc, L"STAY FOCUSED ON YOUR WORK", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
             }
 
             // Timer Text
@@ -147,13 +157,17 @@ private:
                 CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Variable Display");
             SelectObject(hdc, hTimerFont);
 
-            COLORREF accentColor = (m_mode == OverlayMode::RestBreak) ? RGB(52, 211, 153) : RGB(96, 205, 255);
+            COLORREF accentColor = RGB(96, 205, 255);
+            if (m_mode == OverlayMode::RestBreak) accentColor = RGB(52, 211, 153);
+            else if (m_mode == OverlayMode::PrayerBreak) accentColor = RGB(251, 191, 36); // Amber for Prayer
+            else if (m_mode == OverlayMode::AutoCloseWarning) accentColor = RGB(248, 113, 113); // Coral Red for Auto-Close Countdown
+
             SetTextColor(hdc, accentColor);
 
             RECT rcTimer = rc;
             rcTimer.top = centerY - 110;
             rcTimer.bottom = rcTimer.top + 80;
-            DrawTextW(hdc, m_timerText.c_str(), -1, &rcTimer, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            DrawTextW(hdc, m_timerText.c_str(), -1, &rcTimer, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
             // Subtitle Message
             HFONT hSubFont = CreateFontW(-20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
@@ -166,8 +180,12 @@ private:
             rcSub.bottom = rcSub.top + 80;
 
             std::wstring subText;
-            if (m_mode == OverlayMode::RestBreak) {
+            if (m_mode == OverlayMode::AutoCloseWarning) {
+                subText = L"Aplikasi " + m_blockedDomain + L" masuk daftar blokir sesi fokus.\nAplikasi akan ditutup otomatis dalam hitungan mundur di atas.\nBeralih kembali (Alt+Tab) ke aplikasi kerja untuk membatalkan.";
+            } else if (m_mode == OverlayMode::RestBreak) {
                 subText = L"Step away from your screen. Stand up, stretch your body, get a drink, and enjoy fresh air!\nWork applications are locked until your break finishes.";
+            } else if (m_mode == OverlayMode::PrayerBreak) {
+                subText = L"Mari sejenak menghadap Sang Pencipta. Tinggalkan pekerjaanmu sementara waktu.\nLayar akan kembali terbuka setelah waktu istirahat sholat selesai.";
             } else if (!m_blockedDomain.empty()) {
                 if (m_passesAvailable > 0) {
                     subText = L"Website " + m_blockedDomain + L" is restricted during focus mode.\nEmergency Pass available for this session! Press shortcut keys:\n[1] 5 Min Pass   |   [2] 10 Min Pass   |   [3] 15 Min Pass   |   [Esc] Close";
@@ -177,7 +195,7 @@ private:
             } else {
                 subText = L"This application is not on your allowed focus whitelist.\nSwitch back to your work app or enable it in FocusGrow allowed list.\nPress [Esc] to dismiss overlay.";
             }
-            DrawTextW(hdc, subText.c_str(), -1, &rcSub, DT_CENTER | DT_WORDBREAK);
+            DrawTextW(hdc, subText.c_str(), -1, &rcSub, DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
 
             // Motivational / Rest Quote Box Banner
             if (!m_currentQuote.empty()) {
@@ -192,7 +210,7 @@ private:
                 rcQuote.left += 60;
                 rcQuote.right -= 60;
 
-                DrawTextW(hdc, m_currentQuote.c_str(), -1, &rcQuote, DT_CENTER | DT_WORDBREAK);
+                DrawTextW(hdc, m_currentQuote.c_str(), -1, &rcQuote, DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
                 DeleteObject(hQuoteFont);
             }
 

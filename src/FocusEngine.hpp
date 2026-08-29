@@ -10,6 +10,7 @@
 #include <ctime>
 #include "AppDetector.hpp"
 #include "OverlayWindow.hpp"
+#include "PrayerManager.hpp"
 
 enum class SessionState {
     Idle,
@@ -87,6 +88,7 @@ private:
 
     std::wstring m_activeDomain = L"";
     std::wstring m_activeUrl = L"";
+    bool m_autoCloseBlockedApps = false;
 
     HWINEVENTHOOK m_hEventHook = nullptr;
     OverlayWindow m_overlay;
@@ -94,10 +96,31 @@ private:
     HWND m_mainHwnd = nullptr;
     HWND m_lastDismissedHwnd = nullptr;
 
+    HWND m_pendingCloseHwnd = nullptr;
+    std::wstring m_pendingCloseExe = L"";
+    int m_autoCloseCountdown = 0;
+
     FocusStats m_stats;
+
+    // Prayer Feature
+    PrayerManager m_prayerMgr;
+    bool m_prayerEnabled = true;
+    bool m_prayerBreakEnabled = true;
+    int m_prayerAdvanceMins = 5;
+    int m_prayerBreakDurationMins = 15;
+    double m_lat = -2.8554;
+    double m_lng = 115.3283;
+    int m_tz = 8;
+    bool m_prayerBreakActive = false;
+    int m_prayerBreakRemainingSec = 0;
+    std::wstring m_nextPrayerName = L"";
+    double m_nextPrayerTime = 0.0;
+    PrayerTimes m_currentPrayerTimes;
+    bool m_advanceNotified = false;
 
     std::function<void(const std::wstring& jsonState)> m_onStateChanged;
     std::function<void()> m_onAppListNeedsUpdate;
+    std::function<void(const std::wstring& title, const std::wstring& body)> m_onNotify;
 
     static FocusEngine* s_instance;
 
@@ -142,6 +165,10 @@ public:
         m_onAppListNeedsUpdate = callback;
     }
 
+    void SetNotifyCallback(std::function<void(const std::wstring&, const std::wstring&)> callback) {
+        m_onNotify = callback;
+    }
+
     void StartMonitoring() {
         if (!m_hEventHook) {
             m_hEventHook = SetWinEventHook(
@@ -165,6 +192,14 @@ public:
 
     const std::vector<std::wstring>& GetBlacklist() const {
         return m_blacklist;
+    }
+
+    void SetAutoCloseBlockedApps(bool enabled) {
+        m_autoCloseBlockedApps = enabled;
+    }
+
+    bool GetAutoCloseBlockedApps() const {
+        return m_autoCloseBlockedApps;
     }
 
     void SetRestrictedSites(const std::vector<RestrictedSite>& sites) {
@@ -389,10 +424,166 @@ public:
         m_autoPauseSec = (sec > 0) ? sec : 15;
     }
 
+    void SetPrayerConfig(bool enabled, bool breakEnabled, int advanceMins, int breakDur, double lat, double lng, int tz) {
+        m_prayerEnabled = enabled;
+        m_prayerBreakEnabled = breakEnabled;
+        m_prayerAdvanceMins = advanceMins;
+        m_prayerBreakDurationMins = breakDur;
+        m_lat = lat;
+        m_lng = lng;
+        m_tz = tz;
+        m_prayerMgr.SetLocation(lat, lng, tz);
+        UpdatePrayerSchedule();
+        NotifyState();
+    }
+
+    void UpdatePrayerSchedule() {
+        if (!m_prayerEnabled) return;
+
+        m_currentPrayerTimes = m_prayerMgr.GetTodayPrayerTimes();
+        PrayerTimes pt = m_currentPrayerTimes;
+        time_t t = time(0);
+        struct tm* now = localtime(&t);
+        double currentHour = now->tm_hour + now->tm_min / 60.0 + now->tm_sec / 3600.0;
+
+        std::vector<std::pair<std::wstring, double>> times = {
+            {L"Subuh", pt.subuh}, {L"Dhuha", pt.dhuha}, {L"Dzuhur", pt.dzuhur}, {L"Ashar", pt.ashar},
+            {L"Maghrib", pt.maghrib}, {L"Isya", pt.isya}
+        };
+
+        m_nextPrayerName = L"Subuh"; // Default for tomorrow
+        m_nextPrayerTime = pt.subuh;
+
+        for (const auto& p : times) {
+            if (p.second > currentHour) {
+                m_nextPrayerName = p.first;
+                m_nextPrayerTime = p.second;
+                break;
+            }
+        }
+    }
+
+    void ForceCloseWindowOrProcess(HWND hwnd) {
+        if (!hwnd || !IsWindow(hwnd)) return;
+
+        DWORD pid = 0;
+        GetWindowThreadProcessId(hwnd, &pid);
+
+        // Send standard close message first
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+
+        // Terminate process if still alive (crucial for games / borderless DirectX apps like Client-Win64-Shipping.exe)
+        if (pid > 0 && pid != GetCurrentProcessId()) {
+            HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+            if (hProc) {
+                TerminateProcess(hProc, 0);
+                CloseHandle(hProc);
+            }
+        }
+    }
+
     void TickOneSecond() {
-        time_t now = time(nullptr);
-        int delta = (m_lastTickTime == 0) ? 1 : (int)(now - m_lastTickTime);
-        m_lastTickTime = now;
+        time_t t_now = time(nullptr);
+        struct tm* now = localtime(&t_now);
+        double currentHour = now->tm_hour + now->tm_min / 60.0 + now->tm_sec / 3600.0;
+
+        // Check Prayer Times
+        if (m_prayerEnabled) {
+            if (currentHour < 0.1) UpdatePrayerSchedule(); // Refresh at midnight
+
+            double diffMins = (m_nextPrayerTime - currentHour) * 60.0;
+
+            // Advance Notification
+            if (diffMins > 0 && diffMins <= (double)m_prayerAdvanceMins && !m_advanceNotified) {
+                m_advanceNotified = true;
+                std::wstring body = L"Waktu " + m_nextPrayerName + L" sekitar " + std::to_wstring(m_prayerAdvanceMins) + L" menit lagi.";
+                if (m_onNotify) m_onNotify(L"Pengingat Sholat", body);
+                NotifyState();
+            }
+
+            // Prayer Time Arrived
+            if (diffMins <= 0 && diffMins > -1.0) { // Within 1 minute of scheduled time
+                if (!m_prayerBreakActive) {
+                    m_advanceNotified = false;
+                    if (m_nextPrayerName == L"Dhuha") {
+                        // Dhuha is sunnah: notification only, no blocking overlay/break
+                        if (m_onNotify) {
+                            m_onNotify(L"Waktu Sholat Dhuha", L"Waktu sholat Dhuha telah tiba.");
+                        }
+                    } else {
+                        if (m_prayerBreakEnabled) {
+                            m_prayerBreakActive = true;
+                            m_prayerBreakRemainingSec = m_prayerBreakDurationMins * 60;
+                            m_overlay.ShowOnMonitor(OverlayMode::PrayerBreak, GetFormattedTime());
+                        }
+                    }
+                    UpdatePrayerSchedule();
+                }
+            }
+        }
+
+        if (m_prayerBreakActive) {
+            m_prayerBreakRemainingSec--;
+            if (m_prayerBreakRemainingSec <= 0) {
+                m_prayerBreakActive = false;
+                if (m_state == SessionState::Resting) {
+                    // Prayer Break already provided a 15-minute rest & movement break!
+                    // Advance directly to the next focus period so the break is not unnecessarily prolonged.
+                    m_currentPeriod++;
+                    if (m_currentPeriod <= m_totalPeriods) {
+                        m_state = SessionState::Focusing;
+                        m_remainingSec = m_singlePeriodSec;
+                        m_focusSecAccumulator = 0;
+                        ResetSessionPasses();
+                    } else {
+                        m_state = SessionState::Idle;
+                    }
+                }
+                m_overlay.Hide();
+                NotifyState();
+            }
+            if (m_overlay.GetMode() == OverlayMode::PrayerBreak) {
+                int m = m_prayerBreakRemainingSec / 60;
+                int s = m_prayerBreakRemainingSec % 60;
+                wchar_t buf[16];
+                swprintf_s(buf, L"%02d:%02d", m, s);
+                m_overlay.UpdateTimer(buf);
+            }
+        }
+
+        time_t now_tick = time(nullptr);
+        int delta = (m_lastTickTime == 0) ? 1 : (int)(now_tick - m_lastTickTime);
+        m_lastTickTime = now_tick;
+
+        // Handle Auto-Close 5s Grace Period Countdown
+        if (m_state == SessionState::Focusing && !m_isPaused && m_autoCloseCountdown > 0 && m_pendingCloseHwnd) {
+            if (!IsWindow(m_pendingCloseHwnd)) {
+                m_pendingCloseHwnd = nullptr;
+                m_pendingCloseExe = L"";
+                m_autoCloseCountdown = 0;
+                if (m_overlay.GetMode() == OverlayMode::AutoCloseWarning) m_overlay.Hide();
+            } else {
+                HWND fg = GetForegroundWindow();
+                if (fg == m_pendingCloseHwnd || fg == m_overlay.GetHwnd()) {
+                    m_autoCloseCountdown--;
+                    if (m_autoCloseCountdown > 0) {
+                        m_overlay.UpdateTimer(std::to_wstring(m_autoCloseCountdown) + L"s");
+                    } else {
+                        // Reached 0 -> Terminate target process/window
+                        ForceCloseWindowOrProcess(m_pendingCloseHwnd);
+                        m_pendingCloseHwnd = nullptr;
+                        m_pendingCloseExe = L"";
+                        if (m_overlay.GetMode() == OverlayMode::AutoCloseWarning) m_overlay.Hide();
+                    }
+                } else {
+                    // User switched away to an allowed app -> Cancel auto-close!
+                    m_pendingCloseHwnd = nullptr;
+                    m_pendingCloseExe = L"";
+                    m_autoCloseCountdown = 0;
+                    if (m_overlay.GetMode() == OverlayMode::AutoCloseWarning) m_overlay.Hide();
+                }
+            }
+        }
 
         // Auto-pause detection on user inactivity (keyboard/mouse input) during Focusing state
         if (m_state == SessionState::Focusing && m_autoPauseEnabled && m_autoPauseSec > 0) {
@@ -410,13 +601,13 @@ public:
                 } else if (m_isPaused && m_isAutoPaused && idleMs < thresholdMs) {
                     m_isPaused = false;
                     m_isAutoPaused = false;
-                    m_lastTickTime = now;
+                    m_lastTickTime = t_now;
                     NotifyState();
                 }
             }
         }
 
-        if (m_state == SessionState::Idle || m_isPaused) return;
+        if (m_state == SessionState::Idle || m_isPaused || m_prayerBreakActive) return;
 
         // Tick temporary site passes
         for (auto& site : m_restrictedSites) {
@@ -444,7 +635,7 @@ public:
         }
 
         std::wstring timerFormatted = GetFormattedTime();
-        if (m_overlay.IsVisible()) {
+        if (m_overlay.IsVisible() && m_overlay.GetMode() != OverlayMode::PrayerBreak && m_overlay.GetMode() != OverlayMode::AutoCloseWarning) {
             m_overlay.UpdateTimer(timerFormatted);
         }
 
@@ -483,6 +674,13 @@ public:
             m_onAppListNeedsUpdate();
         }
 
+        if (m_prayerBreakActive) {
+            if (hwndForeground != m_overlay.GetHwnd()) {
+                m_overlay.ShowOnMonitor(OverlayMode::PrayerBreak, L""); // Timer handled in Tick
+            }
+            return;
+        }
+
         if (m_state == SessionState::Idle) {
             if (m_overlay.IsVisible()) m_overlay.Hide();
             return;
@@ -508,10 +706,13 @@ public:
             GetWindowTextW(hwndForeground, wtitleBuf, 512);
             std::wstring windowTitle(wtitleBuf);
 
-            // If user goes to an allowed app, reset the manual dismissal tracker
+            // If user goes to an allowed app, reset the manual dismissal tracker and cancel pending auto close
             if (IsAppAllowed(exeName, windowTitle)) {
                 m_lastDismissedHwnd = nullptr;
-                if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
+                m_pendingCloseHwnd = nullptr;
+                m_pendingCloseExe = L"";
+                m_autoCloseCountdown = 0;
+                if (m_overlay.GetMode() == OverlayMode::FocusBlock || m_overlay.GetMode() == OverlayMode::AutoCloseWarning) {
                     m_overlay.Hide();
                 }
                 return;
@@ -522,7 +723,7 @@ public:
             // inside the tab (the extension shows its own blocked.html).
             // We HIDE the native black overlay entirely for browsers to avoid "double UI".
             if (IsBrowserApp(exeName)) {
-                if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
+                if (m_overlay.GetMode() == OverlayMode::FocusBlock || m_overlay.GetMode() == OverlayMode::AutoCloseWarning) {
                     m_overlay.Hide();
                 }
                 return;
@@ -531,12 +732,26 @@ public:
             // Step 3: Check general non-whitelisted apps (e.g. Games, Desktop Apps)
             if (!exeName.empty() || !windowTitle.empty()) {
                 if (!IsAppAllowed(exeName, windowTitle)) {
+                    if (m_autoCloseBlockedApps && hwndForeground != m_mainHwnd && hwndForeground != m_overlay.GetHwnd()) {
+                        std::wstring lowerExe = exeName;
+                        std::transform(lowerExe.begin(), lowerExe.end(), lowerExe.begin(), ::tolower);
+                        // Extra safety guard against system apps
+                        if (lowerExe != L"explorer.exe" && lowerExe != L"focusgrow.exe" && lowerExe != L"dwm.exe" && lowerExe != L"taskmgr.exe") {
+                            if (m_pendingCloseHwnd != hwndForeground || m_autoCloseCountdown <= 0) {
+                                m_pendingCloseHwnd = hwndForeground;
+                                m_pendingCloseExe = exeName;
+                                m_autoCloseCountdown = 5;
+                                m_overlay.ShowOnMonitor(OverlayMode::AutoCloseWarning, L"5s", hwndForeground, exeName);
+                            }
+                            return;
+                        }
+                    }
                     RestrictedSite siteInfo;
                     IsDomainBlocked(windowTitle, &siteInfo);
                     int passesRemaining = siteInfo.domain.empty() ? 0 : max(0, siteInfo.maxPassesPerSession - siteInfo.usedPassesThisSession);
                     m_overlay.ShowOnMonitor(OverlayMode::FocusBlock, GetFormattedTime(), hwndForeground, siteInfo.domain, passesRemaining);
                 } else {
-                    if (m_overlay.GetMode() == OverlayMode::FocusBlock) {
+                    if (m_overlay.GetMode() == OverlayMode::FocusBlock || m_overlay.GetMode() == OverlayMode::AutoCloseWarning) {
                         m_overlay.Hide();
                     }
                 }
@@ -553,6 +768,7 @@ public:
     }
 
     SessionState GetState() const { return m_state; }
+    bool IsPaused() const { return m_isPaused; }
     int GetRemainingSec() const { return m_remainingSec; }
     int GetMaxPeriodSec() const { return (m_state == SessionState::Resting) ? m_breakDurationSec : m_singlePeriodSec; }
     FocusStats GetStats() const { return m_stats; }
@@ -584,7 +800,23 @@ public:
            << L"\"yesterdayHours\":" << (m_stats.yesterdayHoursX10 / 10.0) << L","
            << L"\"streakDays\":" << m_stats.streakDays << L","
            << L"\"activeExe\":\"" << activeExe << L"\","
-           << L"\"activeDomain\":\"" << m_activeDomain << L"\",";
+           << L"\"activeDomain\":\"" << m_activeDomain << L"\","
+           << L"\"prayer\":{"
+           << L"\"enabled\":" << (m_prayerEnabled ? L"true" : L"false") << L","
+           << L"\"nextName\":\"" << m_nextPrayerName << L"\","
+           << L"\"nextTime\":\"" << m_prayerMgr.FormatTime(m_nextPrayerTime).c_str() << L"\","
+           << L"\"allTimes\":["
+           << L"{\"name\":\"Subuh\",\"time\":\"" << m_prayerMgr.FormatTime(m_currentPrayerTimes.subuh).c_str() << L"\"},"
+           << L"{\"name\":\"Dhuha\",\"time\":\"" << m_prayerMgr.FormatTime(m_currentPrayerTimes.dhuha).c_str() << L"\"},"
+           << L"{\"name\":\"Dzuhur\",\"time\":\"" << m_prayerMgr.FormatTime(m_currentPrayerTimes.dzuhur).c_str() << L"\"},"
+           << L"{\"name\":\"Ashar\",\"time\":\"" << m_prayerMgr.FormatTime(m_currentPrayerTimes.ashar).c_str() << L"\"},"
+           << L"{\"name\":\"Maghrib\",\"time\":\"" << m_prayerMgr.FormatTime(m_currentPrayerTimes.maghrib).c_str() << L"\"},"
+           << L"{\"name\":\"Isya\",\"time\":\"" << m_prayerMgr.FormatTime(m_currentPrayerTimes.isya).c_str() << L"\"}"
+           << L"],"
+           << L"\"isBreakActive\":" << (m_prayerBreakActive ? L"true" : L"false") << L","
+           << L"\"breakRemainingSec\":" << m_prayerBreakRemainingSec << L","
+           << L"\"advanceNotified\":" << (m_advanceNotified ? L"true" : L"false")
+           << L"},";
         ss << L"\"activePasses\":[";
         bool firstPass = true;
         for (const auto& site : m_restrictedSites) {

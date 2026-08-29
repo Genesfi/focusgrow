@@ -19,7 +19,7 @@ rc.exe /nologo /fo bin\resource.res resource.rc
 echo.
 echo Compiling FocusGrow.exe...
 
-cl.exe /nologo /EHsc /std:c++17 /O2 ^
+cl.exe /nologo /EHsc /utf-8 /std:c++17 /O2 ^
     /I"packages\WebView2\build\native\include" ^
     /I"src" ^
     src\main.cpp bin\resource.res ^

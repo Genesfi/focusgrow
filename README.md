@@ -1,64 +1,117 @@
-# 🪴 FocusGrow — Time Focus & Rest Guard
+# 🪴 FocusGrow — Time Focus & Aesthetic Productivity Guard
 
 <p align="center">
-  <b>A modern, aesthetic Windows desktop application for Pomodoro productivity, YouTube Music vinyl background sync, app blocking, and floating PiP widgets.</b>
+  <b>A modern, high-performance Windows desktop application for Pomodoro focus, YouTube Music vinyl record synchronization, distraction-free app blocking, full-screen break overlays, and desktop-transparent floating PiP companion widgets.</b>
 </p>
 
 ---
 
 ## ✨ Features Overview
 
-### 🎯 1. Smart Productivity & Rest Guard
-- **Custom Focus Sessions**: Flexible Pomodoro timer with configurable focus periods and break lengths.
-- **App Whitelist & Guard**: Automatically blocks non-whitelisted applications during active focus periods to eliminate distractions.
-- **Daily Focus Statistics**: Track your daily completed focus minutes against customizable goals with persistent local storage.
-
-### 🎵 2. YouTube Music Vinyl Record Sync & Dynamic Accent
-- **Live Album Art & Metadata Sync**: Connects with browser extension to display active song titles, artist names, and album art on a spinning vinyl record backdrop.
-- **Integrated Media Player Controls**:
-  - `⏮️` **Previous Track**
-  - `⏯️` **Play / Pause (Dynamic Toggle)**
-  - `⏭️` **Next Track**
-  - Controls YouTube Music directly without switching tabs out of your workflow.
-- **Dynamic Accent Theme & Color Customization**:
-  - 🎨 Preset Accent Color chips (Blue, Pink, Green, Purple, Orange).
-  - 🖌️ Custom HTML5 Color Picker (`<input type="color">`).
-  - 🎵 **Dynamic Album Color Sync**: Automatically extracts prominent vibrant colors from active YouTube Music album art to dynamically color progress rings, buttons, and UI highlights.
-- **Live Vinyl Customization Controls**:
-  - 📏 **Real-time Disc Size Slider (`120px` – `850px`)**: Smoothly scale the vinyl record to any diameter with live preview.
-  - ⚡ **Rotation Speed Selector**: Choose between `Fast (3s)`, `Normal (6s)`, `Slow (10s)`, or `Relaxed (16s)`.
-  - 🖼️ **Display Style Modes**: Toggle between **`Circle Inner Ring`** (centered inside the clock dial) and **`Full Panel Fill`** (wall-to-wall card cover).
-
-### 🎨 3. Ambient Custom GIFs & Plant Growth
-- **Custom Ambient GIFs**: Upload custom GIF/image backgrounds with live opacity controls and recent history memory.
-- **Dynamic Plant Growth**: Responsive SVG plant sprout that grows progressively as you complete your focus session.
-
-### 📌 4. Floating PiP (Picture-in-Picture) Mini Widget
-- **Pop-Out Floating Widget**: Switch into a top-most mini window mode to keep your focus timer visible alongside your workspace.
-- **Native Window Resize Boundaries**: Built-in Windows `WM_GETMINMAXINFO` guard prevents window squashing while maintaining fluid responsive layouts.
+### 🎯 1. Smart Pomodoro & Distraction Guard
+- **Flexible Focus Sessions**: Configurable focus periods, short breaks, long breaks, and daily goal targets.
+- **Process & Website Blocker**:
+  - Automatically scans and blocks non-whitelisted desktop applications (e.g. social media, games) during active focus sessions.
+  - Active browser tab inspection for Chrome, Edge, and Chromium browsers to block distracting websites.
+- **Full-Screen Break & Prayer Overlays (`OverlayWindow.hpp` / `PrayerManager.hpp`)**:
+  - Distraction-free full-screen overlay for mandatory rest breaks and prayer times.
+  - Inspirational quotes, 5-second countdown warning before closing blocked apps, and emergency pass allowance system.
+- **Historical Statistics & Streaks**:
+  - Persistent daily focus tracking, yesterday's summary, and streak counter stored locally with zero cloud dependencies.
 
 ---
 
-## 🧩 YouTube Music Extension Requirement (`ytmpx-mod`)
+### 💿 2. Native Peeking Vinyl Record Companion (`PipVinylOverlay.hpp`)
+- **100% Desktop-Transparent Vinyl Overlay**:
+  - Utilizes a dedicated Win32 Layered Window (`WS_EX_LAYERED`) rendered with **GDI+ 32-bit ARGB (`UpdateLayeredWindow`)**.
+  - Renders deep glossy vinyl grooves, concentric acoustic reflections, center spindle glass, and high-resolution album cover art.
+  - **Zero black boxes or bounding box artifacts** — floats with genuine per-pixel transparency over your desktop wallpaper and windows.
+- **Dynamic Sleeve In/Out Animations**:
+  - **Track Change / Next / Prev**: The vinyl smoothly slides into the card sleeve (`retract`), updates the album artwork in memory, and slides back out (`extend`).
+  - **Music Tab Close / Stop**: The vinyl gracefully retracts completely behind the card before hiding.
+- **Dynamic Sleeve Clipping Mask**:
+  - Real-time geometric clipping ensures the vinyl disc never leaks onto the opposite side of the card, even at extreme or compact PiP window sizes.
+- **Zero-Latency Real-Time Drag Locking**:
+  - Hooks directly into OS modal move events (`WM_MOVING` / `WM_MOVE`) for instant, microsecond-accurate synchronous docking during rapid mouse dragging.
+- **Customizable Vinyl Position**:
+  - Easily toggle peeking vinyl on/off and switch between **Left (`⬅️`)** or **Right (`➡️`)** docking in Settings.
 
-To enable **live YouTube Music album art, track titles, and spinning vinyl background sync**, install the companion browser extension:
+---
+
+### 🎵 3. YouTube Music Live Synchronization & Dynamic Accent
+- **Live Metadata & Album Art Bridge**:
+  - Communicates with the companion browser extension (`ytmpx-mod`) to sync song titles, artists, and live album art in real-time.
+- **Integrated Media Player Controls**:
+  - `⏮️` **Previous Track**
+  - `⏯️` **Play / Pause (Dynamic Toggle & Spin Sync)**
+  - `⏭️` **Next Track**
+  - Control your media directly from the FocusGrow dashboard or floating PiP widget without switching windows.
+- **Smart Dynamic Album Color Extraction**:
+  - Automatically analyzes the current album cover artwork to extract vibrant primary and secondary colors.
+  - Includes smart monochrome detection (adjusts brightness and contrast for black-and-white album covers).
+  - Dynamically recolors circular progress rings, glow highlights, buttons, and control chips in real-time.
+- **In-Card Vinyl & Ambient Modes**:
+  - **Circle Inner Ring**: Centered vinyl dial within the timer gauge.
+  - **Full Panel Fill**: Wall-to-wall vinyl backdrop across the focus card.
+  - **Custom Ambient GIFs**: Upload custom GIF/image backgrounds with live opacity controls and recent history storage (IndexedDB).
+  - **Sprout Growth Mode**: Dynamic SVG plant that grows progressively as your focus session advances.
+
+---
+
+### 📌 4. Floating PiP (Picture-in-Picture) Mini Widget
+- **Windows 11 Native Rounded Corners & Shadows**:
+  - Compact, distraction-free widget utilizing Windows 11 DWM native corner rounding (`DWMWCP_ROUND`) and soft drop shadows.
+- **Persistent Manual Resize Memory**:
+  - Resize freely from standard `280x400` down to an ultra-compact `180x250` minimum size (`WM_GETMINMAXINFO` guarded).
+  - Your exact resized dimensions are saved and restored every time you enter PiP mode.
+- **Taskbar Hide Option**:
+  - Toggle whether the application icon appears in the Windows taskbar while in PiP mode.
+
+---
+
+### 🔔 5. System Tray & Custom Notification System
+- **Background Minimization**:
+  - Minimize to Windows System Tray on close to keep your focus timer running silently in the background.
+- **Custom Sound Effects**:
+  - Built-in audio alerts for Focus Start, Break Time, and Goal Completion (Default, Chime, Reminder, Alarm, or Custom Audio).
+- **Windows Toast Notifications**:
+  - Native Windows balloon and toast notifications for session milestones and daily goal achievements.
+
+---
+
+## 🧩 YouTube Music Companion Extension (`ytmpx-mod`)
+
+To enable **live YouTube Music album art, track titles, media controls, and spinning vinyl synchronization**, install the companion browser extension:
 
 🔗 **[ytmpx-mod on GitHub](https://github.com/Genesfi/ytmpx-mod)**
 
 ### Installation Steps:
 1. Clone or download the repository from [https://github.com/Genesfi/ytmpx-mod](https://github.com/Genesfi/ytmpx-mod).
-2. Open Chrome (or Chromium-based browser like Edge/Brave) and go to `chrome://extensions`.
+2. Open Chrome (or any Chromium browser like Edge, Brave, Opera) and navigate to `chrome://extensions`.
 3. Enable **Developer mode** in the top-right corner.
-4. Click **Load unpacked** and select the `ytmpx-mod` extension folder.
-5. Open and play music on [YouTube Music](https://music.youtube.com). FocusGrow will automatically sync album art, song titles, media controls, and dynamic accent colors in real-time!
+4. Click **Load unpacked** and select the `ytmpx-mod` extension directory.
+5. Open and play music on [YouTube Music](https://music.youtube.com). FocusGrow will automatically detect the stream, sync artwork, and animate the vinyl in real-time!
 
 ---
 
 ## 🛠️ Architecture & Tech Stack
 
-- **Core Engine**: Win32 C++ (MSVC / C++17) for low CPU & RAM footprint.
-- **UI System**: Microsoft WebView2 (`Edge Chromium`) executing modern HTML5, Vanilla CSS3, and JavaScript ES6.
-- **IPC Protocol**: Bidirectional `postMessage` C++ to Web JSON IPC bridge.
+```
+┌───────────────────────────────────────────────────────────┐
+│                      FocusGrow.exe                        │
+├─────────────────────────────┬─────────────────────────────┤
+│      Win32 C++ Engine       │   Layered Vinyl Companion   │
+│   (MSVC / C++17 Native)     │ (GDI+ 32-bit ARGB Overlay)  │
+├─────────────────────────────┴─────────────────────────────┤
+│             Microsoft Edge WebView2 Runtime               │
+│     (HTML5, Vanilla CSS3, JavaScript ES6 / IndexedDB)     │
+└───────────────────────────────────────────────────────────┘
+```
+
+- **Core Engine**: Win32 C++17 (MSVC) — extremely low CPU and RAM footprint.
+- **Vinyl Overlay**: Native GDI+ 32-bit ARGB with `UpdateLayeredWindow` and dynamic clipping masks.
+- **UI System**: Microsoft WebView2 (`Edge Chromium`) executing modern Vanilla CSS and JavaScript.
+- **Inter-Process Communication**: Local HTTP bridge (`127.0.0.1:38472`) for browser extension sync and bidirectional Win32 WebMessage JSON IPC.
 
 ---
 
@@ -69,8 +122,8 @@ To enable **live YouTube Music album art, track titles, and spinning vinyl backg
 - Visual Studio 2022 (with **Desktop development with C++** workload)
 - MSVC C++ Build Tools
 
-### Building Executable
-Run the included build script in developer command prompt or standard CMD:
+### Compiling Executable
+Run the included build script from the project root in Developer Command Prompt or standard CMD/PowerShell:
 
 ```cmd
 build.bat
@@ -78,29 +131,47 @@ build.bat
 
 The compiled binary and UI assets will be placed inside `bin/FocusGrow.exe`.
 
+### Creating Official Windows Setup Installer
+To create the standalone **`FocusGrow_Setup_v1.0.0.exe`** installer (powered by Inno Setup 6):
+
+```cmd
+build_installer.bat
+```
+
+The resulting setup installer will be generated inside the `dist/` directory.
+
 ---
 
 ## 📄 File Structure
 
 ```
 FocusGrow/
-├── bin/                 # Compiled executable and assets
-│   ├── FocusGrow.exe
-│   └── ui/              # Distribution UI bundle
-├── src/                 # Win32 C++ engine source code
-│   ├── main.cpp         # Main application entry point & WndProc
-│   ├── FocusEngine.hpp  # Timer logic & app blocking guard
-│   └── AppDetector.hpp  # Windows process & window detector
-├── ui/                  # Web interface source files
-│   ├── index.html       # Single-page dashboard markup
-│   ├── style.css        # Responsive dark-theme styling
-│   └── app.js           # UI logic, IPC bridge & vinyl renderer
-├── build.bat            # MSVC compilation build script
-└── README.md            # Project documentation
+├── bin/                       # Compiled output directory
+│   ├── FocusGrow.exe          # Main application executable
+│   └── ui/                    # Packaged web frontend assets
+├── dist/                      # Official Windows Installer output
+│   └── FocusGrow_Setup_v1.0.0.exe
+├── src/                       # Win32 C++ native engine source
+│   ├── main.cpp               # Application entry point, WndProc & IPC bridge
+│   ├── FocusEngine.hpp        # Pomodoro state machine & focus session rules
+│   ├── PipVinylOverlay.hpp    # GDI+ 32-bit ARGB layered vinyl overlay companion
+│   ├── AppDetector.hpp        # Windows process scanner & browser tab detector
+│   ├── OverlayWindow.hpp      # Full-screen break & restriction overlay
+│   └── PrayerManager.hpp      # Prayer times schedule & break coordinator
+├── ui/                        # Web interface source files
+│   ├── index.html             # Dashboard markup & control layout
+│   ├── style.css              # Glassmorphism, animations & dark UI styling
+│   └── app.js                 # Frontend state manager, color extractor & IPC
+├── packages/                  # WebView2 native SDK packages
+├── resource.rc                # Windows application icon & version metadata
+├── installer.iss              # Inno Setup 6 packaging configuration script
+├── build_installer.bat        # 1-Click installer compilation script
+├── build.bat                  # Automated MSVC build and asset sync script
+└── README.md                  # Project documentation
 ```
 
 ---
 
 ## 📝 License
 
-Developed with ❤️ for maximum focus and aesthetic productivity.
+Developed with ❤️ for aesthetic productivity and deep work flow.

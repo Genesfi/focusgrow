@@ -3,19 +3,20 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
-#include <gdiplus.h>
-#include <wrl.h>
-#include <string>
-#include <vector>
-#include <memory>
 #include <filesystem>
+#include <gdiplus.h>
+#include <memory>
 #include <sstream>
+#include <string>
 #include <thread>
+#include <vector>
+#include <wrl.h>
 
 #include "../packages/WebView2/build/native/include/WebView2.h"
 #include "../packages/WebView2/build/native/include/WebView2EnvironmentOptions.h"
 #include "AppDetector.hpp"
 #include "FocusEngine.hpp"
+#include "PipVinylOverlay.hpp"
 
 #include <shobjidl.h>
 
@@ -34,10 +35,12 @@
 using namespace Microsoft::WRL;
 
 #define WM_WEBVIEW_POST_JSON (WM_USER + 1)
-#define WM_TRAYICON          (WM_USER + 2)
-#define IDM_TRAY_RESTORE     10001
-#define IDM_TRAY_TOGGLE_PIP  10002
-#define IDM_TRAY_EXIT        10003
+#define WM_TRAYICON (WM_USER + 2)
+#define IDM_TRAY_RESTORE 10001
+#define IDM_TRAY_TOGGLE_PIP 10002
+#define IDM_TRAY_PAUSE 10003
+#define IDM_TRAY_STOP 10004
+#define IDM_TRAY_EXIT 10005
 
 // Global Handles
 HWND g_hWnd = NULL;
@@ -48,6 +51,8 @@ ULONG_PTR g_gdiplusToken = 0;
 bool g_isPipMode = false;
 NOTIFYICONDATAW g_trayNid = {};
 bool g_trayIconCreated = false;
+bool g_minimizeToTrayOnClose = true;
+bool g_trayToastShownOnce = false;
 
 // Helper function to escape JSON strings
 std::wstring EscapeJsonString(const std::wstring &input) {
@@ -155,8 +160,9 @@ void SendRunningAppsToUi() {
 }
 
 void SetTaskbarIconVisible(HWND hwnd, bool visible) {
-  ITaskbarList* pTaskbarList = NULL;
-  HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_ITaskbarList, (void**)&pTaskbarList);
+  ITaskbarList *pTaskbarList = NULL;
+  HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER,
+                                IID_ITaskbarList, (void **)&pTaskbarList);
   if (SUCCEEDED(hr) && pTaskbarList) {
     pTaskbarList->HrInit();
     if (visible) {
@@ -169,8 +175,9 @@ void SetTaskbarIconVisible(HWND hwnd, bool visible) {
 }
 
 void InitSystemTrayIcon(HWND hwnd) {
-  if (g_trayIconCreated) return;
-  g_trayNid = { sizeof(NOTIFYICONDATAW) };
+  if (g_trayIconCreated)
+    return;
+  g_trayNid = {sizeof(NOTIFYICONDATAW)};
   g_trayNid.hWnd = hwnd;
   g_trayNid.uID = 1002;
   g_trayNid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
@@ -184,6 +191,13 @@ void InitSystemTrayIcon(HWND hwnd) {
   g_trayIconCreated = true;
 }
 
+int g_lastPipW = 280;
+int g_lastPipH = 400;
+int g_lastPipX = 0;
+int g_lastPipY = 0;
+bool g_hideTaskbarInPip = false;
+std::unique_ptr<PipVinylOverlay> g_pipVinylOverlay;
+
 void RemoveSystemTrayIcon() {
   if (g_trayIconCreated) {
     Shell_NotifyIconW(NIM_DELETE, &g_trayNid);
@@ -191,31 +205,72 @@ void RemoveSystemTrayIcon() {
   }
 }
 
+void ResizeWebView(HWND hWnd);
+
 void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
   g_isPipMode = !g_isPipMode;
+  g_hideTaskbarInPip = hideTaskbar;
   BOOL enableShadow = TRUE;
-  DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/, &enableShadow, sizeof(enableShadow));
+  DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/,
+                        &enableShadow, sizeof(enableShadow));
 
   DWORD cornerPreference = DWMWCP_ROUND;
-  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+                        &cornerPreference, sizeof(cornerPreference));
 
-  MARGINS margins = { -1, -1, -1, -1 };
+  MARGINS margins = {-1, -1, -1, -1};
   DwmExtendFrameIntoClientArea(g_hWnd, &margins);
 
   if (g_isPipMode) {
-    int w = (width > 100) ? width : 270;
-    int h = (height > 100) ? height : 400;
-    SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
-    if (hideTaskbar) {
-      SetTaskbarIconVisible(g_hWnd, false);
+    int w = (width > 100) ? width : ((g_lastPipW > 100) ? g_lastPipW : 280);
+    int h = (height > 100) ? height : ((g_lastPipH > 100) ? g_lastPipH : 400);
+    g_lastPipW = w;
+    g_lastPipH = h;
+
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
+    if (g_lastPipX > 0 || g_lastPipY > 0) {
+      SetWindowPos(g_hWnd, HWND_TOPMOST, g_lastPipX, g_lastPipY, w, h, flags);
     } else {
-      SetTaskbarIconVisible(g_hWnd, true);
+      SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, flags | SWP_NOMOVE);
+    }
+    SetTaskbarIconVisible(g_hWnd, !hideTaskbar);
+    if (g_pipVinylOverlay) {
+      RECT rc;
+      if (GetWindowRect(g_hWnd, &rc)) {
+        g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+      }
     }
   } else {
     SetWindowPos(g_hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
                  SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     SetTaskbarIconVisible(g_hWnd, true);
+    if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(false);
+    }
   }
+  ResizeWebView(g_hWnd);
+  PostStateToUi();
+}
+
+void RestoreWindowFromTray(HWND hWnd) {
+  if (g_isPipMode) {
+    int w = (g_lastPipW > 100) ? g_lastPipW : 280;
+    int h = (g_lastPipH > 100) ? g_lastPipH : 400;
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
+    if (g_lastPipX > 0 || g_lastPipY > 0) {
+      SetWindowPos(hWnd, HWND_TOPMOST, g_lastPipX, g_lastPipY, w, h, flags);
+    } else {
+      SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, w, h, flags | SWP_NOMOVE);
+    }
+    SetTaskbarIconVisible(hWnd, !g_hideTaskbarInPip);
+    ShowWindow(hWnd, SW_SHOW);
+  } else {
+    SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
+                 SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    SetTaskbarIconVisible(hWnd, true);
+    ShowWindow(hWnd, SW_RESTORE);
+  }
+  SetForegroundWindow(hWnd);
   PostStateToUi();
 }
 
@@ -223,7 +278,8 @@ void ShowWindowsToastNotification(const std::wstring &title,
                                   const std::wstring &body) {
   // Reuse the persistent tray icon (uID 1002) to show balloon notification.
   // This avoids creating a duplicate icon in the system tray.
-  if (!g_trayIconCreated) return;
+  if (!g_trayIconCreated)
+    return;
 
   NOTIFYICONDATAW nid = g_trayNid;
   nid.uFlags = NIF_INFO;
@@ -534,6 +590,19 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
       sec = _wtoi(msg.c_str() + secPos + 6);
     if (g_focusEngine)
       g_focusEngine->SetAutoPauseConfig(enabled, sec);
+  } else if (msg.find(L"\"action\":\"setMinimizeToTrayConfig\"") !=
+             std::wstring::npos) {
+    if (msg.find(L"\"enabled\":false") != std::wstring::npos)
+      g_minimizeToTrayOnClose = false;
+    else
+      g_minimizeToTrayOnClose = true;
+  } else if (msg.find(L"\"action\":\"setAutoCloseBlocked\"") !=
+             std::wstring::npos) {
+    bool enabled = false;
+    if (msg.find(L"\"enabled\":true") != std::wstring::npos)
+      enabled = true;
+    if (g_focusEngine)
+      g_focusEngine->SetAutoCloseBlockedApps(enabled);
   } else if (msg.find(L"\"action\":\"setBlacklist\"") != std::wstring::npos) {
     ParseAndSetBlacklist(msg);
   } else if (msg.find(L"\"action\":\"setRestrictedSites\"") !=
@@ -554,6 +623,33 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
 
     if (g_focusEngine && !domain.empty()) {
       g_focusEngine->GrantTemporaryPass(domain, mins);
+    }
+  } else if (msg.find(L"\"action\":\"setPrayerConfig\"") !=
+             std::wstring::npos) {
+    bool enabled = true, breakEnabled = true;
+    int advance = 5, breakDur = 15, tz = 8;
+    double lat = -2.8, lng = 115.3;
+
+    if (msg.find(L"\"enabled\":false") != std::wstring::npos)
+      enabled = false;
+    if (msg.find(L"\"breakEnabled\":false") != std::wstring::npos)
+      breakEnabled = false;
+
+    size_t p;
+    if ((p = msg.find(L"\"advance\":")) != std::wstring::npos)
+      advance = _wtoi(msg.c_str() + p + 10);
+    if ((p = msg.find(L"\"breakDuration\":")) != std::wstring::npos)
+      breakDur = _wtoi(msg.c_str() + p + 16);
+    if ((p = msg.find(L"\"lat\":")) != std::wstring::npos)
+      lat = _wtof(msg.c_str() + p + 6);
+    if ((p = msg.find(L"\"lng\":")) != std::wstring::npos)
+      lng = _wtof(msg.c_str() + p + 6);
+    if ((p = msg.find(L"\"tz\":")) != std::wstring::npos)
+      tz = _wtoi(msg.c_str() + p + 5);
+
+    if (g_focusEngine) {
+      g_focusEngine->SetPrayerConfig(enabled, breakEnabled, advance, breakDur,
+                                     lat, lng, tz);
     }
   } else if (msg.find(L"\"action\":\"pauseSession\"") != std::wstring::npos) {
     g_focusEngine->PauseSession();
@@ -580,8 +676,36 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     size_t hPos = msg.find(L"\"height\":");
     if (hPos != std::wstring::npos)
       h = _wtoi(msg.c_str() + hPos + 9);
-    bool hideTaskbar = (msg.find(L"\"hideTaskbar\":true") != std::wstring::npos);
+    bool hideTaskbar =
+        (msg.find(L"\"hideTaskbar\":true") != std::wstring::npos);
     TogglePipMode(w, h, hideTaskbar);
+  } else if (msg.find(L"\"action\":\"updatePipVinylOverlay\"") != std::wstring::npos) {
+    if (g_pipVinylOverlay && g_isPipMode) {
+      bool visible = (msg.find(L"\"visible\":true") != std::wstring::npos);
+      bool isPlaying = (msg.find(L"\"isPlaying\":true") != std::wstring::npos);
+      std::string side = (msg.find(L"\"side\":\"right\"") != std::wstring::npos) ? "right" : "left";
+
+      std::wstring imageUrl = L"";
+      size_t imgPos = msg.find(L"\"imageUrl\":\"");
+      if (imgPos != std::wstring::npos) {
+        size_t imgEnd = msg.find(L"\"", imgPos + 12);
+        if (imgEnd != std::wstring::npos) {
+          imageUrl = msg.substr(imgPos + 12, imgEnd - (imgPos + 12));
+        }
+      }
+
+      RECT rc;
+      if (GetWindowRect(g_hWnd, &rc)) {
+        g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+      }
+      g_pipVinylOverlay->SetPlaying(isPlaying);
+      if (!imageUrl.empty()) {
+        g_pipVinylOverlay->LoadCoverFromUrl(imageUrl);
+      }
+      g_pipVinylOverlay->SetVisible(visible, side);
+    } else if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetVisible(false);
+    }
   } else if (msg.find(L"\"action\":\"startDrag\"") != std::wstring::npos) {
     ReleaseCapture();
     PostMessage(g_hWnd, WM_SYSCOMMAND, SC_MOVE | 0x0002, 0);
@@ -633,7 +757,20 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
 
     ShowWindowsToastNotification(title, body);
   } else if (msg.find(L"\"action\":\"close\"") != std::wstring::npos) {
-    DestroyWindow(g_hWnd);
+    bool isFocusActive =
+        (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
+    if (g_minimizeToTrayOnClose || isFocusActive) {
+      ShowWindow(g_hWnd, SW_HIDE);
+      if (!g_trayToastShownOnce && isFocusActive) {
+        g_trayToastShownOnce = true;
+        ShowWindowsToastNotification(
+            L"FocusGrow di Latar Belakang",
+            L"Sesi fokus Anda tetap aktif di System Tray. Klik ikon tray untuk "
+            L"membuka kembali.");
+      }
+    } else {
+      DestroyWindow(g_hWnd);
+    }
   } else if (msg.find(L"\"action\":\"startResize\"") != std::wstring::npos) {
     WPARAM dir = SC_SIZE + 2;
     if (msg.find(L"\"edge\":\"bottom-right\"") != std::wstring::npos)
@@ -681,7 +818,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
   case WM_PAINT: {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hWnd, &ps);
-    HBRUSH hBrush = CreateSolidBrush(RGB(24, 24, 24));
+    HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 0));
     FillRect(hdc, &ps.rcPaint, hBrush);
     DeleteObject(hBrush);
     EndPaint(hWnd, &ps);
@@ -747,37 +884,138 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
       }
     }
   } break;
+  case WM_EXITSIZEMOVE: {
+    if (g_isPipMode) {
+      RECT rc;
+      if (GetWindowRect(hWnd, &rc)) {
+        int w = rc.right - rc.left;
+        int h = rc.bottom - rc.top;
+        if (w > 120 && h > 120 && (w < 800 || h < 600)) {
+          g_lastPipW = w;
+          g_lastPipH = h;
+          g_lastPipX = rc.left;
+          g_lastPipY = rc.top;
+        }
+      }
+    }
+    break;
+  }
+  case WM_MOVING: {
+    RECT *pRect = (RECT *)lParam;
+    if (pRect && g_isPipMode && g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetParentPos(pRect->left, pRect->top,
+                                      pRect->right - pRect->left,
+                                      pRect->bottom - pRect->top);
+    }
+    break;
+  }
+  case WM_MOVE:
   case WM_SIZE:
     ResizeWebView(hWnd);
+    if (g_isPipMode) {
+      RECT rc;
+      if (GetWindowRect(hWnd, &rc)) {
+        int w = rc.right - rc.left;
+        int h = rc.bottom - rc.top;
+        if (w > 120 && h > 120 && (w < 800 || h < 600)) {
+          g_lastPipW = w;
+          g_lastPipH = h;
+          g_lastPipX = rc.left;
+          g_lastPipY = rc.top;
+        }
+        if (g_pipVinylOverlay) {
+          g_pipVinylOverlay->SetParentPos(rc.left, rc.top, w, h);
+        }
+      }
+    }
     break;
   case WM_TIMER:
     if (wParam == 1 && g_focusEngine) {
       g_focusEngine->TickOneSecond();
+      if (g_trayIconCreated) {
+        std::wstring tip = L"FocusGrow - Pomodoro & Focus Timer";
+        if (g_focusEngine->GetState() == SessionState::Focusing) {
+          tip = L"FocusGrow: " + g_focusEngine->GetFormattedTime() +
+                (g_focusEngine->IsPaused() ? L" (Paused)"
+                                           : L" remaining (Focusing)");
+        } else if (g_focusEngine->GetState() == SessionState::Resting) {
+          tip = L"FocusGrow: " + g_focusEngine->GetFormattedTime() +
+                L" (Break Time)";
+        }
+        wcsncpy_s(g_trayNid.szTip, tip.c_str(), _TRUNCATE);
+        g_trayNid.uFlags = NIF_TIP;
+        Shell_NotifyIconW(NIM_MODIFY, &g_trayNid);
+      }
     }
     break;
+  case WM_CLOSE: {
+    bool isFocusActive =
+        (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
+    if (g_minimizeToTrayOnClose || isFocusActive) {
+      ShowWindow(hWnd, SW_HIDE);
+      if (!g_trayToastShownOnce && isFocusActive) {
+        g_trayToastShownOnce = true;
+        ShowWindowsToastNotification(
+            L"FocusGrow di Latar Belakang",
+            L"Sesi fokus Anda tetap aktif di System Tray. Klik ikon tray untuk "
+            L"membuka kembali.");
+      }
+      return 0;
+    }
+    DestroyWindow(hWnd);
+    return 0;
+  }
   case WM_TRAYICON: {
     if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK) {
-      // Just show/restore the window. Do NOT toggle PIP mode.
-      ShowWindow(hWnd, SW_RESTORE);
-      SetForegroundWindow(hWnd);
+      RestoreWindowFromTray(hWnd);
     } else if (lParam == WM_RBUTTONUP) {
       POINT pt;
       GetCursorPos(&pt);
       HMENU hMenu = CreatePopupMenu();
       if (hMenu) {
-        InsertMenuW(hMenu, 0, MF_BYPOSITION | MF_STRING, IDM_TRAY_RESTORE, L"Restore Dashboard");
-        InsertMenuW(hMenu, 1, MF_BYPOSITION | MF_STRING, IDM_TRAY_TOGGLE_PIP, g_isPipMode ? L"Exit Floating Timer (PiP)" : L"Pop out Floating Timer (PiP)");
-        InsertMenuW(hMenu, 2, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);
-        InsertMenuW(hMenu, 3, MF_BYPOSITION | MF_STRING, IDM_TRAY_EXIT, L"Exit FocusGrow");
+        bool isFocusActive =
+            (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
+        bool isPaused = (g_focusEngine && g_focusEngine->IsPaused());
+
+        std::wstring restoreLabel = g_isPipMode ? L"Open Floating Timer (PiP)"
+                                                : L"Open FocusGrow Dashboard";
+        std::wstring toggleLabel = g_isPipMode
+                                       ? L"Switch to Full Dashboard"
+                                       : L"Pop out Floating Timer (PiP)";
+
+        InsertMenuW(hMenu, 0, MF_BYPOSITION | MF_STRING, IDM_TRAY_RESTORE,
+                    restoreLabel.c_str());
+        InsertMenuW(hMenu, 1, MF_BYPOSITION | MF_STRING, IDM_TRAY_TOGGLE_PIP,
+                    toggleLabel.c_str());
+
+        if (isFocusActive) {
+          InsertMenuW(hMenu, 2, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);
+          InsertMenuW(hMenu, 3, MF_BYPOSITION | MF_STRING, IDM_TRAY_PAUSE,
+                      isPaused ? L"Resume Focus Session"
+                               : L"Pause Focus Session");
+          InsertMenuW(hMenu, 4, MF_BYPOSITION | MF_STRING, IDM_TRAY_STOP,
+                      L"Stop Focus Session");
+        }
+
+        InsertMenuW(hMenu, 5, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);
+        InsertMenuW(hMenu, 6, MF_BYPOSITION | MF_STRING, IDM_TRAY_EXIT,
+                    L"Exit FocusGrow");
+
         SetForegroundWindow(hWnd);
-        int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hWnd, NULL);
+        int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x,
+                                 pt.y, 0, hWnd, NULL);
         DestroyMenu(hMenu);
+
         if (cmd == IDM_TRAY_RESTORE) {
-          if (g_isPipMode) TogglePipMode();
-          ShowWindow(hWnd, SW_RESTORE);
-          SetForegroundWindow(hWnd);
+          RestoreWindowFromTray(hWnd);
         } else if (cmd == IDM_TRAY_TOGGLE_PIP) {
           TogglePipMode();
+        } else if (cmd == IDM_TRAY_PAUSE) {
+          if (g_focusEngine)
+            g_focusEngine->PauseSession();
+        } else if (cmd == IDM_TRAY_STOP) {
+          if (g_focusEngine)
+            g_focusEngine->StopSession();
         } else if (cmd == IDM_TRAY_EXIT) {
           DestroyWindow(hWnd);
         }
@@ -817,7 +1055,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   wcex.hIcon = hAppIcon;
   wcex.hIconSm = hAppIcon;
   wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-  wcex.hbrBackground = CreateSolidBrush(RGB(24, 24, 24));
+  wcex.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
   wcex.lpszClassName = L"FocusGrowAppWindow";
   RegisterClassExW(&wcex);
 
@@ -844,18 +1082,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   }
 
   BOOL useDarkMode = TRUE;
-  DwmSetWindowAttribute(g_hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode, sizeof(useDarkMode));
+  DwmSetWindowAttribute(g_hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode,
+                        sizeof(useDarkMode));
 
   BOOL enableShadow = TRUE;
-  DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/, &enableShadow, sizeof(enableShadow));
+  DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/,
+                        &enableShadow, sizeof(enableShadow));
 
   DWORD cornerPreference = DWMWCP_ROUND;
-  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+  DwmSetWindowAttribute(g_hWnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+                        &cornerPreference, sizeof(cornerPreference));
 
   DWORD noBorderColor = 0xFFFFFFFE; // DWMWA_COLOR_NONE
-  DwmSetWindowAttribute(g_hWnd, 34 /*DWMWA_BORDER_COLOR*/, &noBorderColor, sizeof(noBorderColor));
+  DwmSetWindowAttribute(g_hWnd, 34 /*DWMWA_BORDER_COLOR*/, &noBorderColor,
+                        sizeof(noBorderColor));
 
-  MARGINS margins = { -1, -1, -1, -1 };
+  MARGINS margins = {-1, -1, -1, -1};
   DwmExtendFrameIntoClientArea(g_hWnd, &margins);
 
   ShowWindow(g_hWnd, nCmdShow);
@@ -863,13 +1105,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
   g_focusEngine = std::make_unique<FocusEngine>();
   g_focusEngine->Init(hInstance, g_hWnd);
+  g_pipVinylOverlay = std::make_unique<PipVinylOverlay>();
+  g_pipVinylOverlay->Init(hInstance, g_hWnd);
   StartTabSyncHttpServer();
   g_focusEngine->SetStateCallback(
       [](const std::wstring &jsonState) { PostStateToUi(); });
 
   g_focusEngine->SetAppListUpdateCallback([]() { SendRunningAppsToUi(); });
+  g_focusEngine->SetNotifyCallback(
+      [](const std::wstring &title, const std::wstring &body) {
+        ShowWindowsToastNotification(title, body);
+        PlaySoundW(L"Notification.Default", NULL, SND_ALIAS | SND_ASYNC);
+      });
 
   SetTimer(g_hWnd, 1, 1000, NULL);
+
+  SetEnvironmentVariableW(L"WEBVIEW2_DEFAULT_BACKGROUND_COLOR", L"0");
 
   wchar_t exePathBuf[MAX_PATH];
   GetModuleFileNameW(NULL, exePathBuf, MAX_PATH);
@@ -910,8 +1161,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                       ComPtr<ICoreWebView2Controller2> controller2;
                       if (SUCCEEDED(g_webController->QueryInterface(
                               IID_PPV_ARGS(&controller2)))) {
-                        COREWEBVIEW2_COLOR darkColor = {255, 24, 24, 24};
-                        controller2->put_DefaultBackgroundColor(darkColor);
+                        COREWEBVIEW2_COLOR transparentColor = {0, 0, 0, 0};
+                        controller2->put_DefaultBackgroundColor(transparentColor);
                       }
 
                       ResizeWebView(g_hWnd);
