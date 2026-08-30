@@ -197,6 +197,121 @@ int g_lastPipX = 0;
 int g_lastPipY = 0;
 bool g_hideTaskbarInPip = false;
 std::unique_ptr<PipVinylOverlay> g_pipVinylOverlay;
+std::wstring g_lastKnownTrackTitle = L"";
+
+void ToggleMusicWindow(const std::wstring &preferredTitle = L"") {
+  if (!preferredTitle.empty()) {
+    g_lastKnownTrackTitle = preferredTitle;
+  }
+
+  struct TargetWindowMatch {
+    HWND hwnd = nullptr;
+    int score = 0;
+    std::wstring title;
+    std::wstring exeName;
+  };
+
+  std::vector<TargetWindowMatch> matches;
+
+  EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
+    if (!hwnd || hwnd == g_hWnd) return TRUE;
+    if (!IsWindowVisible(hwnd) && !IsIconic(hwnd)) return TRUE;
+
+    LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+    if (exStyle & WS_EX_TOOLWINDOW) return TRUE;
+
+    wchar_t titleBuf[512] = { 0 };
+    GetWindowTextW(hwnd, titleBuf, 512);
+    std::wstring title(titleBuf);
+    if (title.empty() || title == L"Program Manager" || title == L"FocusGrow") return TRUE;
+
+    DWORD pid = 0;
+    GetWindowThreadProcessId(hwnd, &pid);
+    if (pid == 0) return TRUE;
+
+    std::wstring fullPath;
+    std::wstring exeName = AppDetector::GetProcessNameFromPid(pid, fullPath);
+    std::wstring exeLower = exeName;
+    std::transform(exeLower.begin(), exeLower.end(), exeLower.begin(), ::towlower);
+    std::wstring titleLower = title;
+    std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::towlower);
+
+    if (exeLower.find(L"focusgrow") != std::wstring::npos) return TRUE;
+
+    int score = 0;
+    if (titleLower.find(L"youtube music") != std::wstring::npos || titleLower.find(L"yt music") != std::wstring::npos) {
+      score = 100;
+    } else if (exeLower == L"youtube music.exe" || exeLower == L"ytmdesktop.exe") {
+      score = 95;
+    } else if (!g_lastKnownTrackTitle.empty() && g_lastKnownTrackTitle.length() >= 3) {
+      std::wstring trackLower = g_lastKnownTrackTitle;
+      std::transform(trackLower.begin(), trackLower.end(), trackLower.begin(), ::towlower);
+      if (titleLower.find(trackLower) != std::wstring::npos) {
+        score = 85;
+      }
+    }
+    
+    if (score == 0) {
+      if (exeLower == L"spotify.exe" && (titleLower.find(L"spotify") != std::wstring::npos || !titleLower.empty())) {
+        score = 80;
+      } else if (titleLower.find(L" - youtube") != std::wstring::npos) {
+        score = 70;
+      }
+    }
+
+    if (score > 0) {
+      auto *pMatches = reinterpret_cast<std::vector<TargetWindowMatch> *>(lParam);
+      pMatches->push_back({ hwnd, score, title, exeName });
+    }
+    return TRUE;
+  }, (LPARAM)&matches);
+
+  if (!matches.empty()) {
+    std::sort(matches.begin(), matches.end(), [](const TargetWindowMatch &a, const TargetWindowMatch &b) {
+      return a.score > b.score;
+    });
+
+    HWND targetHwnd = matches[0].hwnd;
+    HWND fgWnd = GetForegroundWindow();
+    bool isCurrentlyForeground = (fgWnd == targetHwnd || GetAncestor(fgWnd, GA_ROOT) == targetHwnd || GetAncestor(targetHwnd, GA_ROOT) == fgWnd);
+
+    if (isCurrentlyForeground && !IsIconic(targetHwnd)) {
+      ShowWindow(targetHwnd, SW_MINIMIZE);
+    } else {
+      if (IsIconic(targetHwnd)) {
+        ShowWindow(targetHwnd, SW_RESTORE);
+      } else {
+        ShowWindow(targetHwnd, SW_SHOW);
+      }
+
+      HWND hCurr = GetForegroundWindow();
+      DWORD currThread = GetCurrentThreadId();
+      DWORD fgThread = hCurr ? GetWindowThreadProcessId(hCurr, NULL) : 0;
+      DWORD targetThread = GetWindowThreadProcessId(targetHwnd, NULL);
+
+      if (fgThread != 0 && fgThread != targetThread) {
+        AttachThreadInput(currThread, fgThread, TRUE);
+      }
+      if (targetThread != 0 && targetThread != currThread) {
+        AttachThreadInput(currThread, targetThread, TRUE);
+      }
+
+      SetForegroundWindow(targetHwnd);
+      BringWindowToTop(targetHwnd);
+      SetFocus(targetHwnd);
+
+      if (fgThread != 0 && fgThread != targetThread) {
+        AttachThreadInput(currThread, fgThread, FALSE);
+      }
+      if (targetThread != 0 && targetThread != currThread) {
+        AttachThreadInput(currThread, targetThread, FALSE);
+      }
+    }
+  } else {
+    // If YouTube Music is not open at all, open in default browser
+    ShellExecuteW(NULL, L"open", L"https://music.youtube.com", NULL, NULL, SW_SHOWNORMAL);
+  }
+}
 
 void RemoveSystemTrayIcon() {
   if (g_trayIconCreated) {
@@ -690,6 +805,16 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     bool hideTaskbar =
         (msg.find(L"\"hideTaskbar\":true") != std::wstring::npos);
     TogglePipMode(w, h, hideTaskbar);
+  } else if (msg.find(L"\"action\":\"toggleMusicWindow\"") != std::wstring::npos) {
+    std::wstring title = L"";
+    size_t tPos = msg.find(L"\"title\":\"");
+    if (tPos != std::wstring::npos) {
+      size_t tEnd = msg.find(L"\"", tPos + 9);
+      if (tEnd != std::wstring::npos) {
+        title = msg.substr(tPos + 9, tEnd - (tPos + 9));
+      }
+    }
+    ToggleMusicWindow(title);
   } else if (msg.find(L"\"action\":\"updatePipVinylOverlay\"") != std::wstring::npos) {
     if (g_pipVinylOverlay && IsWindowVisible(g_hWnd) && !IsIconic(g_hWnd)) {
       bool visible = (msg.find(L"\"visible\":true") != std::wstring::npos);
@@ -702,6 +827,22 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         size_t imgEnd = msg.find(L"\"", imgPos + 12);
         if (imgEnd != std::wstring::npos) {
           imageUrl = msg.substr(imgPos + 12, imgEnd - (imgPos + 12));
+        }
+      }
+
+      size_t tPos = msg.find(L"\"title\":\"");
+      if (tPos != std::wstring::npos) {
+        size_t tEnd = msg.find(L"\"", tPos + 9);
+        if (tEnd != std::wstring::npos) {
+          g_lastKnownTrackTitle = msg.substr(tPos + 9, tEnd - (tPos + 9));
+        }
+      }
+
+      size_t spPos = msg.find(L"\"speedSec\":");
+      if (spPos != std::wstring::npos) {
+        float sp = (float)_wtof(msg.c_str() + spPos + 11);
+        if (sp >= 1.0f) {
+          g_pipVinylOverlay->SetSpeed(sp);
         }
       }
 
@@ -1164,10 +1305,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   ShowWindow(g_hWnd, nCmdShow);
   UpdateWindow(g_hWnd);
 
+  timeBeginPeriod(1);
   g_focusEngine = std::make_unique<FocusEngine>();
   g_focusEngine->Init(hInstance, g_hWnd);
   g_pipVinylOverlay = std::make_unique<PipVinylOverlay>();
   g_pipVinylOverlay->Init(hInstance, g_hWnd);
+  g_pipVinylOverlay->SetOnClick([]() {
+    ToggleMusicWindow(g_lastKnownTrackTitle);
+  });
   StartTabSyncHttpServer();
   g_focusEngine->SetStateCallback(
       [](const std::wstring &jsonState) { PostStateToUi(); });

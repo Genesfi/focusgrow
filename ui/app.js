@@ -797,7 +797,9 @@ document.addEventListener('DOMContentLoaded', () => {
             visible: shouldShowPeeking,
             side: side,
             isPlaying: isPlaying,
-            imageUrl: ytTrackData.image || ''
+            imageUrl: ytTrackData.image || '',
+            title: ytTrackData.title || '',
+            speedSec: userData.vinylSpeed || 6
         });
     }
 
@@ -1210,10 +1212,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const chkSpindle = document.getElementById('chk-vinyl-spindle-toggle');
         if (chkSpindle) chkSpindle.checked = !!userData.showVinylSpindle;
 
-        const currentSpeed = userData.vinylSpeed || 6;
+        const currentSpeed = parseFloat(userData.vinylSpeed) || 6;
         const currentSize = userData.vinylSize || 340;
         document.documentElement.style.setProperty('--vinyl-speed', `${currentSpeed}s`);
         document.documentElement.style.setProperty('--vinyl-size', `${currentSize}px`);
+
+        const vinylSpeedSlider = document.getElementById('vinyl-speed-slider');
+        const vinylSpeedLabel = document.getElementById('vinyl-speed-label');
+        if (vinylSpeedSlider) vinylSpeedSlider.value = currentSpeed;
+        if (vinylSpeedLabel) vinylSpeedLabel.textContent = `${currentSpeed}s`;
 
         const vinylSizeSlider = document.getElementById('vinyl-size-slider');
         const vinylSizeLabel = document.getElementById('vinyl-size-label');
@@ -1247,7 +1254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (customGifNameDisplay) customGifNameDisplay.textContent = '';
 
             document.querySelectorAll('.speed-chip').forEach(chip => {
-                chip.classList.toggle('active', parseInt(chip.getAttribute('data-speed')) === currentSpeed);
+                chip.classList.toggle('active', parseFloat(chip.getAttribute('data-speed')) === currentSpeed);
             });
             setTimeout(syncVinylCenterPosition, 10);
 
@@ -1313,6 +1320,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (customGifNameDisplay) customGifNameDisplay.textContent = '';
             updateYtMusicUI();
         }
+
+        // In-place synchronization of active state on Recent GIF cards (Zero-Flicker)
+        document.querySelectorAll('.recent-gif-card').forEach(c => {
+            const isThisActive = (userData.ambientMode === 'custom' && c.getAttribute('data-gif-data') === userData.customGifData);
+            c.classList.toggle('active', isThisActive);
+        });
     }
 
     // Render Recent GIFs History (Max 5 items)
@@ -1351,19 +1364,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (userData.recentGifs.length === 0) {
             recentGifsSection.style.display = 'none';
+            recentGifsContainer.innerHTML = '';
             return;
         }
 
         recentGifsSection.style.display = 'block';
-        recentGifsContainer.innerHTML = '';
 
-        for (const [index, gif] of userData.recentGifs.entries()) {
-            const isActive = (userData.customGifData === gif.data);
+        // Fetch all thumbnails in parallel before touching DOM to avoid blank reload flicker
+        const itemsWithThumbs = await Promise.all(userData.recentGifs.map(async (gif) => {
+            const thumbData = gif.data.startsWith('data:') ? gif.data : await gifDb.get(gif.data);
+            return { gif, thumbData };
+        }));
+
+        const fragment = document.createDocumentFragment();
+
+        itemsWithThumbs.forEach(({ gif, thumbData }, index) => {
+            const isActive = (userData.ambientMode === 'custom' && userData.customGifData === gif.data);
             const card = document.createElement('div');
             card.className = `recent-gif-card ${isActive ? 'active' : ''}`;
+            card.setAttribute('data-gif-data', gif.data);
             card.title = gif.name;
-
-            const thumbData = gif.data.startsWith('data:') ? gif.data : await gifDb.get(gif.data);
 
             card.innerHTML = `
                 <img class="recent-gif-thumb" src="${thumbData || ''}" alt="thumb">
@@ -1373,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="btn-remove-recent" title="Remove from history">&times;</button>
             `;
 
-            // Click card to switch to this GIF
+            // Click card to switch to this GIF (Zero-Flicker in-place active switch)
             card.addEventListener('click', (e) => {
                 if (e.target.classList.contains('btn-remove-recent')) return;
                 userData.ambientMode = 'custom';
@@ -1381,7 +1401,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 userData.customGifName = gif.name;
                 saveUserData();
                 applyGifTheme();
-                renderRecentGifs();
             });
 
             // Click remove button
@@ -1406,8 +1425,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderRecentGifs();
             });
 
-            recentGifsContainer.appendChild(card);
-        }
+            fragment.appendChild(card);
+        });
+
+        recentGifsContainer.replaceChildren(fragment);
     }
 
     applyGifTheme();
@@ -1435,7 +1456,6 @@ document.addEventListener('DOMContentLoaded', () => {
         userData.ambientMode = 'ytmusic';
         saveUserData();
         applyGifTheme();
-        renderRecentGifs();
     });
 
     // File Upload Handler
@@ -1513,10 +1533,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('hide-vinyl-spindle', !userData.showVinylSpindle);
     });
 
+    // Realtime Vinyl Rotation Speed Slider Listener
+    document.getElementById('vinyl-speed-slider')?.addEventListener('input', (e) => {
+        userData.vinylSpeed = parseFloat(e.target.value);
+        document.documentElement.style.setProperty('--vinyl-speed', `${userData.vinylSpeed}s`);
+        const label = document.getElementById('vinyl-speed-label');
+        if (label) label.textContent = `${userData.vinylSpeed}s`;
+
+        document.querySelectorAll('.speed-chip').forEach(chip => {
+            chip.classList.toggle('active', parseFloat(chip.getAttribute('data-speed')) === userData.vinylSpeed);
+        });
+
+        saveUserData();
+        updatePipPeekingVinyl();
+    });
+
     // Vinyl Rotation Speed Selector Switcher
     document.querySelectorAll('.speed-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            userData.vinylSpeed = parseInt(chip.getAttribute('data-speed')) || 6;
+            userData.vinylSpeed = parseFloat(chip.getAttribute('data-speed')) || 6;
             saveUserData();
             applyGifTheme();
         });
@@ -1682,6 +1717,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Vinyl Disc Click: Toggle / Bring to front or minimize active Music window/tab
+    const handleVinylDiscClick = (e) => {
+        if (e) e.stopPropagation();
+        console.log('[Media] Vinyl Disc clicked -> Toggling Music Window (Title:', ytTrackData.title, ')');
+        sendToCpp({
+            action: 'toggleMusicWindow',
+            title: ytTrackData.title || ''
+        });
+    };
+
+    document.querySelectorAll('.card-vinyl-disc, .vinyl-disc, #card-vinyl-container, #vinyl-disc-container, .pip-peeking-vinyl-disc, .card-vinyl-backdrop').forEach(el => {
+        el.addEventListener('click', handleVinylDiscClick);
+        el.setAttribute('title', 'Click to bring Music player to front / minimize');
+    });
+
     // None GIF Preset Button
     document.querySelector('.gif-chip[data-gif="none"]')?.addEventListener('click', () => {
         userData.ambientMode = 'plant';
@@ -1689,7 +1739,6 @@ document.addEventListener('DOMContentLoaded', () => {
         userData.customGifName = '';
         saveUserData();
         applyGifTheme();
-        renderRecentGifs();
     });
 
     // Generate Gauge Radial Ticks

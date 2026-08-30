@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <windowsx.h>
 #include <gdiplus.h>
 #include <string>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <cmath>
 #include <vector>
 #include <mutex>
+#include <functional>
 #include <wininet.h>
 #include <wincodec.h>
 
@@ -50,8 +52,17 @@ private:
     int m_parentH = 400;
 
     int m_discSize = 270;
+    float m_speedSec = 6.0f;
+    std::chrono::steady_clock::time_point m_lastAnimTime = std::chrono::steady_clock::now();
+
+    HDC m_hdcMem = nullptr;
+    HBITMAP m_hBmp = nullptr;
+    HGDIOBJ m_hOldBmp = nullptr;
+    void* m_pBits = nullptr;
+    int m_bufferSize = 0;
 
     UINT_PTR m_animTimerId = 0;
+    std::function<void()> m_onClick = nullptr;
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         PipVinylOverlay* pThis = (PipVinylOverlay*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
@@ -61,8 +72,52 @@ private:
                 pThis->OnAnimFrame();
             }
             return 0;
-        case WM_NCHITTEST:
-            return HTTRANSPARENT; // Click-through to desktop
+        case WM_MOUSEACTIVATE:
+            return MA_NOACTIVATE;
+        case WM_NCHITTEST: {
+            if (!pThis || !pThis->m_visible || pThis->m_slideProgress < 0.15f) {
+                return HTTRANSPARENT;
+            }
+            POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            ScreenToClient(hWnd, &pt);
+            float cx = pThis->m_discSize / 2.0f;
+            float cy = pThis->m_discSize / 2.0f;
+            float radius = (pThis->m_discSize / 2.0f) - 4.0f;
+            float dx = (float)pt.x - cx;
+            float dy = (float)pt.y - cy;
+            if ((dx * dx + dy * dy) <= (radius * radius)) {
+                return HTCLIENT;
+            }
+            return HTTRANSPARENT;
+        }
+        case WM_SETCURSOR: {
+            if (LOWORD(lParam) == HTCLIENT) {
+                SetCursor(LoadCursor(NULL, IDC_HAND));
+                return TRUE;
+            }
+            break;
+        }
+        case WM_LBUTTONDOWN:
+            return 0;
+        case WM_LBUTTONUP: {
+            if (pThis && pThis->m_visible && pThis->m_slideProgress >= 0.15f) {
+                POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                float cx = pThis->m_discSize / 2.0f;
+                float cy = pThis->m_discSize / 2.0f;
+                float radius = (pThis->m_discSize / 2.0f) - 4.0f;
+                float dx = (float)pt.x - cx;
+                float dy = (float)pt.y - cy;
+                if ((dx * dx + dy * dy) <= (radius * radius)) {
+                    if (pThis->m_onClick) {
+                        pThis->m_onClick();
+                    }
+                    if (pThis->m_hParent) {
+                        SetWindowPos(hWnd, pThis->m_hParent, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+                    }
+                }
+            }
+            return 0;
+        }
         case WM_DESTROY:
             return 0;
         }
@@ -73,6 +128,16 @@ public:
     PipVinylOverlay() = default;
     ~PipVinylOverlay() {
         Destroy();
+    }
+
+    void SetOnClick(std::function<void()> onClick) {
+        m_onClick = onClick;
+    }
+
+    void SetSpeed(float speedSec) {
+        if (speedSec >= 0.5f && speedSec <= 60.0f) {
+            m_speedSec = speedSec;
+        }
     }
 
     void Init(HINSTANCE hInstance, HWND hParent) {
@@ -88,7 +153,7 @@ public:
         RegisterClassExW(&wc);
 
         m_hwnd = CreateWindowExW(
-            WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
+            WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
             wc.lpszClassName,
             L"FocusGrow_VinylOverlay",
             WS_POPUP,
@@ -98,7 +163,8 @@ public:
 
         if (m_hwnd) {
             SetWindowLongPtr(m_hwnd, GWLP_USERDATA, (LONG_PTR)this);
-            m_animTimerId = SetTimer(m_hwnd, 100, 16, NULL); // ~60 FPS animation loop
+            m_lastAnimTime = std::chrono::steady_clock::now();
+            m_animTimerId = SetTimer(m_hwnd, 100, 8, NULL); // ~125 FPS buttery smooth animation loop
         }
     }
 
@@ -110,6 +176,15 @@ public:
         if (m_hwnd) {
             DestroyWindow(m_hwnd);
             m_hwnd = nullptr;
+        }
+        if (m_hdcMem) {
+            if (m_hOldBmp) SelectObject(m_hdcMem, m_hOldBmp);
+            if (m_hBmp) DeleteObject(m_hBmp);
+            DeleteDC(m_hdcMem);
+            m_hdcMem = nullptr;
+            m_hBmp = nullptr;
+            m_hOldBmp = nullptr;
+            m_bufferSize = 0;
         }
         std::lock_guard<std::mutex> lock(m_bitmapMutex);
         m_coverBitmap.reset();
@@ -303,10 +378,18 @@ public:
             }
         }
 
-        // Continuous vinyl spin when playing
+        auto now = std::chrono::steady_clock::now();
+        float dt = std::chrono::duration<float>(now - m_lastAnimTime).count();
+        m_lastAnimTime = now;
+        if (dt <= 0.0f || dt > 0.1f) dt = 0.016f;
+
+        // Continuous vinyl spin when playing - physically accurate real-time delta rotation
         if (m_isPlaying && m_slideProgress > 0.05f) {
-            m_rotationAngle += 0.85f;
-            if (m_rotationAngle >= 360.0f) m_rotationAngle -= 360.0f;
+            float degPerSec = (m_speedSec >= 0.5f) ? (360.0f / m_speedSec) : (360.0f / 6.0f);
+            m_rotationAngle += degPerSec * dt;
+            if (m_rotationAngle >= 360.0f) {
+                m_rotationAngle = std::fmod(m_rotationAngle, 360.0f);
+            }
         }
 
         // Hide window once fully retracted into the card
@@ -340,27 +423,37 @@ private:
             posX = startX + (int)((endX - startX) * m_slideProgress);
         }
 
-        // Render layered 32-bit ARGB bitmap
-        HDC hdcScreen = GetDC(NULL);
-        HDC hdcMem = CreateCompatibleDC(hdcScreen);
+        // Ensure persistent 32-bit ARGB DIB buffer
+        if (!m_hdcMem || m_bufferSize != size) {
+            if (m_hdcMem) {
+                if (m_hOldBmp) SelectObject(m_hdcMem, m_hOldBmp);
+                if (m_hBmp) DeleteObject(m_hBmp);
+                DeleteDC(m_hdcMem);
+            }
+            HDC hdcScreen = GetDC(NULL);
+            m_hdcMem = CreateCompatibleDC(hdcScreen);
+            ReleaseDC(NULL, hdcScreen);
 
-        BITMAPINFO bmi = { 0 };
-        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bmi.bmiHeader.biWidth = size;
-        bmi.bmiHeader.biHeight = -size; // Top-down DIB
-        bmi.bmiHeader.biPlanes = 1;
-        bmi.bmiHeader.biBitCount = 32;
-        bmi.bmiHeader.biCompression = BI_RGB;
+            BITMAPINFO bmi = { 0 };
+            bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            bmi.bmiHeader.biWidth = size;
+            bmi.bmiHeader.biHeight = -size; // Top-down DIB
+            bmi.bmiHeader.biPlanes = 1;
+            bmi.bmiHeader.biBitCount = 32;
+            bmi.bmiHeader.biCompression = BI_RGB;
 
-        void* pBits = nullptr;
-        HBITMAP hBmp = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-        HGDIOBJ hOldBmp = SelectObject(hdcMem, hBmp);
+            m_hBmp = CreateDIBSection(m_hdcMem, &bmi, DIB_RGB_COLORS, &m_pBits, NULL, 0);
+            m_hOldBmp = SelectObject(m_hdcMem, m_hBmp);
+            m_bufferSize = size;
+        }
+
+        if (!m_hdcMem || !m_hBmp) return;
 
         {
-            Gdiplus::Graphics g(hdcMem);
+            Gdiplus::Graphics g(m_hdcMem);
             g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-            g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-            g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+            g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBilinear);
+            g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
             g.Clear(Gdiplus::Color(0, 0, 0, 0)); // 100% transparent desktop background
 
             // Dynamic Sleeve Clipping Mask:
@@ -476,17 +569,14 @@ private:
             SWP_NOACTIVATE | SWP_SHOWWINDOW
         );
 
+        HDC hdcScreen = GetDC(NULL);
         POINT ptSrc = { 0, 0 };
         SIZE sizeWnd = { size, size };
         POINT ptDst = { posX, posY };
         BYTE alpha = (BYTE)(255 * (m_slideProgress > 1.0f ? 1.0f : (m_slideProgress < 0.0f ? 0.0f : m_slideProgress)));
         BLENDFUNCTION blend = { AC_SRC_OVER, 0, alpha, AC_SRC_ALPHA };
 
-        UpdateLayeredWindow(m_hwnd, hdcScreen, &ptDst, &sizeWnd, hdcMem, &ptSrc, 0, &blend, ULW_ALPHA);
-
-        SelectObject(hdcMem, hOldBmp);
-        DeleteObject(hBmp);
-        DeleteDC(hdcMem);
+        UpdateLayeredWindow(m_hwnd, hdcScreen, &ptDst, &sizeWnd, m_hdcMem, &ptSrc, 0, &blend, ULW_ALPHA);
         ReleaseDC(NULL, hdcScreen);
     }
 };
