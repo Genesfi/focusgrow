@@ -74,10 +74,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const opacityLabel = document.getElementById('opacity-label');
 
     // Titlebar Controls
+    const handleCloseClick = (e) => {
+        const forceExit = !!(e.ctrlKey || e.metaKey);
+        sendToCpp({ action: 'close', forceExit: forceExit });
+    };
+
     document.getElementById('btn-min')?.addEventListener('click', () => sendToCpp({ action: 'minimize' }));
     document.getElementById('btn-max')?.addEventListener('click', () => sendToCpp({ action: 'maximize' }));
-    document.getElementById('btn-close')?.addEventListener('click', () => sendToCpp({ action: 'close' }));
-    document.getElementById('btn-pip-close')?.addEventListener('click', () => sendToCpp({ action: 'close' }));
+    document.getElementById('btn-close')?.addEventListener('click', handleCloseClick);
+    document.getElementById('btn-pip-close')?.addEventListener('click', handleCloseClick);
 
     // Native Window Drag Handler
     const setupDragArea = (element) => {
@@ -530,6 +535,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const data = JSON.parse(evt.data);
                     if (data) {
+                        // Ignore command echoes broadcasted by the server (e.g. volumeUp, volumeDown, playPause)
+                        if (data.command) {
+                            return;
+                        }
+
                         isUsingExtension = true; // Confirmed working extension
 
                         if (data.event === 'stop' || !data.metadata || (!data.metadata.title && !data.metadata.author)) {
@@ -553,7 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (data.event === 'track' || data.event === 'resume') {
                                 ytTrackData.isPlaying = true;
                             } else if (data.event === 'pause') {
-                                ytTrackData.isPlaying = false;
+                                // Ignore transient pause event if user just adjusted volume
+                                if (Date.now() - lastVolumeScrollTime > 1500) {
+                                    ytTrackData.isPlaying = false;
+                                }
                             }
 
                             updateYtMusicUI();
@@ -1727,9 +1740,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // Vinyl Disc Scroll: Adjust YouTube Music Volume
+    let lastVolumeScrollTime = 0;
+    const handleVinylDiscWheel = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        lastVolumeScrollTime = Date.now();
+        const direction = e.deltaY < 0 ? 'volumeUp' : 'volumeDown';
+        console.log(`[Media] Vinyl Wheel: ${direction}`);
+        if (ytmpxSocket && ytmpxSocket.readyState === WebSocket.OPEN) {
+            ytmpxSocket.send(JSON.stringify({ command: direction }));
+        } else {
+            sendToCpp({ action: direction === 'volumeUp' ? 'mediaVolumeUp' : 'mediaVolumeDown' });
+        }
+    };
+
+    window.handleExternalVinylWheel = (direction) => {
+        console.log(`[Media] External Vinyl Wheel: ${direction}`);
+        lastVolumeScrollTime = Date.now();
+        if (ytmpxSocket && ytmpxSocket.readyState === WebSocket.OPEN) {
+            ytmpxSocket.send(JSON.stringify({ command: direction }));
+        } else {
+            sendToCpp({ action: direction === 'volumeUp' ? 'mediaVolumeUp' : 'mediaVolumeDown' });
+        }
+    };
+
     document.querySelectorAll('.card-vinyl-disc, .vinyl-disc, #card-vinyl-container, #vinyl-disc-container, .pip-peeking-vinyl-disc, .card-vinyl-backdrop').forEach(el => {
         el.addEventListener('click', handleVinylDiscClick);
-        el.setAttribute('title', 'Click to bring Music player to front / minimize');
+        el.addEventListener('wheel', handleVinylDiscWheel, { passive: false });
+        el.setAttribute('title', 'Click to toggle Music player • Scroll to adjust Volume');
     });
 
     // None GIF Preset Button

@@ -63,6 +63,7 @@ private:
 
     UINT_PTR m_animTimerId = 0;
     std::function<void()> m_onClick = nullptr;
+    std::function<void(short delta)> m_onWheel = nullptr;
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         PipVinylOverlay* pThis = (PipVinylOverlay*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
@@ -74,6 +75,15 @@ private:
             return 0;
         case WM_MOUSEACTIVATE:
             return MA_NOACTIVATE;
+        case WM_MOUSEWHEEL: {
+            if (pThis && pThis->m_visible && pThis->m_slideProgress >= 0.15f) {
+                short delta = GET_WHEEL_DELTA_WPARAM(wParam);
+                if (pThis->m_onWheel) {
+                    pThis->m_onWheel(delta);
+                }
+            }
+            return 0;
+        }
         case WM_NCHITTEST: {
             if (!pThis || !pThis->m_visible || pThis->m_slideProgress < 0.15f) {
                 return HTTRANSPARENT;
@@ -132,6 +142,10 @@ public:
 
     void SetOnClick(std::function<void()> onClick) {
         m_onClick = onClick;
+    }
+
+    void SetOnWheel(std::function<void(short delta)> onWheel) {
+        m_onWheel = onWheel;
     }
 
     void SetSpeed(float speedSec) {

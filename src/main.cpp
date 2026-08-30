@@ -794,6 +794,12 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
   } else if (msg.find(L"\"action\":\"mediaPlayPause\"") != std::wstring::npos) {
     keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
     keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+  } else if (msg.find(L"\"action\":\"mediaVolumeUp\"") != std::wstring::npos) {
+    keybd_event(VK_VOLUME_UP, 0, 0, 0);
+    keybd_event(VK_VOLUME_UP, 0, KEYEVENTF_KEYUP, 0);
+  } else if (msg.find(L"\"action\":\"mediaVolumeDown\"") != std::wstring::npos) {
+    keybd_event(VK_VOLUME_DOWN, 0, 0, 0);
+    keybd_event(VK_VOLUME_DOWN, 0, KEYEVENTF_KEYUP, 0);
   } else if (msg.find(L"\"action\":\"togglePip\"") != std::wstring::npos) {
     int w = 0, h = 0;
     size_t wPos = msg.find(L"\"width\":");
@@ -923,7 +929,11 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(false);
     }
-    if (g_minimizeToTrayOnClose) {
+    bool forceExit = (msg.find(L"\"forceExit\":true") != std::wstring::npos) ||
+                     ((GetKeyState(VK_CONTROL) & 0x8000) != 0);
+    if (forceExit || !g_minimizeToTrayOnClose) {
+      DestroyWindow(g_hWnd);
+    } else {
       bool isFocusActive =
           (g_focusEngine && g_focusEngine->GetState() != SessionState::Idle);
       ShowWindow(g_hWnd, SW_HIDE);
@@ -934,8 +944,6 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
             L"Sesi fokus Anda tetap aktif di System Tray. Klik ikon tray untuk "
             L"membuka kembali.");
       }
-    } else {
-      DestroyWindow(g_hWnd);
     }
   } else if (msg.find(L"\"action\":\"startResize\"") != std::wstring::npos) {
     WPARAM dir = SC_SIZE + 2;
@@ -1312,6 +1320,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   g_pipVinylOverlay->Init(hInstance, g_hWnd);
   g_pipVinylOverlay->SetOnClick([]() {
     ToggleMusicWindow(g_lastKnownTrackTitle);
+  });
+  g_pipVinylOverlay->SetOnWheel([](short delta) {
+    if (g_webView) {
+      std::wstring js = (delta > 0)
+        ? L"if(window.handleExternalVinylWheel) window.handleExternalVinylWheel('volumeUp');"
+        : L"if(window.handleExternalVinylWheel) window.handleExternalVinylWheel('volumeDown');";
+      g_webView->ExecuteScript(js.c_str(), nullptr);
+    }
   });
   StartTabSyncHttpServer();
   g_focusEngine->SetStateCallback(
