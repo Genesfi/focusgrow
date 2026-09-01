@@ -784,11 +784,20 @@
         </div>
     </div>
 
-    <!-- Options & Settings Modal -->
+    <!-- Options & Settings Modal (Clean Categorized Tabbed System) -->
     <div class="modal-overlay" id="options-modal">
-        <div class="modal-card">
+        <div class="modal-card settings-modal-card">
             <div class="modal-header">
-                <h3>Session & Ambient Options</h3>
+                <div class="settings-modal-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <div>
+                        <h3>Settings & Preferences</h3>
+                        <div class="settings-modal-sub">Configure timer rules, audio alerts, PiP window, and appearance</div>
+                    </div>
+                </div>
                 <button class="icon-btn modal-close" id="btn-close-options-modal">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -796,293 +805,39 @@
                     </svg>
                 </button>
             </div>
-            <div class="modal-body">
-                <div class="option-row">
-                    <span>Desktop Notifications</span>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-notifications-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row">
-                    <span>Work / Focus Sound</span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <select id="select-focus-sound" class="small-action-btn sound-select"
-                            style="width: 130px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
-                            <option value="default" style="background: #242424; color: white;">Default</option>
-                            <option value="reminder" style="background: #242424; color: white;">Reminder</option>
-                            <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
-                            <option value="chime" style="background: #242424; color: white;">Chime</option>
-                            <option value="custom" style="background: #242424; color: white;">Custom (.mp3/.wav)...</option>
-                            <option value="none" style="background: #242424; color: white;">Silent</option>
-                        </select>
-                        <button id="btn-play-focus-sound" class="icon-btn small-btn" title="Test Focus Sound" style="width: 24px; height: 24px; padding: 0;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="option-row custom-sound-row" id="focus-custom-sound-row" style="display: none; padding-left: 12px; margin-top: -6px; margin-bottom: 6px;">
-                    <input type="file" id="focus-sound-file-input" accept="audio/*" style="display: none;">
-                    <button id="btn-browse-focus-sound" class="small-action-btn" style="font-size: 10px; padding: 2px 8px;">📁 Select File</button>
-                    <span id="focus-sound-file-name" style="font-size: 10px; color: var(--accent-blue); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file chosen</span>
-                </div>
 
-                <div class="option-row">
-                    <span>Break Session Sound</span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <select id="select-break-sound" class="small-action-btn sound-select"
-                            style="width: 130px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
-                            <option value="chime" style="background: #242424; color: white;">Chime</option>
-                            <option value="default" style="background: #242424; color: white;">Default</option>
-                            <option value="reminder" style="background: #242424; color: white;">Reminder</option>
-                            <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
-                            <option value="custom" style="background: #242424; color: white;">Custom (.mp3/.wav)...</option>
-                            <option value="none" style="background: #242424; color: white;">Silent</option>
-                        </select>
-                        <button id="btn-play-break-sound" class="icon-btn small-btn" title="Test Break Sound" style="width: 24px; height: 24px; padding: 0;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="option-row custom-sound-row" id="break-custom-sound-row" style="display: none; padding-left: 12px; margin-top: -6px; margin-bottom: 6px;">
-                    <input type="file" id="break-sound-file-input" accept="audio/*" style="display: none;">
-                    <button id="btn-browse-break-sound" class="small-action-btn" style="font-size: 10px; padding: 2px 8px;">📁 Select File</button>
-                    <span id="break-sound-file-name" style="font-size: 10px; color: var(--accent-blue); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file chosen</span>
-                </div>
-                <div class="option-row">
-                    <span>Auto-PIP on Session Start</span>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-auto-pip">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row">
-                    <span>Hide Taskbar Icon in PiP</span>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-hide-taskbar-pip">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row">
-                    <div style="display: flex; flex-direction: column;">
-                        <span>Peeking Vinyl in PiP Mode</span>
-                        <span style="font-size: 10px; color: var(--text-muted);">Spinning vinyl sleeve poking out behind the PIP card</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-pip-peeking-vinyl">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row" id="pip-vinyl-side-row" style="padding-top: 4px; padding-bottom: 4px;">
-                    <span style="font-size: 11px; color: var(--text-muted);">Vinyl Peeking Side:</span>
-                    <div class="speed-selector" style="margin: 0;">
-                        <button class="pip-side-btn active" data-side="left">⬅️ Left</button>
-                        <button class="pip-side-btn" data-side="right">➡️ Right</button>
-                    </div>
-                </div>
-                <div class="option-row">
-                    <span>Auto-Close Blocked Apps</span>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-auto-close-toggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row">
-                    <span>Minimize to System Tray on Close</span>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-minimize-tray-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row">
-                    <span>Auto-pause on Inactivity</span>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-auto-pause-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row" id="auto-pause-sec-row">
-                    <span>Inactivity Threshold</span>
-                    <select id="select-auto-pause-sec" class="small-action-btn"
-                        style="width: 140px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
-                        <option value="5" style="background: #242424; color: white;">5 seconds</option>
-                        <option value="10" style="background: #242424; color: white;">10 seconds</option>
-                        <option value="15" selected style="background: #242424; color: white;">15 seconds (Default)</option>
-                        <option value="30" style="background: #242424; color: white;">30 seconds</option>
-                        <option value="60" style="background: #242424; color: white;">60 seconds</option>
-                    </select>
-                </div>
+            <!-- Segmented Category Tab Bar -->
+            <div class="settings-tabs-bar">
+                <button class="settings-tab-btn active" data-tab="appearance">
+                    <span>🎨</span>
+                    <span>Appearance</span>
+                </button>
+                <button class="settings-tab-btn" data-tab="session">
+                    <span>⏱️</span>
+                    <span>Session</span>
+                </button>
+                <button class="settings-tab-btn" data-tab="pip">
+                    <span>🪟</span>
+                    <span>PiP Mode</span>
+                </button>
+                <button class="settings-tab-btn" data-tab="audio">
+                    <span>🔔</span>
+                    <span>Sound</span>
+                </button>
+                <button class="settings-tab-btn" data-tab="system">
+                    <span>⚙️</span>
+                    <span>System</span>
+                </button>
+            </div>
 
-                <!-- Neutral App Overstay Guard & Gentle Distraction Nudge -->
-                <div class="option-row">
-                    <div style="display: flex; flex-direction: column;">
-                        <span>Neutral App Overstay Guard</span>
-                        <span style="font-size: 10px; color: var(--text-muted);">Remind when staying too long in neutral apps (Edge/Browser)</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-neutral-overstay-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="option-row" id="neutral-overstay-interval-row">
-                    <span>Reminder Interval</span>
-                    <select id="select-neutral-overstay-interval" class="small-action-btn"
-                        style="width: 140px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
-                        <option value="15" style="background: #242424; color: white;">15 minutes</option>
-                        <option value="30" selected style="background: #242424; color: white;">30 minutes (Default)</option>
-                        <option value="45" style="background: #242424; color: white;">45 minutes</option>
-                        <option value="60" style="background: #242424; color: white;">60 minutes (1 hour)</option>
-                    </select>
-                </div>
-                <div class="option-row" id="neutral-softblock-row">
-                    <div style="display: flex; flex-direction: column;">
-                        <span>Soft-Block on 2x Ignored</span>
-                        <span style="font-size: 10px; color: var(--text-muted);">Temporarily restrict screen if 2x warnings are ignored (no auto-close)</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-neutral-softblock-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <!-- Timer Ambient GIF Selection & Style Options -->
-                <div class="option-column">
-                    <div class="option-title">Timer Ambient GIF Background</div>
-                    <div class="option-sub">Upload a GIF or image from your computer (Default: FocusGrow Plant Sprout):
-                    </div>
-                    <div class="gif-selector">
-                        <button class="gif-chip active" data-gif="none">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399"
-                                stroke-width="2" stroke-linecap="round">
-                                <path
-                                    d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                                <path d="M12 6v6l4 2" />
-                            </svg>
-                            <span>Default Plant Growth</span>
-                        </button>
-                        <button class="gif-chip" data-gif="ytmusic" id="btn-select-ytmusic-gif">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff0050"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <circle cx="12" cy="12" r="3" />
-                                <path d="M12 2a10 10 0 0 1 10 10" />
-                            </svg>
-                            <span>YT Music Vinyl</span>
-                        </button>
-                        <button class="gif-chip" id="btn-select-custom-gif">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff"
-                                stroke-width="2" stroke-linecap="round">
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
-                                </path>
-                            </svg>
-                            <span>Custom GIF File…</span>
-                        </button>
-                        <input type="file" id="gif-file-input" accept="image/gif,image/webp,image/png,image/jpeg"
-                            style="display:none;">
-                    </div>
-
-                    <!-- Recent GIFs History List (Max 5 items) -->
-                    <div id="recent-gifs-section" style="margin-top: 10px; display: none;">
-                        <div
-                            style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                            <span>Recent GIFs (Max 5):</span>
-                            <button id="btn-clear-recent-gifs" class="text-link-btn">Clear history</button>
-                        </div>
-                        <div class="recent-gifs-grid" id="recent-gifs-container"></div>
-                    </div>
-
-                    <!-- GIF Display Style Selector (Circle Inner vs Full Panel) -->
-                    <div id="gif-style-section" style="margin-top: 10px; display: none;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">GIF Display Style:
-                        </div>
-                        <div class="gif-selector">
-                            <button class="gif-mode-chip active" data-mode="circle">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                </svg>
-                                <span>Circle Inner Ring</span>
-                            </button>
-                            <button class="gif-mode-chip" data-mode="full">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                                </svg>
-                                <span>Full Panel Fill</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Vinyl Record Rotation Speed Setting -->
-                    <div id="vinyl-speed-section" style="margin-top: 10px; display: none;">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 11px; color: var(--text-muted);">Vinyl Rotation Speed:</span>
-                            <span style="font-size: 11px; font-weight: 600; color: #ff6088;"
-                                id="vinyl-speed-label">6s</span>
-                        </div>
-                        <input type="range" id="vinyl-speed-slider" min="1" max="30" step="0.5" value="6"
-                            class="custom-range" style="width: 100%;">
-                        <div class="speed-selector" style="margin-top: 6px;">
-                            <button class="speed-chip" data-speed="3">⚡ Fast (3s)</button>
-                            <button class="speed-chip active" data-speed="6">🎵 Normal (6s)</button>
-                            <button class="speed-chip" data-speed="10">🐢 Slow (10s)</button>
-                            <button class="speed-chip" data-speed="16">🌙 Relaxed (16s)</button>
-                        </div>
-
-                        <!-- Realtime Vinyl Size Slider & Presets -->
-                        <div style="margin-top: 12px;">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <span style="font-size: 11px; color: var(--text-muted);">Vinyl Disc Size:</span>
-                                <span style="font-size: 11px; font-weight: 600; color: #ff6088;"
-                                    id="vinyl-size-label">340px</span>
-                            </div>
-                            <input type="range" id="vinyl-size-slider" min="120" max="850" step="10" value="340"
-                                class="custom-range" style="width: 100%;">
-                            <div class="speed-selector" style="margin-top: 6px;">
-                                <button class="size-preset-chip" data-size="150">🔘 Small (150px)</button>
-                                <button class="size-preset-chip active" data-size="340">🎯 Medium (340px)</button>
-                                <button class="size-preset-chip" data-size="680">🔳 Full Panel (680px)</button>
-                            </div>
-                        </div>
-
-                        <!-- Center Spindle Toggle -->
-                        <div class="option-row" style="margin-top: 10px; background: none; padding: 0;">
-                            <span style="font-size: 11px; color: var(--text-muted);">Show Center Spindle (White
-                                Disc)</span>
-                            <label class="switch">
-                                <input type="checkbox" id="chk-vinyl-spindle-toggle" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- GIF Preview Thumbnail -->
-                    <div id="gif-preview-wrapper" style="display:none; margin-top: 8px; text-align: center;">
-                        <div id="gif-preview-container"
-                            style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 72px; height: 72px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
-                            <img id="gif-preview-img" src="" alt="preview"
-                                style="width:100%; height:100%; object-fit:cover;">
-                        </div>
-                        <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 4px;">
-                        </div>
-                    </div>
-
-                    <!-- Realtime Opacity Slider -->
-                    <div id="gif-opacity-row" style="display: none; margin-top: 10px;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span
-                                id="opacity-label">78%</span></div>
-                        <input type="range" id="gif-opacity-slider" min="10" max="100" value="78"
-                            style="width: 100%; accent-color: var(--accent-blue);">
-                    </div>
-
+            <div class="modal-body settings-modal-body">
+                <!-- ================= TAB 1: APPEARANCE (DEFAULT ACTIVE) ================= -->
+                <div class="settings-tab-pane active" id="settings-pane-appearance">
                     <!-- Timer Ring Visual Themes -->
-                    <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+                    <div class="option-column">
                         <div class="option-title">Timer Ring Theme</div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Choose a visual
-                            style for the focus timer:</div>
-                        <div class="gif-selector">
+                        <div class="option-sub">Choose a visual animation style for the circular focus timer:</div>
+                        <div class="ring-theme-grid">
                             <button class="ring-theme-chip active" data-theme="classic">⭕ Classic</button>
                             <button class="ring-theme-chip" data-theme="hourglass">⏳ Hourglass</button>
                             <button class="ring-theme-chip" data-theme="wave">🌊 Liquid Wave</button>
@@ -1091,7 +846,7 @@
                             <button class="ring-theme-chip" data-theme="orbit">💫 Orbit</button>
                         </div>
 
-                        <div class="option-row" id="row-hourglass-rotate" style="margin-top: 10px; display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                        <div class="option-row" id="row-hourglass-rotate" style="margin-top: 8px; display: none; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); background: none; padding-left: 0; padding-right: 0;">
                             <span>Auto-Rotate Hourglass Every 5s</span>
                             <label class="switch">
                                 <input type="checkbox" id="chk-hourglass-rotate">
@@ -1099,65 +854,406 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- Accent Color Theme -->
+                    <div class="option-column" style="margin-top: 8px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="option-title">Accent Color Palette</div>
+                            <span id="dynamic-album-status-badge" style="display: none; font-size: 10px; color: var(--accent-blue); background: rgba(96, 205, 255, 0.1); padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(96, 205, 255, 0.2);">🎵 Track Synced</span>
+                        </div>
+                        <div class="option-sub">Default UI accent color used across gauges, highlights, and buttons:</div>
+
+                        <div id="base-accent-controls" style="transition: opacity 0.2s ease;">
+                            <div class="accent-palette-grid">
+                                <button class="accent-chip active" data-accent="#60cdff" style="border-left: 4px solid #60cdff;">🔷 Blue</button>
+                                <button class="accent-chip" data-accent="#ff2a70" style="border-left: 4px solid #ff2a70;">🌸 Pink</button>
+                                <button class="accent-chip" data-accent="#00e676" style="border-left: 4px solid #00e676;">🌿 Green</button>
+                                <button class="accent-chip" data-accent="#a855f7" style="border-left: 4px solid #a855f7;">🔮 Purple</button>
+                                <button class="accent-chip" data-accent="#f59e0b" style="border-left: 4px solid #f59e0b;">🍊 Orange</button>
+                                <label class="accent-picker-chip" id="custom-accent-chip" for="accent-color-picker" title="Custom color picker" style="border-left: 4px solid #60cdff;">
+                                    <span id="custom-color-indicator" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #60cdff; margin-right: 2px; flex-shrink: 0; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></span>
+                                    <input type="color" id="accent-color-picker" value="#60cdff">
+                                    <span>Custom</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="option-row" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1); background: none; padding-left: 0; padding-right: 0;">
+                            <div class="option-info-col">
+                                <span>Dynamic YT Music Album Sync</span>
+                                <span class="option-sub">Extracts accent palette from album art in real-time</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-dynamic-album">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="option-row" id="row-dynamic-contrast" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1); background: none; padding-left: 0; padding-right: 0;">
+                            <div class="option-info-col">
+                                <span>High-Contrast Complementary Accent</span>
+                                <span class="option-sub">Generates contrasting gauge & background colors</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-dynamic-contrast" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Ambient GIF Background & Vinyl Record Options -->
+                    <div class="option-column" style="margin-top: 8px;">
+                        <div class="option-title">Timer Ambient Backdrop</div>
+                        <div class="option-sub">Visual theme displayed inside or behind the focus card:</div>
+                        <div class="ambient-mode-grid">
+                            <button class="gif-chip active" data-gif="none">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                                    <path d="M12 6v6l4 2" />
+                                </svg>
+                                <span>Default Plant Sprout</span>
+                            </button>
+                            <button class="gif-chip" data-gif="ytmusic" id="btn-select-ytmusic-gif">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff0050"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M12 2a10 10 0 0 1 10 10" />
+                                </svg>
+                                <span>YT Music Vinyl</span>
+                            </button>
+                            <button class="gif-chip" id="btn-select-custom-gif">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60cdff"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                <span>Custom GIF / File…</span>
+                            </button>
+                            <input type="file" id="gif-file-input" accept="image/gif,image/webp,image/png,image/jpeg"
+                                style="display:none;">
+                        </div>
+
+                        <!-- Plant Sprout Info Badge -->
+                        <div id="plant-info-badge" style="display: none; padding: 8px 12px; background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 8px; font-size: 11px; color: #a7f3d0; margin-top: 8px;">
+                            🌱 <strong>Plant Growth:</strong> Sprout will grow and blossom dynamically in real-time as your focus session progresses.
+                        </div>
+
+                        <!-- Recent GIFs History List (Max 5 items) -->
+                        <div id="recent-gifs-section" style="margin-top: 10px; display: none;">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <span>Recent GIFs (Max 5):</span>
+                                <button id="btn-clear-recent-gifs" class="text-link-btn">Clear history</button>
+                            </div>
+                            <div class="recent-gifs-grid" id="recent-gifs-container"></div>
+                        </div>
+
+                        <!-- GIF Display Style Selector (Circle Inner vs Full Panel) -->
+                        <div id="gif-style-section" style="margin-top: 10px; display: none;">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">GIF Display Style:</div>
+                            <div class="gif-mode-grid">
+                                <button class="gif-mode-chip active" data-mode="circle">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                    </svg>
+                                    <span>Circle Inner Ring</span>
+                                </button>
+                                <button class="gif-mode-chip" data-mode="full">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                    </svg>
+                                    <span>Full Panel Fill</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Vinyl Record Rotation Speed Setting -->
+                        <div id="vinyl-speed-section" style="margin-top: 10px; display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <span style="font-size: 11px; color: var(--text-muted);">Vinyl Rotation Speed:</span>
+                                <span style="font-size: 11px; font-weight: 600; color: #ff6088;" id="vinyl-speed-label">6s</span>
+                            </div>
+                            <input type="range" id="vinyl-speed-slider" min="1" max="30" step="0.5" value="6" class="custom-range" style="width: 100%;">
+                            <div class="vinyl-speed-presets-grid" style="margin-top: 6px;">
+                                <button class="speed-chip" data-speed="3">⚡ Fast (3s)</button>
+                                <button class="speed-chip active" data-speed="6">🎵 Normal (6s)</button>
+                                <button class="speed-chip" data-speed="10">🐢 Slow (10s)</button>
+                                <button class="speed-chip" data-speed="16">🌙 Relaxed (16s)</button>
+                            </div>
+
+                            <!-- Realtime Vinyl Size Slider & Presets -->
+                            <div style="margin-top: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">Vinyl Disc Size:</span>
+                                    <span style="font-size: 11px; font-weight: 600; color: #ff6088;" id="vinyl-size-label">340px</span>
+                                </div>
+                                <input type="range" id="vinyl-size-slider" min="120" max="850" step="10" value="340" class="custom-range" style="width: 100%;">
+                                <div class="vinyl-size-presets-grid" style="margin-top: 6px;">
+                                    <button class="size-preset-chip" data-size="150">🔘 Small (150px)</button>
+                                    <button class="size-preset-chip active" data-size="340">🎯 Medium (340px)</button>
+                                    <button class="size-preset-chip" data-size="680">🔳 Full Panel (680px)</button>
+                                </div>
+                            </div>
+
+                            <!-- Center Spindle Toggle -->
+                            <div class="option-row" style="margin-top: 10px; background: none; padding: 0;">
+                                <span style="font-size: 11px; color: var(--text-muted);">Show Center Spindle (White Disc)</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="chk-vinyl-spindle-toggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- GIF Preview Thumbnail -->
+                        <div id="gif-preview-wrapper" style="display:none; margin-top: 8px; text-align: center;">
+                            <div id="gif-preview-container" style="display: inline-block; position: relative; border-radius: 50%; overflow: hidden; width: 72px; height: 72px; border: 2px solid var(--accent-blue); transition: all 0.3s ease;">
+                                <img id="gif-preview-img" src="" alt="preview" style="width:100%; height:100%; object-fit:cover;">
+                            </div>
+                            <div id="custom-gif-name" style="font-size: 11px; color: var(--accent-blue); margin-top: 4px;"></div>
+                        </div>
+
+                        <!-- Realtime Opacity Slider -->
+                        <div id="gif-opacity-row" style="display: none; margin-top: 10px;">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">GIF Opacity: <span id="opacity-label">78%</span></div>
+                            <input type="range" id="gif-opacity-slider" min="10" max="100" value="78" style="width: 100%; accent-color: var(--accent-blue);">
+                        </div>
+                    </div>
                 </div>
 
-                <div class="option-section"
-                    style="margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px;">
-                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Accent Color
-                        Theme</label>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Base Accent Color (Used as default / idle):</div>
-
-                    <div class="speed-selector" style="margin-bottom: 8px; flex-wrap: wrap;">
-                        <button class="accent-chip active" data-accent="#60cdff"
-                            style="border-left: 4px solid #60cdff;">🔷 Blue</button>
-                        <button class="accent-chip" data-accent="#ff2a70" style="border-left: 4px solid #ff2a70;">🌸
-                            Pink</button>
-                        <button class="accent-chip" data-accent="#00e676" style="border-left: 4px solid #00e676;">🌿
-                            Green</button>
-                        <button class="accent-chip" data-accent="#a855f7" style="border-left: 4px solid #a855f7;">🔮
-                            Purple</button>
-                        <button class="accent-chip" data-accent="#f59e0b" style="border-left: 4px solid #f59e0b;">🍊
-                            Orange</button>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px; margin-bottom: 8px;">
-                        <span style="font-size: 11px; color: var(--text-muted);">Custom Color Picker:</span>
-                        <input type="color" id="accent-color-picker" value="#60cdff"
-                            style="border: none; background: none; width: 32px; height: 32px; cursor: pointer;">
-                    </div>
-
-                    <div class="option-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                        <div style="display: flex; flex-direction: column;">
-                            <span>Dynamic YT Music Album Sync</span>
-                            <span style="font-size: 10px; color: var(--text-muted);">Adapts while playing music, falls back to base color</span>
+                <!-- ================= TAB 2: SESSION & GUARD ================= -->
+                <div class="settings-tab-pane" id="settings-pane-session">
+                    <div class="settings-section-title">Focus Inactivity & Auto-Pause</div>
+                    
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Auto-pause on Inactivity</span>
+                            <span class="option-sub">Pauses focus timer if no keyboard or mouse activity is detected</span>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" id="chk-dynamic-album">
+                            <input type="checkbox" id="chk-auto-pause-toggle" checked>
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <div class="option-row" id="auto-pause-sec-row">
+                        <div class="option-info-col">
+                            <span>Inactivity Threshold</span>
+                            <span class="option-sub">Time before auto-pausing active session</span>
+                        </div>
+                        <select id="select-auto-pause-sec" class="small-action-btn"
+                            style="width: 140px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 8px; font-size: 11px;">
+                            <option value="5" style="background: #242424; color: white;">5 seconds</option>
+                            <option value="10" style="background: #242424; color: white;">10 seconds</option>
+                            <option value="15" selected style="background: #242424; color: white;">15 seconds (Default)</option>
+                            <option value="30" style="background: #242424; color: white;">30 seconds</option>
+                            <option value="60" style="background: #242424; color: white;">60 seconds</option>
+                        </select>
+                    </div>
 
-                    <div class="option-row" id="row-dynamic-contrast" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                        <span>High-Contrast Complementary Accent</span>
+                    <div class="settings-section-title" style="margin-top: 10px;">Distraction Guard & App Restrictions</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Neutral App Overstay Guard</span>
+                            <span class="option-sub">Nudges you when spending too long in browsers or neutral apps</span>
+                        </div>
                         <label class="switch">
-                            <input type="checkbox" id="chk-dynamic-contrast" checked>
+                            <input type="checkbox" id="chk-neutral-overstay-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="option-row" id="neutral-overstay-interval-row">
+                        <div class="option-info-col">
+                            <span>Reminder Interval</span>
+                            <span class="option-sub">Frequency of neutral app check-in reminders</span>
+                        </div>
+                        <select id="select-neutral-overstay-interval" class="small-action-btn"
+                            style="width: 140px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 8px; font-size: 11px;">
+                            <option value="15" style="background: #242424; color: white;">15 minutes</option>
+                            <option value="30" selected style="background: #242424; color: white;">30 minutes (Default)</option>
+                            <option value="45" style="background: #242424; color: white;">45 minutes</option>
+                            <option value="60" style="background: #242424; color: white;">60 minutes (1 hour)</option>
+                        </select>
+                    </div>
+                    <div class="option-row" id="neutral-softblock-row">
+                        <div class="option-info-col">
+                            <span>Soft-Block on 2x Ignored</span>
+                            <span class="option-sub">Temporarily restricts screen if 2 check-ins are ignored</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-neutral-softblock-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Auto-Close Blocked Apps</span>
+                            <span class="option-sub">Instantly closes forbidden apps launched during focus periods</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-auto-close-toggle">
                             <span class="slider"></span>
                         </label>
                     </div>
                 </div>
 
-                <div class="option-row">
-                    <span>Reset Today's Progress</span>
-                    <button class="small-action-btn" id="btn-reset-progress">Reset</button>
+                <!-- ================= TAB 3: PIP WINDOW ================= -->
+                <div class="settings-tab-pane" id="settings-pane-pip">
+                    <div class="settings-section-title">Floating Window Behavior</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Auto-PIP on Session Start</span>
+                            <span class="option-sub">Automatically transforms into floating PiP when focus session begins</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-auto-pip">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Hide Taskbar Icon in PiP</span>
+                            <span class="option-sub">Keep your Windows taskbar ultra-clean while in PiP mini mode</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-hide-taskbar-pip">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section-title" style="margin-top: 10px;">PiP Vinyl Companion</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Peeking Vinyl in PiP Mode</span>
+                            <span class="option-sub">Spinning vinyl sleeve smoothly pokes out behind the floating card</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-pip-peeking-vinyl">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="option-row" id="pip-vinyl-side-row" style="padding-top: 6px; padding-bottom: 6px;">
+                        <div class="option-info-col">
+                            <span>Vinyl Peeking Side</span>
+                            <span class="option-sub">Choose which side the disc appears from</span>
+                        </div>
+                        <div class="speed-selector" style="margin: 0;">
+                            <button class="pip-side-btn active" data-side="left">⬅️ Left</button>
+                            <button class="pip-side-btn" data-side="right">➡️ Right</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="option-row">
-                    <span>Clear Blocked Apps List</span>
-                    <button class="small-action-btn" id="btn-clear-whitelist">Clear</button>
+
+                <!-- ================= TAB 4: AUDIO & ALERTS ================= -->
+                <div class="settings-tab-pane" id="settings-pane-audio">
+                    <div class="settings-section-title">Notifications</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Desktop Toast Notifications</span>
+                            <span class="option-sub">Show Windows system notifications on timer starts, breaks, and finishes</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-notifications-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section-title" style="margin-top: 10px;">Focus & Break Sound Effects</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Work / Focus Sound</span>
+                            <span class="option-sub">Plays when a focus period begins</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <select id="select-focus-sound" class="small-action-btn sound-select"
+                                style="width: 130px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 8px; font-size: 11px;">
+                                <option value="default" style="background: #242424; color: white;">Default</option>
+                                <option value="reminder" style="background: #242424; color: white;">Reminder</option>
+                                <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
+                                <option value="chime" style="background: #242424; color: white;">Chime</option>
+                                <option value="custom" style="background: #242424; color: white;">Custom (.mp3/.wav)...</option>
+                                <option value="none" style="background: #242424; color: white;">Silent</option>
+                            </select>
+                            <button id="btn-play-focus-sound" class="icon-btn small-btn" title="Test Focus Sound" style="width: 24px; height: 24px; padding: 0;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="option-row custom-sound-row" id="focus-custom-sound-row" style="display: none; padding-left: 12px; margin-top: -6px; margin-bottom: 6px;">
+                        <input type="file" id="focus-sound-file-input" accept="audio/*" style="display: none;">
+                        <button id="btn-browse-focus-sound" class="small-action-btn" style="font-size: 10px; padding: 2px 8px;">📁 Select File</button>
+                        <span id="focus-sound-file-name" style="font-size: 10px; color: var(--accent-blue); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file chosen</span>
+                    </div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Break Session Sound</span>
+                            <span class="option-sub">Plays when break time begins</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <select id="select-break-sound" class="small-action-btn sound-select"
+                                style="width: 130px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 8px; font-size: 11px;">
+                                <option value="chime" style="background: #242424; color: white;">Chime</option>
+                                <option value="default" style="background: #242424; color: white;">Default</option>
+                                <option value="reminder" style="background: #242424; color: white;">Reminder</option>
+                                <option value="alarm" style="background: #242424; color: white;">Alarm (Long)</option>
+                                <option value="custom" style="background: #242424; color: white;">Custom (.mp3/.wav)...</option>
+                                <option value="none" style="background: #242424; color: white;">Silent</option>
+                            </select>
+                            <button id="btn-play-break-sound" class="icon-btn small-btn" title="Test Break Sound" style="width: 24px; height: 24px; padding: 0;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="option-row custom-sound-row" id="break-custom-sound-row" style="display: none; padding-left: 12px; margin-top: -6px; margin-bottom: 6px;">
+                        <input type="file" id="break-sound-file-input" accept="audio/*" style="display: none;">
+                        <button id="btn-browse-break-sound" class="small-action-btn" style="font-size: 10px; padding: 2px 8px;">📁 Select File</button>
+                        <span id="break-sound-file-name" style="font-size: 10px; color: var(--accent-blue); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file chosen</span>
+                    </div>
                 </div>
-                <div class="option-row">
-                    <span>Cleanup GIF Storage</span>
-                    <button class="small-action-btn" id="btn-cleanup-gifs"
-                        title="Remove unused cached GIFs">Clean</button>
+
+                <!-- ================= TAB 5: SYSTEM & DATA (AT THE END) ================= -->
+                <div class="settings-tab-pane" id="settings-pane-system">
+                    <div class="settings-section-title">Window & Background Behavior</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Minimize to System Tray on Close</span>
+                            <span class="option-sub">Keep FocusGuard running in background when window is closed</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-minimize-tray-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section-title" style="margin-top: 10px;">Storage & Progress Reset</div>
+
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Reset Today's Progress</span>
+                            <span class="option-sub">Clear completed focus minutes for today back to 0</span>
+                        </div>
+                        <button class="small-action-btn" id="btn-reset-progress" style="color: #fb923c; border-color: rgba(251,146,60,0.3);">Reset</button>
+                    </div>
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Clear Blocked Apps List</span>
+                            <span class="option-sub">Remove all applications currently in the blocked list</span>
+                        </div>
+                        <button class="small-action-btn" id="btn-clear-whitelist" style="color: #f87171; border-color: rgba(248,113,113,0.3);">Clear All</button>
+                    </div>
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Cleanup GIF Storage Cache</span>
+                            <span class="option-sub">Free up storage by deleting unused cached custom GIFs</span>
+                        </div>
+                        <button class="small-action-btn" id="btn-cleanup-gifs" title="Remove unused cached GIFs">Clean Storage</button>
+                    </div>
                 </div>
             </div>
         </div>

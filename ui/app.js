@@ -889,21 +889,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const picker = document.getElementById('accent-color-picker');
         if (picker && finalColor.startsWith('#')) picker.value = finalColor;
 
+        const isDynamic = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
+
         // Sync active state of chips with base accent color
+        const currentAccent = userData.accentColor || '#60cdff';
+        const isPreset = ['#60cdff', '#ff2a70', '#00e676', '#a855f7', '#f59e0b'].includes(currentAccent);
         document.querySelectorAll('.accent-chip').forEach(chip => {
             const val = chip.getAttribute('data-accent');
-            chip.classList.toggle('active', val === (userData.accentColor || '#60cdff'));
+            chip.classList.toggle('active', val === currentAccent && !isDynamic);
         });
+
+        const customColorIndicator = document.getElementById('custom-color-indicator');
+        const customAccentChip = document.getElementById('custom-accent-chip');
+        if (customColorIndicator) customColorIndicator.style.background = currentAccent;
+        if (customAccentChip) {
+            customAccentChip.style.borderLeft = `4px solid ${currentAccent}`;
+            customAccentChip.classList.toggle('active', (!isPreset || userData.accentMode === 'custom') && !isDynamic);
+        }
 
         const chkDynamicAlbum = document.getElementById('chk-dynamic-album');
         if (chkDynamicAlbum) {
-            chkDynamicAlbum.checked = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
+            chkDynamicAlbum.checked = isDynamic;
+        }
+
+        const baseAccentControls = document.getElementById('base-accent-controls');
+        if (baseAccentControls) {
+            baseAccentControls.style.opacity = isDynamic ? '0.45' : '1';
+            baseAccentControls.style.pointerEvents = isDynamic ? 'none' : 'auto';
+        }
+
+        const statusBadge = document.getElementById('dynamic-album-status-badge');
+        if (statusBadge) {
+            statusBadge.style.display = isDynamic ? 'inline-block' : 'none';
         }
 
         // Show / Hide Dynamic Complementary Contrast Toggle Row in Options
         const rowDynamicContrast = document.getElementById('row-dynamic-contrast');
         if (rowDynamicContrast) {
-            const isDynamic = !!(userData.dynamicAlbumEnabled || userData.accentMode === 'ytmusic_dynamic');
             rowDynamicContrast.style.display = isDynamic ? 'flex' : 'none';
         }
     }
@@ -1267,6 +1289,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cardVinylContainer) cardVinylContainer.style.display = 'none';
         if (plantGrowthContainer) plantGrowthContainer.style.display = 'none';
 
+        const recentGifsSection = document.getElementById('recent-gifs-section');
+        const plantInfoBadge = document.getElementById('plant-info-badge');
+
         if (defaultChip) defaultChip.classList.remove('active');
         if (ytMusicChip) ytMusicChip.classList.remove('active');
         if (btnSelectCustomGif) btnSelectCustomGif.classList.remove('active');
@@ -1281,6 +1306,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'none';
+            if (recentGifsSection) recentGifsSection.style.display = 'none';
+            if (plantInfoBadge) plantInfoBadge.style.display = 'none';
             if (gifStyleSection) gifStyleSection.style.display = 'block';
             if (vinylSpeedSection) vinylSpeedSection.style.display = 'block';
             if (gifOpacityRow) gifOpacityRow.style.display = 'none';
@@ -1303,6 +1330,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } else if (userData.ambientMode === 'custom' && userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:'))) {
             if (btnSelectCustomGif) btnSelectCustomGif.classList.add('active');
+            if (plantInfoBadge) plantInfoBadge.style.display = 'none';
+            if (recentGifsSection) recentGifsSection.style.display = (userData.recentGifs && userData.recentGifs.length > 0) ? 'block' : 'none';
 
             // Load data from IndexedDB or use directly if it's still base64
             (async () => {
@@ -1346,6 +1375,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (defaultChip) defaultChip.classList.add('active');
             if (plantGrowthContainer) plantGrowthContainer.style.display = 'flex';
+            if (plantInfoBadge) plantInfoBadge.style.display = 'block';
+            if (recentGifsSection) recentGifsSection.style.display = 'none';
             if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'none';
             if (gifStyleSection) gifStyleSection.style.display = 'none';
             if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
@@ -2235,7 +2266,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (chkNeutralSoftBlock) chkNeutralSoftBlock.checked = userData.neutralSoftBlockEnabled !== false;
 
             applyGifTheme();
+            applyTimerTheme();
+            updateYtMusicUI();
+
+            // Ensure Appearance tab is default active if none active
+            if (!document.querySelector('.settings-tab-btn.active')) {
+                document.querySelector('.settings-tab-btn[data-tab="appearance"]')?.classList.add('active');
+                document.getElementById('settings-pane-appearance')?.classList.add('active');
+            }
+
             optionsModal.classList.add('active');
+        });
+    });
+
+    // Settings Categorized Tab Switching
+    document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.getAttribute('data-tab');
+            document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.settings-tab-pane').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            const pane = document.getElementById(`settings-pane-${targetTab}`);
+            if (pane) pane.classList.add('active');
         });
     });
 
