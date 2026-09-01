@@ -1,0 +1,80 @@
+========================================================================
+               FOCUSGROW - INSTALLATION & SETUP GUIDE
+               FOCUSGROW - PANDUAN INSTALASI & SETUP
+========================================================================
+
+Thank you for choosing FocusGrow!
+A lightweight, modern Windows productivity suite featuring Focus Timers,
+Application & Website Guard, Prayer Times, and Live Music Sync.
+
+Terima kasih telah memilih FocusGrow!
+Aplikasi produktivitas cerdas untuk Windows dengan Focus Timer,
+Pemblokir Aplikasi & Website, Pengingat Sholat, dan Sinkronisasi Musik.
+
+------------------------------------------------------------------------
+[EN] 🎵 YOUTUBE MUSIC SYNC COMPANION (OPTIONAL):
+------------------------------------------------------------------------
+If you listen to YouTube Music in your browser (Chrome / Edge / Brave)
+and want song titles, live album art, and spinning vinyl vinyl animations
+synced in FocusGrow:
+
+1. At the end of the installation, make sure to check:
+   [✓] Open YTMPX Extension folder
+   [✓] Start YTMPX Server now
+
+2. In your browser, open the extension manager:
+   - Google Chrome : chrome://extensions
+   - Microsoft Edge: edge://extensions
+   - Brave Browser : brave://extensions
+
+3. Toggle ON "Developer mode" (top-right corner).
+
+4. Click "Load unpacked" and select the "extension-ytmpx" folder that 
+   was opened, OR simply DRAG & DROP the folder directly into your 
+   browser extensions tab.
+
+* Setup is only required ONCE. After this, your music sync will work
+  automatically every time you use YouTube Music!
+
+------------------------------------------------------------------------
+[EN] 🚫 NON-YOUTUBE MUSIC USERS:
+------------------------------------------------------------------------
+If you do not use YouTube Music, NO EXTRA ACTION is needed.
+FocusGrow works 100% out of the box for all core productivity features,
+app/site blocking, and prayer time notifications.
+
+========================================================================
+
+------------------------------------------------------------------------
+[ID] 🎵 PANDUAN PENGGUNA YOUTUBE MUSIC (OPSIONAL):
+------------------------------------------------------------------------
+Jika Anda mendengarkan YouTube Music di browser (Chrome / Edge / Brave)
+dan ingin status lagu, judul, album art, serta vinyl player FocusGrow
+tersinkronisasi secara otomatis:
+
+1. Di akhir instalasi, pastikan mencentang:
+   [✓] Open YTMPX Extension folder
+   [✓] Start YTMPX Server now
+
+2. Buka halaman ekstensi di browser Anda:
+   - Google Chrome : chrome://extensions
+   - Microsoft Edge: edge://extensions
+   - Brave Browser : brave://extensions
+
+3. Aktifkan "Developer mode" (Mode Pengembang di pojok kanan atas).
+
+4. Klik tombol "Load unpacked" (Muat yang belum dibongkar) lalu pilih
+   folder "extension-ytmpx" yang terbuka, atau cukup seret (DRAG & DROP)
+   folder tersebut langsung ke halaman ekstensi browser.
+
+* Pemasangan ekstensi ini hanya perlu dilakukan 1x saja dan akan aktif
+  selamanya untuk menyinkronkan musik ke FocusGrow.
+
+------------------------------------------------------------------------
+[ID] 🚫 PENGGUNA NON-YOUTUBE MUSIC:
+------------------------------------------------------------------------
+Jika Anda tidak menggunakan YouTube Music, Anda TIDAK PERLU melakukan
+langkah di atas. FocusGrow tetap bekerja 100% sempurna untuk seluruh
+fitur produktivitas, pemblokir aplikasi/website, dan jadwal sholat.
+
+========================================================================

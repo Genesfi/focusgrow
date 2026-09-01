@@ -424,6 +424,19 @@ public:
         m_autoPauseSec = (sec > 0) ? sec : 15;
     }
 
+    void ShowNeutralOverstayBlock(const std::wstring& exeName, int durationMins) {
+        wchar_t buf[32];
+        swprintf_s(buf, L"%d:00", durationMins);
+        HWND fg = GetForegroundWindow();
+        m_overlay.ShowOnMonitor(OverlayMode::NeutralOverstayBlock, buf, fg, exeName);
+    }
+
+    void HideNeutralOverstayBlock() {
+        if (m_overlay.GetMode() == OverlayMode::NeutralOverstayBlock) {
+            m_overlay.Hide();
+        }
+    }
+
     void SetPrayerConfig(bool enabled, bool breakEnabled, int advanceMins, int breakDur, double lat, double lng, int tz) {
         m_prayerEnabled = enabled;
         m_prayerBreakEnabled = breakEnabled;
@@ -607,7 +620,10 @@ public:
             }
         }
 
-        if (m_state == SessionState::Idle || m_isPaused || m_prayerBreakActive) return;
+        if (m_state == SessionState::Idle || m_isPaused || m_prayerBreakActive) {
+            NotifyState();
+            return;
+        }
 
         // Tick temporary site passes
         for (auto& site : m_restrictedSites) {
@@ -635,7 +651,7 @@ public:
         }
 
         std::wstring timerFormatted = GetFormattedTime();
-        if (m_overlay.IsVisible() && m_overlay.GetMode() != OverlayMode::PrayerBreak && m_overlay.GetMode() != OverlayMode::AutoCloseWarning) {
+        if (m_overlay.IsVisible() && m_overlay.GetMode() != OverlayMode::PrayerBreak && m_overlay.GetMode() != OverlayMode::AutoCloseWarning && m_overlay.GetMode() != OverlayMode::NeutralOverstayBlock) {
             m_overlay.UpdateTimer(timerFormatted);
         }
 
@@ -682,7 +698,9 @@ public:
         }
 
         if (m_state == SessionState::Idle) {
-            if (m_overlay.IsVisible()) m_overlay.Hide();
+            if (m_overlay.IsVisible() && m_overlay.GetMode() != OverlayMode::NeutralOverstayBlock) {
+                m_overlay.Hide();
+            }
             return;
         }
 

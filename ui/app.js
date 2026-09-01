@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPeriodDown = document.getElementById('btn-period-down');
 
     const breaksCountText = document.getElementById('breaks-count-text');
+    const sessionPredictionBadge = document.getElementById('session-prediction-badge');
+    const sessionPredictionText = document.getElementById('session-prediction-text');
+    const predictionIconClock = document.getElementById('prediction-icon-clock');
+    const predictionIconMoon = document.getElementById('prediction-icon-moon');
     const chkSkipBreaks = document.getElementById('chk-skip-breaks');
     const btnStartFocus = document.getElementById('btn-start-focus');
 
@@ -116,12 +120,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCurrentlyPip = document.body.classList.contains('pip-mode');
             const isEnteringPip = !isCurrentlyPip;
 
-            // Enable cooldown to prevent capturing transition window resize (e.g. 960x660)
+            // Enable cooldown to prevent capturing transition window resize (e.g. 960x660 / 857x677)
             isInitializingPip = true;
-            setTimeout(() => { isInitializingPip = false; }, 1200);
+            setTimeout(() => { isInitializingPip = false; }, 1500);
 
-            const targetW = isEnteringPip ? (userData.pipWidth || 280) : undefined;
-            const targetH = isEnteringPip ? (userData.pipHeight || 400) : undefined;
+            if (!isEnteringPip) {
+                document.body.classList.remove('pip-mode');
+            }
+
+            let targetW = isEnteringPip ? (userData.pipWidth || 280) : undefined;
+            let targetH = isEnteringPip ? (userData.pipHeight || 400) : undefined;
+            if (targetW && (targetW > 480 || targetW < 160)) targetW = 280;
+            if (targetH && (targetH > 550 || targetH < 200)) targetH = 400;
 
             if (isEnteringPip) {
                 console.log(`[PIP] Entering PIP with target size: ${targetW}x${targetH}`);
@@ -259,8 +269,18 @@ document.addEventListener('DOMContentLoaded', () => {
         prayerAdvance: 5,
         prayerLat: -2.8554,
         prayerLng: 115.3283,
-        prayerTz: 8
+        prayerTz: 8,
+        neutralOverstayEnabled: true,
+        neutralOverstayIntervalMins: 30,
+        neutralSoftBlockEnabled: true,
+        ignoredNudgeStatsByDate: {} // { 'YYYY-MM-DD': count }
     };
+
+    let continuousNeutralSec = 0;
+    let continuousProductiveSec = 0;
+    let lastContinuousExe = '';
+    let lastProductiveExe = '';
+    let isNeutralSoftBlockActive = false;
 
     function isGoalMetWithTolerance(mins, targetMins, targetHours) {
         if (!mins || mins <= 0) return false;
@@ -1044,8 +1064,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = document.documentElement.clientWidth;
             const h = document.documentElement.clientHeight;
 
-            // Allow flexible resizing up to large displays (guarding against transition snapshots)
-            if (w >= 160 && h >= 200 && !(w === 960 && h === 660)) {
+            // Strictly guard within valid PIP dimensions (prevents capturing dashboard window size e.g. 857x677)
+            if (w >= 160 && w <= 480 && h >= 200 && h <= 550) {
                 userData.pipWidth = w;
                 userData.pipHeight = h;
                 saveUserData();
@@ -1808,6 +1828,45 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGaugeTicks();
 
     // Time Picker Controls
+    function updateSetupPrediction() {
+        if (!sessionPredictionText) return;
+
+        const periods = Math.ceil(selectedMins / selectedPeriodMins);
+        const breaks = (periods > 1 && !chkSkipBreaks.checked) ? (periods - 1) : 0;
+        const totalBreakMins = breaks * selectedBreakMins;
+        const totalDurationMins = selectedMins + totalBreakMins;
+
+        const now = new Date();
+        const finishDate = new Date(now.getTime() + totalDurationMins * 60 * 1000);
+
+        const hours = String(finishDate.getHours()).padStart(2, '0');
+        const minutes = String(finishDate.getMinutes()).padStart(2, '0');
+        const timeStr = `${hours}:${minutes}`;
+
+        const isNextDay = finishDate.getDate() !== now.getDate() || finishDate.getMonth() !== now.getMonth();
+        const finishHour = finishDate.getHours();
+        // Night / bedtime window (between 23:00 and 06:00)
+        const isLateNight = (finishHour >= 23 || finishHour < 6);
+
+        const durH = Math.floor(totalDurationMins / 60);
+        const durM = totalDurationMins % 60;
+        let durStr = '';
+        if (durH > 0 && durM > 0) durStr = `${durH}h ${durM}m`;
+        else if (durH > 0) durStr = `${durH}h`;
+        else durStr = `${durM}m`;
+
+        const daySuffix = isNextDay ? ' (+1d)' : '';
+        sessionPredictionText.innerHTML = `Ends at <strong>${timeStr}</strong>${daySuffix} • ${durStr} total`;
+
+        if (sessionPredictionBadge) {
+            sessionPredictionBadge.classList.toggle('late-night', isLateNight);
+            if (predictionIconClock && predictionIconMoon) {
+                predictionIconClock.style.display = isLateNight ? 'none' : 'block';
+                predictionIconMoon.style.display = isLateNight ? 'block' : 'none';
+            }
+        }
+    }
+
     function updatePickerDisplay() {
         if (pickerMinsInput && document.activeElement !== pickerMinsInput) {
             pickerMinsInput.value = selectedMins;
@@ -1827,6 +1886,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             breaksCountText.textContent = `Continuous ${selectedMins} min focus session (${selectedPeriodMins} min period)`;
         }
+
+        updateSetupPrediction();
         
         userData.selectedMins = selectedMins;
         userData.selectedPeriodMins = selectedPeriodMins;
@@ -2085,10 +2146,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (userData.autoPipOnStart) {
+            isInitializingPip = true;
+            setTimeout(() => { isInitializingPip = false; }, 1500);
+
+            let pipW = userData.pipWidth || 280;
+            let pipH = userData.pipHeight || 400;
+            if (pipW > 480 || pipW < 160) pipW = 280;
+            if (pipH > 550 || pipH < 200) pipH = 400;
+
             sendToCpp({
                 action: 'togglePip',
-                width: userData.pipWidth || 280,
-                height: userData.pipHeight || 400,
+                width: pipW,
+                height: pipH,
                 hideTaskbar: !!userData.hideTaskbarInPip
             });
         }
@@ -2155,6 +2224,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const chkHideTaskbarPip = document.getElementById('chk-hide-taskbar-pip');
             if (chkHideTaskbarPip) chkHideTaskbarPip.checked = !!userData.hideTaskbarInPip;
+
+            const chkNeutralOverstay = document.getElementById('chk-neutral-overstay-toggle');
+            if (chkNeutralOverstay) chkNeutralOverstay.checked = userData.neutralOverstayEnabled !== false;
+
+            const selectNeutralInterval = document.getElementById('select-neutral-overstay-interval');
+            if (selectNeutralInterval) selectNeutralInterval.value = String(userData.neutralOverstayIntervalMins || 30);
+
+            const chkNeutralSoftBlock = document.getElementById('chk-neutral-softblock-toggle');
+            if (chkNeutralSoftBlock) chkNeutralSoftBlock.checked = userData.neutralSoftBlockEnabled !== false;
 
             applyGifTheme();
             optionsModal.classList.add('active');
@@ -2368,6 +2446,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 enabled: userData.autoPauseEnabled !== false,
                 sec: userData.autoPauseSec
             });
+        });
+    }
+
+    const chkNeutralOverstayToggle = document.getElementById('chk-neutral-overstay-toggle');
+    const selectNeutralInterval = document.getElementById('select-neutral-overstay-interval');
+    const chkNeutralSoftBlockToggle = document.getElementById('chk-neutral-softblock-toggle');
+
+    if (chkNeutralOverstayToggle) {
+        chkNeutralOverstayToggle.checked = userData.neutralOverstayEnabled !== false;
+        chkNeutralOverstayToggle.addEventListener('change', (e) => {
+            userData.neutralOverstayEnabled = e.target.checked;
+            saveUserData();
+        });
+    }
+
+    if (selectNeutralInterval) {
+        selectNeutralInterval.value = String(userData.neutralOverstayIntervalMins || 30);
+        selectNeutralInterval.addEventListener('change', (e) => {
+            userData.neutralOverstayIntervalMins = parseInt(e.target.value, 10) || 30;
+            saveUserData();
+        });
+    }
+
+    if (chkNeutralSoftBlockToggle) {
+        chkNeutralSoftBlockToggle.checked = userData.neutralSoftBlockEnabled !== false;
+        chkNeutralSoftBlockToggle.addEventListener('change', (e) => {
+            userData.neutralSoftBlockEnabled = e.target.checked;
+            saveUserData();
         });
     }
 
@@ -2723,6 +2829,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${m}m`;
     }
 
+    function formatLiveStreak(sec, limitMins) {
+        if (sec < 60) return `⚡ ${sec}s / ${limitMins}m`;
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return (s > 0) ? `⚡ ${m}m ${s}s / ${limitMins}m` : `⚡ ${m}m / ${limitMins}m`;
+    }
+
     // Helper: Get Date Strings Array for Today, Week (7 days), or Month (30 days)
     function getDateRangeArray(range) {
         const dates = [];
@@ -2783,6 +2896,11 @@ document.addEventListener('DOMContentLoaded', () => {
         'unity.exe': 'productive',
         'unrealeditor.exe': 'productive',
         'sublime_text.exe': 'productive',
+        'cursor.exe': 'productive',
+        'zed.exe': 'productive',
+        'resolve.exe': 'productive',
+        'antigravity ide.exe': 'productive',
+        'antigravity.exe': 'productive',
         'git-bash.exe': 'productive',
         'windowsterminal.exe': 'productive',
         'powershell.exe': 'productive',
@@ -3300,6 +3418,13 @@ document.addEventListener('DOMContentLoaded', () => {
             prodScoreElem.style.color = prodScore >= 80 ? 'var(--accent-green)' : (prodScore >= 50 ? 'var(--accent-blue)' : '#f87171');
         }
 
+        const ignoredCount = (userData.ignoredNudgeStatsByDate && userData.ignoredNudgeStatsByDate[todayDateStr]) || 0;
+        const distractionsElem = document.getElementById('stats-kpi-distractions');
+        if (distractionsElem) {
+            distractionsElem.textContent = `${ignoredCount}x`;
+            distractionsElem.style.color = ignoredCount === 0 ? 'var(--accent-green)' : (ignoredCount <= 2 ? '#fb923c' : '#f87171');
+        }
+
         // Goal Bar
         document.getElementById('stats-goal-target-text').textContent = `${(targetGoalMins / 60).toFixed(1)} hrs (${range})`;
         const remMins = Math.max(0, targetGoalMins - totalMins);
@@ -3339,6 +3464,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const div = document.createElement('div');
             div.className = 'stats-app-item';
+            div.setAttribute('data-exe', lowerExe);
 
             const topDiv = document.createElement('div');
             topDiv.className = 'stats-app-top';
@@ -3369,6 +3495,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleAppCategory(item.exe);
             });
             nameDiv.appendChild(catPill);
+
+            // Live Overstay Streak Badge (Compact, real-time seconds & minutes)
+            if (lastContinuousExe && lastContinuousExe.toLowerCase() === lowerExe && continuousNeutralSec > 0 && category !== 'productive') {
+                const limitMins = parseInt(userData.neutralOverstayIntervalMins) || 30;
+                const liveBadge = document.createElement('span');
+                liveBadge.id = 'live-overstay-streak-badge';
+                liveBadge.className = 'live-streak-pill';
+                liveBadge.style.cssText = 'background: rgba(96, 205, 255, 0.12); border: 1px solid rgba(96, 205, 255, 0.3); color: #60cdff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; margin-left: 6px;';
+                const liveMins = Math.floor(continuousNeutralSec / 60);
+                if (liveMins >= limitMins) {
+                    liveBadge.style.background = 'rgba(248, 113, 113, 0.15)';
+                    liveBadge.style.borderColor = 'rgba(248, 113, 113, 0.35)';
+                    liveBadge.style.color = '#f87171';
+                } else if (liveMins >= limitMins * 0.7) {
+                    liveBadge.style.background = 'rgba(251, 146, 60, 0.15)';
+                    liveBadge.style.borderColor = 'rgba(251, 146, 60, 0.35)';
+                    liveBadge.style.color = '#fb923c';
+                }
+                liveBadge.textContent = formatLiveStreak(continuousNeutralSec, limitMins);
+                liveBadge.title = `Active continuous duration: ${continuousNeutralSec}s (Limit: ${limitMins}m)`;
+                nameDiv.appendChild(liveBadge);
+            }
 
             // Right side: Time and Quick Block Button
             const actionsDiv = document.createElement('div');
@@ -3779,6 +3927,144 @@ document.addEventListener('DOMContentLoaded', () => {
             saveUserData();
         }
 
+        // Neutral App Overstay Guard & Gentle Distraction Nudge Tracking (Anti-Abuse Recovery Model)
+        if (data.activeExe) {
+            const exeCat = getAppCategory(data.activeExe);
+            const lowerExe = data.activeExe.toLowerCase();
+
+            if (exeCat === 'productive') {
+                lastProductiveExe = data.activeExe;
+                continuousProductiveSec += 1;
+
+                // Temporarily hide soft-block overlay while user is viewing their productive work app
+                if (isNeutralSoftBlockActive) {
+                    sendToCpp({ action: 'hideNeutralOverstayBlock' });
+                }
+
+                // Anti-Abuse: Must sustain at least 60 seconds (1 min) of continuous productive work
+                // to officially forgive and reset the neutral/distraction overstay streak
+                if (continuousProductiveSec >= 60) {
+                    continuousNeutralSec = 0;
+                    isNeutralSoftBlockActive = false;
+                }
+            } else if (exeCat === 'neutral' || exeCat === 'distracting') {
+                // Ignore internal and OS shell processes from distraction streak
+                if (lowerExe !== 'focusgrow.exe' && lowerExe !== 'dwm.exe' && lowerExe !== 'explorer.exe' && lowerExe !== 'taskmgr.exe') {
+                    // Reset productive recovery counter if user left the productive app before reaching 60s
+                    continuousProductiveSec = 0;
+
+                    if (lastContinuousExe === data.activeExe) {
+                        continuousNeutralSec += 1;
+                    } else {
+                        lastContinuousExe = data.activeExe;
+                        continuousNeutralSec += 1;
+                    }
+
+                    if (userData.neutralOverstayEnabled !== false) {
+                        const intervalMins = parseInt(userData.neutralOverstayIntervalMins) || 30;
+                        const intervalSec = intervalMins * 60;
+
+                        // First Warning: 1x Interval reached (e.g. 15 / 30 mins)
+                        if (continuousNeutralSec === intervalSec) {
+                            userData.ignoredNudgeStatsByDate = userData.ignoredNudgeStatsByDate || {};
+                            userData.ignoredNudgeStatsByDate[todayDateStr] = (userData.ignoredNudgeStatsByDate[todayDateStr] || 0) + 1;
+                            saveUserData();
+                            if (typeof renderStatsDashboard === 'function') renderStatsDashboard(activeStatsRange);
+
+                            const targetApp = lastProductiveExe || 'your work app';
+                            sendNotification(
+                                'Neutral App Reminder',
+                                `You've been in ${data.activeExe} for ${intervalMins} mins. Ready to return to ${targetApp}?`,
+                                'focus'
+                            );
+                            playNotificationSound('reminder');
+                        }
+                        // Second Warning or Re-trigger: 2x Interval reached (e.g. 30 / 60 mins) -> Soft-Block!
+                        else if (continuousNeutralSec >= intervalSec * 2) {
+                            if (!isNeutralSoftBlockActive) {
+                                isNeutralSoftBlockActive = true;
+                                userData.ignoredNudgeStatsByDate = userData.ignoredNudgeStatsByDate || {};
+                                userData.ignoredNudgeStatsByDate[todayDateStr] = (userData.ignoredNudgeStatsByDate[todayDateStr] || 0) + 1;
+                                saveUserData();
+                                if (typeof renderStatsDashboard === 'function') renderStatsDashboard(activeStatsRange);
+
+                                sendNotification(
+                                    'Time to Refocus',
+                                    `2x warnings ignored (${Math.floor(continuousNeutralSec / 60)} mins in ${data.activeExe}). Take a step back and resume work!`,
+                                    'focus'
+                                );
+                                playNotificationSound('alarm');
+                            }
+
+                            // Ensure soft block overlay is visible if user remains in or returns to neutral app
+                            if (userData.neutralSoftBlockEnabled !== false) {
+                                sendToCpp({
+                                    action: 'showNeutralOverstayBlock',
+                                    exeName: data.activeExe,
+                                    durationMins: Math.floor(continuousNeutralSec / 60)
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Live Real-Time second-by-second ticker update on the active streak badge in Stats DOM
+        function updateLiveStreakInStatsDOM() {
+            const statsModal = document.getElementById('stats-modal');
+            if (!statsModal || !statsModal.classList.contains('active')) return;
+
+            const limitMins = parseInt(userData.neutralOverstayIntervalMins) || 30;
+            const liveText = formatLiveStreak(continuousNeutralSec, limitMins);
+            const liveMins = Math.floor(continuousNeutralSec / 60);
+
+            // Remove any stale badge on non-active rows
+            document.querySelectorAll('.live-streak-pill').forEach(el => {
+                const parentRow = el.closest('.stats-app-item');
+                const rowExe = parentRow?.getAttribute('data-exe') || '';
+                if (!lastContinuousExe || rowExe.toLowerCase() !== lastContinuousExe.toLowerCase() || continuousNeutralSec <= 0) {
+                    el.remove();
+                }
+            });
+
+            if (lastContinuousExe && continuousNeutralSec > 0) {
+                const targetLower = lastContinuousExe.toLowerCase();
+                const targetCat = getAppCategory(lastContinuousExe);
+                if (targetCat !== 'productive') {
+                    const row = document.querySelector(`.stats-app-item[data-exe="${targetLower}"]`);
+                    if (row) {
+                        const nameDiv = row.querySelector('.stats-app-name');
+                        if (nameDiv) {
+                            let badge = nameDiv.querySelector('.live-streak-pill');
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.className = 'live-streak-pill';
+                                badge.id = 'live-overstay-streak-badge';
+                                badge.style.cssText = 'background: rgba(96, 205, 255, 0.12); border: 1px solid rgba(96, 205, 255, 0.3); color: #60cdff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; margin-left: 6px;';
+                                nameDiv.appendChild(badge);
+                            }
+                            badge.textContent = liveText;
+                            if (liveMins >= limitMins) {
+                                badge.style.background = 'rgba(248, 113, 113, 0.15)';
+                                badge.style.borderColor = 'rgba(248, 113, 113, 0.35)';
+                                badge.style.color = '#f87171';
+                            } else if (liveMins >= limitMins * 0.7) {
+                                badge.style.background = 'rgba(251, 146, 60, 0.15)';
+                                badge.style.borderColor = 'rgba(251, 146, 60, 0.35)';
+                                badge.style.color = '#fb923c';
+                            } else {
+                                badge.style.background = 'rgba(96, 205, 255, 0.12)';
+                                badge.style.borderColor = 'rgba(96, 205, 255, 0.3)';
+                                badge.style.color = '#60cdff';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        updateLiveStreakInStatsDOM();
+
         if (activeState !== previousState) {
             if (activeState === 'focusing' && previousState === 'idle') {
                 sendNotification('Focus Mode Started', `Session started! Period 1 of ${data.totalPeriods || 1}. Stay focused!`, 'focus');
@@ -3795,6 +4081,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Auto-exit PiP mode when focus session completes, restoring to full main window
                 if (document.body.classList.contains('pip-mode')) {
+                    isInitializingPip = true;
+                    setTimeout(() => { isInitializingPip = false; }, 1500);
+                    document.body.classList.remove('pip-mode');
                     sendToCpp({ action: 'togglePip' });
                 }
             }
@@ -3843,7 +4132,8 @@ document.addEventListener('DOMContentLoaded', () => {
             timerView.classList.add('active');
             activeStatusLabel.textContent = isPaused ? 'PAUSED' : 'REMAINING';
             focusPeriodTitle.textContent = `Focus period (${data.currentPeriod || 1} of ${data.totalPeriods || 1})`;
-            upNextText.textContent = `Up next: ${selectedBreakMins} min break`;
+            const hasMoreBreaks = (data.currentPeriod || 1) < (data.totalPeriods || 1) && !chkSkipBreaks.checked;
+            upNextText.textContent = hasMoreBreaks ? `Up next: ${selectedBreakMins} min break` : `Final focus period`;
             
             pauseIcon.style.display = isPaused ? 'none' : 'block';
             playIcon.style.display = isPaused ? 'block' : 'none';
@@ -4923,6 +5213,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         prayerClockDisplay.textContent = now.toLocaleTimeString();
         if (prayerDateDisplay) prayerDateDisplay.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        
+        // Keep finish time prediction fresh every second in setup view
+        if (setupView && setupView.classList.contains('active')) {
+            updateSetupPrediction();
+        }
     }
     setInterval(updatePrayerClock, 1000);
 

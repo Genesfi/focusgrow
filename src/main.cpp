@@ -195,9 +195,33 @@ int g_lastPipW = 280;
 int g_lastPipH = 400;
 int g_lastPipX = 0;
 int g_lastPipY = 0;
+int g_lastNormalW = 960;
+int g_lastNormalH = 660;
+int g_lastNormalX = -1;
+int g_lastNormalY = -1;
 bool g_hideTaskbarInPip = false;
 std::unique_ptr<PipVinylOverlay> g_pipVinylOverlay;
 std::wstring g_lastKnownTrackTitle = L"";
+
+void ClampWindowToWorkArea(HWND hWnd, int &x, int &y, int w, int h, int margin = 16) {
+  HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO mi = {sizeof(MONITORINFO)};
+  if (GetMonitorInfo(hMonitor, &mi)) {
+    RECT workArea = mi.rcWork;
+    if (x + w > workArea.right - margin) {
+      x = workArea.right - w - margin;
+    }
+    if (x < workArea.left + margin) {
+      x = workArea.left + margin;
+    }
+    if (y + h > workArea.bottom - margin) {
+      y = workArea.bottom - h - margin;
+    }
+    if (y < workArea.top + margin) {
+      y = workArea.top + margin;
+    }
+  }
+}
 
 void ToggleMusicWindow(const std::wstring &preferredTitle = L"") {
   if (!preferredTitle.empty()) {
@@ -336,18 +360,33 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
   MARGINS margins = {-1, -1, -1, -1};
   DwmExtendFrameIntoClientArea(g_hWnd, &margins);
 
+  RECT currentRc = {0};
+  GetWindowRect(g_hWnd, &currentRc);
+
   if (g_isPipMode) {
-    int w = (width > 100) ? width : ((g_lastPipW > 100) ? g_lastPipW : 280);
-    int h = (height > 100) ? height : ((g_lastPipH > 100) ? g_lastPipH : 400);
+    // Record current normal position before switching to PiP
+    int curW = currentRc.right - currentRc.left;
+    int curH = currentRc.bottom - currentRc.top;
+    if (curW >= 760 && curH >= 520) {
+      g_lastNormalW = curW;
+      g_lastNormalH = curH;
+      g_lastNormalX = currentRc.left;
+      g_lastNormalY = currentRc.top;
+    }
+
+    int w = (width >= 160 && width <= 480) ? width : ((g_lastPipW >= 160 && g_lastPipW <= 480) ? g_lastPipW : 280);
+    int h = (height >= 200 && height <= 550) ? height : ((g_lastPipH >= 200 && g_lastPipH <= 550) ? g_lastPipH : 400);
     g_lastPipW = w;
     g_lastPipH = h;
 
+    int targetX = (g_lastPipX > 0 || g_lastPipY > 0) ? g_lastPipX : currentRc.left;
+    int targetY = (g_lastPipX > 0 || g_lastPipY > 0) ? g_lastPipY : currentRc.top;
+    ClampWindowToWorkArea(g_hWnd, targetX, targetY, w, h, 12);
+    g_lastPipX = targetX;
+    g_lastPipY = targetY;
+
     UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
-    if (g_lastPipX > 0 || g_lastPipY > 0) {
-      SetWindowPos(g_hWnd, HWND_TOPMOST, g_lastPipX, g_lastPipY, w, h, flags);
-    } else {
-      SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, w, h, flags | SWP_NOMOVE);
-    }
+    SetWindowPos(g_hWnd, HWND_TOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(g_hWnd, !hideTaskbar);
     if (g_pipVinylOverlay) {
       RECT rc;
@@ -356,8 +395,18 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
       }
     }
   } else {
-    SetWindowPos(g_hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
-                 SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    int w = (g_lastNormalW >= 760) ? g_lastNormalW : 960;
+    int h = (g_lastNormalH >= 520) ? g_lastNormalH : 660;
+
+    // Expand smoothly from wherever PiP was placed, clamping to prevent screen edge overflow
+    int targetX = currentRc.left;
+    int targetY = currentRc.top;
+    ClampWindowToWorkArea(g_hWnd, targetX, targetY, w, h, 16);
+    g_lastNormalX = targetX;
+    g_lastNormalY = targetY;
+
+    SetWindowPos(g_hWnd, HWND_NOTOPMOST, targetX, targetY, w, h,
+                 SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     SetTaskbarIconVisible(g_hWnd, true);
     if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(false);
@@ -369,14 +418,21 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
 
 void RestoreWindowFromTray(HWND hWnd) {
   if (g_isPipMode) {
-    int w = (g_lastPipW > 100) ? g_lastPipW : 280;
-    int h = (g_lastPipH > 100) ? g_lastPipH : 400;
-    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
-    if (g_lastPipX > 0 || g_lastPipY > 0) {
-      SetWindowPos(hWnd, HWND_TOPMOST, g_lastPipX, g_lastPipY, w, h, flags);
-    } else {
-      SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, w, h, flags | SWP_NOMOVE);
+    int w = (g_lastPipW >= 160 && g_lastPipW <= 480) ? g_lastPipW : 280;
+    int h = (g_lastPipH >= 200 && g_lastPipH <= 550) ? g_lastPipH : 400;
+    int targetX = g_lastPipX;
+    int targetY = g_lastPipY;
+    if (targetX <= 0 && targetY <= 0) {
+      HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO mi = {sizeof(MONITORINFO)};
+      if (GetMonitorInfo(hMon, &mi)) {
+        targetX = mi.rcWork.right - w - 16;
+        targetY = mi.rcWork.bottom - h - 16;
+      }
     }
+    ClampWindowToWorkArea(hWnd, targetX, targetY, w, h, 12);
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
+    SetWindowPos(hWnd, HWND_TOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(hWnd, !g_hideTaskbarInPip);
     ShowWindow(hWnd, SW_SHOW);
     if (g_pipVinylOverlay) {
@@ -387,8 +443,21 @@ void RestoreWindowFromTray(HWND hWnd) {
       g_pipVinylOverlay->SetVisible(true);
     }
   } else {
-    SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 960, 660,
-                 SWP_NOMOVE | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    int w = (g_lastNormalW >= 760) ? g_lastNormalW : 960;
+    int h = (g_lastNormalH >= 520) ? g_lastNormalH : 660;
+    int targetX = g_lastNormalX;
+    int targetY = g_lastNormalY;
+    if (targetX < 0 || targetY < 0) {
+      HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO mi = {sizeof(MONITORINFO)};
+      if (GetMonitorInfo(hMon, &mi)) {
+        targetX = (mi.rcWork.right + mi.rcWork.left - w) / 2;
+        targetY = (mi.rcWork.bottom + mi.rcWork.top - h) / 2;
+      }
+    }
+    ClampWindowToWorkArea(hWnd, targetX, targetY, w, h, 16);
+    SetWindowPos(hWnd, HWND_NOTOPMOST, targetX, targetY, w, h,
+                 SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     SetTaskbarIconVisible(hWnd, true);
     ShowWindow(hWnd, SW_RESTORE);
     if (g_pipVinylOverlay) {
@@ -777,6 +846,27 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
       g_focusEngine->SetPrayerConfig(enabled, breakEnabled, advance, breakDur,
                                      lat, lng, tz);
     }
+  } else if (msg.find(L"\"action\":\"showNeutralOverstayBlock\"") != std::wstring::npos) {
+    std::wstring exeName = L"";
+    size_t ePos = msg.find(L"\"exeName\":\"");
+    if (ePos != std::wstring::npos) {
+      size_t eEnd = msg.find(L"\"", ePos + 11);
+      if (eEnd != std::wstring::npos) {
+        exeName = msg.substr(ePos + 11, eEnd - (ePos + 11));
+      }
+    }
+    int durationMins = 60;
+    size_t dPos = msg.find(L"\"durationMins\":");
+    if (dPos != std::wstring::npos) {
+      durationMins = _wtoi(msg.c_str() + dPos + 15);
+    }
+    if (g_focusEngine) {
+      g_focusEngine->ShowNeutralOverstayBlock(exeName, durationMins);
+    }
+  } else if (msg.find(L"\"action\":\"hideNeutralOverstayBlock\"") != std::wstring::npos) {
+    if (g_focusEngine) {
+      g_focusEngine->HideNeutralOverstayBlock();
+    }
   } else if (msg.find(L"\"action\":\"pauseSession\"") != std::wstring::npos) {
     g_focusEngine->PauseSession();
   } else if (msg.find(L"\"action\":\"stopSession\"") != std::wstring::npos) {
@@ -1059,16 +1149,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     }
   } break;
   case WM_EXITSIZEMOVE: {
-    if (g_isPipMode) {
-      RECT rc;
-      if (GetWindowRect(hWnd, &rc)) {
-        int w = rc.right - rc.left;
-        int h = rc.bottom - rc.top;
+    RECT rc;
+    if (GetWindowRect(hWnd, &rc)) {
+      int w = rc.right - rc.left;
+      int h = rc.bottom - rc.top;
+      if (g_isPipMode) {
         if (w > 120 && h > 120 && (w < 800 || h < 600)) {
           g_lastPipW = w;
           g_lastPipH = h;
           g_lastPipX = rc.left;
           g_lastPipY = rc.top;
+        }
+      } else {
+        if (w >= 760 && h >= 520) {
+          g_lastNormalW = w;
+          g_lastNormalH = h;
+          g_lastNormalX = rc.left;
+          g_lastNormalY = rc.top;
         }
       }
     }
@@ -1113,7 +1210,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
       int w = rc.right - rc.left;
       int h = rc.bottom - rc.top;
       if (g_isPipMode) {
-        if (w > 120 && h > 120 && (w < 800 || h < 600)) {
+        if (w >= 160 && w <= 480 && h >= 200 && h <= 550) {
           g_lastPipW = w;
           g_lastPipH = h;
           g_lastPipX = rc.left;
@@ -1122,14 +1219,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
         if (g_pipVinylOverlay) {
           g_pipVinylOverlay->SetParentPos(rc.left, rc.top, w, h);
         }
-      } else if (g_pipVinylOverlay) {
-        int cardW = 340;
-        int cardH = h - 48;
-        int cardX = (g_pipVinylOverlay->GetSide() == "right")
-                        ? (rc.right - cardW - 24)
-                        : (rc.left + 24);
-        int cardY = rc.top + 24;
-        g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
+      } else {
+        if (w >= 760 && h >= 520) {
+          g_lastNormalW = w;
+          g_lastNormalH = h;
+          g_lastNormalX = rc.left;
+          g_lastNormalY = rc.top;
+        }
+        if (g_pipVinylOverlay) {
+          int cardW = 340;
+          int cardH = h - 48;
+          int cardX = (g_pipVinylOverlay->GetSide() == "right")
+                          ? (rc.right - cardW - 24)
+                          : (rc.left + 24);
+          int cardY = rc.top + 24;
+          g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
+        }
       }
     }
     break;
@@ -1275,6 +1380,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   int windowHeight = 660;
   int xPos = (screenWidth - windowWidth) / 2;
   int yPos = (screenHeight - windowHeight) / 2;
+
+  g_lastNormalX = xPos;
+  g_lastNormalY = yPos;
+  g_lastNormalW = windowWidth;
+  g_lastNormalH = windowHeight;
 
   g_hWnd = CreateWindowExW(
       WS_EX_APPWINDOW, L"FocusGrowAppWindow", L"FocusGrow",

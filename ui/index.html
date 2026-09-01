@@ -179,6 +179,16 @@
 
                     <div class="breaks-summary">
                         <span id="breaks-count-text">You'll have 1 break (5 mins)</span>
+                        <div class="session-prediction-badge" id="session-prediction-badge" title="Estimated finish time in normal continuous conditions">
+                            <svg id="prediction-icon-clock" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <svg id="prediction-icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                            <span id="session-prediction-text">Ends at ~20:20 (35m total)</span>
+                        </div>
                     </div>
 
                     <div class="checkbox-row">
@@ -903,6 +913,38 @@
                     </select>
                 </div>
 
+                <!-- Neutral App Overstay Guard & Gentle Distraction Nudge -->
+                <div class="option-row">
+                    <div style="display: flex; flex-direction: column;">
+                        <span>Neutral App Overstay Guard</span>
+                        <span style="font-size: 10px; color: var(--text-muted);">Remind when staying too long in neutral apps (Edge/Browser)</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-neutral-overstay-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="option-row" id="neutral-overstay-interval-row">
+                    <span>Reminder Interval</span>
+                    <select id="select-neutral-overstay-interval" class="small-action-btn"
+                        style="width: 140px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 8px; font-size: 11px;">
+                        <option value="15" style="background: #242424; color: white;">15 minutes</option>
+                        <option value="30" selected style="background: #242424; color: white;">30 minutes (Default)</option>
+                        <option value="45" style="background: #242424; color: white;">45 minutes</option>
+                        <option value="60" style="background: #242424; color: white;">60 minutes (1 hour)</option>
+                    </select>
+                </div>
+                <div class="option-row" id="neutral-softblock-row">
+                    <div style="display: flex; flex-direction: column;">
+                        <span>Soft-Block on 2x Ignored</span>
+                        <span style="font-size: 10px; color: var(--text-muted);">Temporarily restrict screen if 2x warnings are ignored (no auto-close)</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-neutral-softblock-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
                 <!-- Timer Ambient GIF Selection & Style Options -->
                 <div class="option-column">
                     <div class="option-title">Timer Ambient GIF Background</div>
@@ -1188,6 +1230,11 @@
                     <div class="kpi-label">Streak</div>
                     <div class="kpi-val" id="stats-kpi-streak">0 Days</div>
                     <div class="kpi-sub">Consecutive</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Distractions</div>
+                    <div class="kpi-val" id="stats-kpi-distractions" style="color: #fb923c;">0x</div>
+                    <div class="kpi-sub" id="stats-kpi-distractions-sub">Ignored Nudges</div>
                 </div>
             </div>
 

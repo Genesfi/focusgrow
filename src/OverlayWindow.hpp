@@ -8,7 +8,8 @@ enum class OverlayMode {
     FocusBlock,        // Block unapproved app during focus work session
     RestBreak,         // Strict mandatory break mode - walk outside!
     PrayerBreak,       // Special break for Prayer Times
-    AutoCloseWarning   // 5s countdown before auto-closing blocked app
+    AutoCloseWarning,  // 5s countdown before auto-closing blocked app
+    NeutralOverstayBlock // Soft block on 2x ignored neutral overstay (no force close)
 };
 
 class OverlayWindow {
@@ -119,6 +120,7 @@ private:
             COLORREF bgColor = RGB(20, 20, 20);
             if (m_mode == OverlayMode::RestBreak) bgColor = RGB(15, 23, 42);
             else if (m_mode == OverlayMode::PrayerBreak) bgColor = RGB(13, 41, 33); // Dark Greenish for Prayer
+            else if (m_mode == OverlayMode::NeutralOverstayBlock) bgColor = RGB(24, 18, 14); // Warm Dark Slate/Amber for Soft Block
 
             HBRUSH hBrush = CreateSolidBrush(bgColor);
             FillRect(hdc, &rc, hBrush);
@@ -145,6 +147,8 @@ private:
             } else if (m_mode == OverlayMode::AutoCloseWarning) {
                 std::wstring mainTitle = L"[!] RESTRICTED APPLICATION: " + m_blockedDomain;
                 DrawTextW(hdc, mainTitle.c_str(), -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            } else if (m_mode == OverlayMode::NeutralOverstayBlock) {
+                DrawTextW(hdc, L"TIME TO RETURN TO FOCUS", -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
             } else if (!m_blockedDomain.empty()) {
                 std::wstring mainTitle = L"RESTRICTED SITE: " + m_blockedDomain;
                 DrawTextW(hdc, mainTitle.c_str(), -1, &rcTitle, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
@@ -161,6 +165,7 @@ private:
             if (m_mode == OverlayMode::RestBreak) accentColor = RGB(52, 211, 153);
             else if (m_mode == OverlayMode::PrayerBreak) accentColor = RGB(251, 191, 36); // Amber for Prayer
             else if (m_mode == OverlayMode::AutoCloseWarning) accentColor = RGB(248, 113, 113); // Coral Red for Auto-Close Countdown
+            else if (m_mode == OverlayMode::NeutralOverstayBlock) accentColor = RGB(251, 146, 60); // Warm Orange/Amber for Soft Block
 
             SetTextColor(hdc, accentColor);
 
@@ -182,6 +187,8 @@ private:
             std::wstring subText;
             if (m_mode == OverlayMode::AutoCloseWarning) {
                 subText = L"Aplikasi " + m_blockedDomain + L" masuk daftar blokir sesi fokus.\nAplikasi akan ditutup otomatis dalam hitungan mundur di atas.\nBeralih kembali (Alt+Tab) ke aplikasi kerja untuk membatalkan.";
+            } else if (m_mode == OverlayMode::NeutralOverstayBlock) {
+                subText = L"You've been in " + (m_blockedDomain.empty() ? L"neutral apps" : m_blockedDomain) + L" for a while (2x warnings ignored).\nTake a breath and switch back (Alt+Tab) to your work applications.\nPress [Esc] to dismiss this overlay.";
             } else if (m_mode == OverlayMode::RestBreak) {
                 subText = L"Step away from your screen. Stand up, stretch your body, get a drink, and enjoy fresh air!\nWork applications are locked until your break finishes.";
             } else if (m_mode == OverlayMode::PrayerBreak) {
@@ -202,7 +209,7 @@ private:
                 HFONT hQuoteFont = CreateFontW(-22, 0, 0, 0, FW_SEMIBOLD, TRUE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                     CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
                 SelectObject(hdc, hQuoteFont);
-                SetTextColor(hdc, (m_mode == OverlayMode::RestBreak) ? RGB(167, 243, 208) : RGB(186, 230, 253));
+                SetTextColor(hdc, (m_mode == OverlayMode::RestBreak) ? RGB(167, 243, 208) : ((m_mode == OverlayMode::NeutralOverstayBlock) ? RGB(254, 215, 170) : RGB(186, 230, 253)));
 
                 RECT rcQuote = rc;
                 rcQuote.top = centerY + 90;
@@ -231,7 +238,7 @@ private:
             if ((wParam & 0xFFF0) == SC_CLOSE) return 0;
             return DefWindowProc(hwnd, msg, wParam, lParam);
         case WM_KEYDOWN:
-            if (m_mode == OverlayMode::FocusBlock) {
+            if (m_mode == OverlayMode::FocusBlock || m_mode == OverlayMode::NeutralOverstayBlock) {
                 if (wParam == VK_ESCAPE) {
                     Hide();
                 } else if (!m_blockedDomain.empty() && m_passesAvailable > 0 && m_onPassRequested) {
