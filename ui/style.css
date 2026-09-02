@@ -2843,6 +2843,16 @@ body.stealth-active #active-status-label {
     opacity: 0;
 }
 
+/* Hover to Peek Timer when in Stealth Mode */
+body.stealth-active.stealth-hover-peek .gauge-container:hover #active-timer-display,
+body.stealth-active.stealth-hover-peek .gauge-container:hover #active-status-label,
+body.stealth-active.stealth-hover-peek #gauge-clickable-area:hover #active-timer-display,
+body.stealth-active.stealth-hover-peek #gauge-clickable-area:hover #active-status-label,
+body.stealth-active.stealth-hover-peek .timer-card:hover #active-timer-display,
+body.stealth-active.stealth-hover-peek .timer-card:hover #active-status-label {
+    opacity: 1;
+}
+
 body.stealth-active .auto-pause-subtext {
     top: 50%;
     left: 50%;

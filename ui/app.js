@@ -256,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pipPeekingVinylSide: 'left',
         timerTheme: 'classic', // 'classic', 'hourglass', 'wave', 'blocks', 'dots', 'orbit'
         isStealthMode: false,
+        stealthHoverPeek: true,
         showVinylSpindle: true,
         autoPipOnStart: false,
         hideTaskbarInPip: false,
@@ -1113,6 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Apply Stealth Mode class to body for global text hiding
         document.body.classList.toggle('stealth-active', !!userData.isStealthMode);
+        document.body.classList.toggle('stealth-hover-peek', userData.stealthHoverPeek !== false);
 
         // Clean up classes
         gaugeSvg.classList.remove('theme-hourglass', 'theme-wave', 'theme-blocks', 'theme-dots', 'theme-orbit');
@@ -1714,6 +1716,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Hover to Peek Timer in Stealth Mode Switch Listener
+    const chkStealthHoverPeek = document.getElementById('chk-stealth-hover-peek');
+    if (chkStealthHoverPeek) {
+        chkStealthHoverPeek.checked = userData.stealthHoverPeek !== false;
+        chkStealthHoverPeek.addEventListener('change', (e) => {
+            userData.stealthHoverPeek = e.target.checked;
+            saveUserData();
+            applyTimerTheme();
+        });
+    }
+
     // PIP Peeking Vinyl Toggle Listener
     const chkPipPeekingVinyl = document.getElementById('chk-pip-peeking-vinyl');
     if (chkPipPeekingVinyl) {
@@ -2264,6 +2277,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const chkNeutralSoftBlock = document.getElementById('chk-neutral-softblock-toggle');
             if (chkNeutralSoftBlock) chkNeutralSoftBlock.checked = userData.neutralSoftBlockEnabled !== false;
+
+            const chkStealthHoverPeek = document.getElementById('chk-stealth-hover-peek');
+            if (chkStealthHoverPeek) chkStealthHoverPeek.checked = userData.stealthHoverPeek !== false;
 
             applyGifTheme();
             applyTimerTheme();
@@ -3944,6 +3960,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Prayer Times State Sync ---
+        const isPrayerBreakActive = !!(data.prayer && data.prayer.isBreakActive);
+        const isBreakOrResting = activeState === 'resting' || isPrayerBreakActive;
+
         if (data.prayer) {
             const prevActualNext = window.actualNextPrayerName;
             window.allPrayerTimes = data.prayer.allTimes || [];
@@ -3962,7 +3981,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
 
         // Record per-app focus time tick (1 sec) & work hours window
-        if (activeState === 'focusing' && !isPaused && data.activeExe) {
+        if (activeState === 'focusing' && !isPaused && !isPrayerBreakActive && data.activeExe) {
             userData.appStatsByDate = userData.appStatsByDate || {};
             userData.appStatsByDate[todayDateStr] = userData.appStatsByDate[todayDateStr] || {};
             const currentSec = userData.appStatsByDate[todayDateStr][data.activeExe] || 0;
@@ -3980,7 +3999,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Neutral App Overstay Guard & Gentle Distraction Nudge Tracking (Anti-Abuse Recovery Model)
-        if (data.activeExe) {
+        // If on break (Prayer Break or Rest Break) or Paused, user is taking a legitimate rest/break:
+        // Do NOT track neutral overstay streak, do NOT send warnings, and reset active streak/soft-block.
+        if (isBreakOrResting || isPaused) {
+            continuousNeutralSec = 0;
+            continuousProductiveSec = 0;
+            if (isNeutralSoftBlockActive) {
+                isNeutralSoftBlockActive = false;
+                sendToCpp({ action: 'hideNeutralOverstayBlock' });
+            }
+        } else if (data.activeExe) {
             const exeCat = getAppCategory(data.activeExe);
             const lowerExe = data.activeExe.toLowerCase();
 

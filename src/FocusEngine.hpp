@@ -425,6 +425,7 @@ public:
     }
 
     void ShowNeutralOverstayBlock(const std::wstring& exeName, int durationMins) {
+        if (m_prayerBreakActive) return;
         wchar_t buf[32];
         swprintf_s(buf, L"%d:00", durationMins);
         HWND fg = GetForegroundWindow();
