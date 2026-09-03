@@ -385,7 +385,7 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
     g_lastPipX = targetX;
     g_lastPipY = targetY;
 
-    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOCOPYBITS;
     SetWindowPos(g_hWnd, HWND_TOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(g_hWnd, !hideTaskbar);
     if (g_pipVinylOverlay) {
@@ -405,8 +405,8 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
     g_lastNormalX = targetX;
     g_lastNormalY = targetY;
 
-    SetWindowPos(g_hWnd, HWND_NOTOPMOST, targetX, targetY, w, h,
-                 SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOCOPYBITS;
+    SetWindowPos(g_hWnd, HWND_NOTOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(g_hWnd, true);
     if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(false);
@@ -923,6 +923,27 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         size_t imgEnd = msg.find(L"\"", imgPos + 12);
         if (imgEnd != std::wstring::npos) {
           imageUrl = msg.substr(imgPos + 12, imgEnd - (imgPos + 12));
+          // Unescape JSON string
+          std::wstring cleanUrl = L"";
+          for (size_t i = 0; i < imageUrl.length(); ++i) {
+            if (imageUrl[i] == L'\\' && i + 1 < imageUrl.length()) {
+              if (imageUrl[i+1] == L'/') {
+                cleanUrl += L'/';
+                ++i;
+                continue;
+              } else if (imageUrl[i+1] == L'\\') {
+                cleanUrl += L'\\';
+                ++i;
+                continue;
+              } else if (imageUrl[i+1] == L'"') {
+                cleanUrl += L'"';
+                ++i;
+                continue;
+              }
+            }
+            cleanUrl += imageUrl[i];
+          }
+          imageUrl = cleanUrl;
         }
       }
 
@@ -955,9 +976,7 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
         }
       }
       g_pipVinylOverlay->SetPlaying(isPlaying);
-      if (!imageUrl.empty()) {
-        g_pipVinylOverlay->LoadCoverFromUrl(imageUrl);
-      }
+      g_pipVinylOverlay->LoadCoverFromUrl(imageUrl);
       g_pipVinylOverlay->SetVisible(visible, side);
     } else if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(false);
@@ -1072,6 +1091,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
   switch (message) {
   case WM_ERASEBKGND:
     return 1;
+  case WM_ACTIVATE: {
+    if (LOWORD(wParam) == WA_INACTIVE) {
+      if (g_webView) {
+        g_webView->PostWebMessageAsJson(L"{\"type\":\"windowBlur\"}");
+      }
+    } else {
+      if (g_webView) {
+        g_webView->PostWebMessageAsJson(L"{\"type\":\"windowFocus\"}");
+      }
+    }
+    break;
+  }
   case WM_NCACTIVATE: {
     LRESULT res = DefWindowProc(hWnd, message, wParam, lParam);
     DWORD noBorderColor = 0xFFFFFFFE; // DWMWA_COLOR_NONE

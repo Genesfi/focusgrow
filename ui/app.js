@@ -113,20 +113,81 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDragArea(document.getElementById('focus-period-title'));
     setupDragArea(document.querySelector('#timer-view .card-header'));
 
-    let isInitializingPip = false;
+    let lastPipToggleTime = 0;
+    let pendingBlurAutoPipTimer = null;
+    let isWindowCurrentlyFocused = true;
+    let isFileInputActive = false;
+
+    function handleWindowFocus() {
+        isWindowCurrentlyFocused = true;
+        if (pendingBlurAutoPipTimer) {
+            clearTimeout(pendingBlurAutoPipTimer);
+            pendingBlurAutoPipTimer = null;
+        }
+        setTimeout(() => { isFileInputActive = false; }, 400);
+    }
+
+    function handleWindowBlur() {
+        isWindowCurrentlyFocused = false;
+        if (!userData.autoPipOnBlur) return;
+        if (document.body.classList.contains('pip-mode')) return;
+        if (isFileInputActive) return;
+
+        // Skip if any modal is currently active
+        const activeModal = document.querySelector('.modal.active, .modal.show, #options-modal.active, #custom-gif-modal.active, #import-export-modal.active, #tag-manager-modal.active, #music-browser-modal.active, #prayer-city-modal.active');
+        if (activeModal) return;
+
+        // Only auto-pip if session is active or on timer view
+        const isSessionActive = timerView?.classList.contains('active') || (activeState === 'focusing' || activeState === 'resting');
+        if (!isSessionActive) return;
+
+        // If user just un-pipped / toggled recently, debounce and execute right after transition finishes
+        const elapsedSinceToggle = Date.now() - lastPipToggleTime;
+        const debounceThreshold = 350;
+        if (elapsedSinceToggle < debounceThreshold) {
+            if (pendingBlurAutoPipTimer) clearTimeout(pendingBlurAutoPipTimer);
+            const remainingWait = debounceThreshold - elapsedSinceToggle + 50;
+            pendingBlurAutoPipTimer = setTimeout(() => {
+                pendingBlurAutoPipTimer = null;
+                if (!isWindowCurrentlyFocused && !document.body.classList.contains('pip-mode')) {
+                    handleWindowBlur();
+                }
+            }, remainingWait);
+            return;
+        }
+
+        let targetW = userData.pipWidth || 280;
+        let targetH = userData.pipHeight || 400;
+        if (targetW > 480 || targetW < 160) targetW = 280;
+        if (targetH > 550 || targetH < 200) targetH = 400;
+
+        isInitializingPip = true;
+        setTimeout(() => { isInitializingPip = false; }, 800);
+
+        document.body.classList.add('pip-mode');
+        console.log(`[PIP] Auto switching to PIP on outside click/blur: ${targetW}x${targetH}`);
+        sendToCpp({
+            action: 'togglePip',
+            width: targetW,
+            height: targetH,
+            hideTaskbar: !!userData.hideTaskbarInPip
+        });
+    }
 
     document.querySelectorAll('.btn-pip-toggle, #btn-pip-restore').forEach(btn => {
         btn.addEventListener('click', () => {
+            lastPipToggleTime = Date.now();
+            if (pendingBlurAutoPipTimer) {
+                clearTimeout(pendingBlurAutoPipTimer);
+                pendingBlurAutoPipTimer = null;
+            }
+
             const isCurrentlyPip = document.body.classList.contains('pip-mode');
             const isEnteringPip = !isCurrentlyPip;
 
             // Enable cooldown to prevent capturing transition window resize (e.g. 960x660 / 857x677)
             isInitializingPip = true;
-            setTimeout(() => { isInitializingPip = false; }, 1500);
-
-            if (!isEnteringPip) {
-                document.body.classList.remove('pip-mode');
-            }
+            setTimeout(() => { isInitializingPip = false; }, 800);
 
             let targetW = isEnteringPip ? (userData.pipWidth || 280) : undefined;
             let targetH = isEnteringPip ? (userData.pipHeight || 400) : undefined;
@@ -134,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetH && (targetH > 550 || targetH < 200)) targetH = 400;
 
             if (isEnteringPip) {
+                document.body.classList.add('pip-mode');
                 console.log(`[PIP] Entering PIP with target size: ${targetW}x${targetH}`);
             } else {
                 console.log(`[PIP] Exiting PIP.`);
@@ -147,6 +209,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+
+    // Auto PiP on Window Blur (Click Outside Dashboard)
+    document.addEventListener('click', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' && e.target.type === 'file')) {
+            isFileInputActive = true;
+        }
+    }, true);
+
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
 
     // Request Notification Permissions
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -259,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stealthHoverPeek: true,
         showVinylSpindle: true,
         autoPipOnStart: false,
+        autoPipOnBlur: false,
         hideTaskbarInPip: false,
         autoPauseEnabled: true,
         autoPauseSec: 15,
@@ -765,6 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const defaultCover = defaultVinylSvg;
         // Keep the image if it exists
         const coverSrc = (ytTrackData.image) ? ytTrackData.image : defaultCover;
+        syncVinylCoverWithCpp(coverSrc);
         
         // Sync vinyl animation state with actual playback
         const isActuallyPlaying = ytTrackData.isPlaying;
@@ -812,6 +886,67 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePipPeekingVinyl();
     }
 
+    let cachedTrackImageBase64 = "";
+    let cachedOriginalImageUrl = "";
+
+    function syncVinylCoverWithCpp(imageUrl) {
+        if (!imageUrl) {
+            cachedTrackImageBase64 = "";
+            cachedOriginalImageUrl = "";
+            updatePipPeekingVinyl();
+            return;
+        }
+        if (imageUrl === cachedOriginalImageUrl && cachedTrackImageBase64) {
+            return;
+        }
+        cachedOriginalImageUrl = imageUrl;
+
+        // If it's already a data URL, use it immediately
+        if (imageUrl.startsWith('data:image/')) {
+            cachedTrackImageBase64 = imageUrl;
+            updatePipPeekingVinyl();
+            return;
+        }
+
+        // Bridge the browser's already loaded image to C++ while strictly PRESERVING original aspect ratio (16:9, 1:1, etc.)
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            try {
+                const nw = img.naturalWidth || img.width || 320;
+                const nh = img.naturalHeight || img.height || 320;
+                const maxDim = 480;
+                let targetW = nw;
+                let targetH = nh;
+                if (nw > maxDim || nh > maxDim) {
+                    if (nw >= nh) {
+                        targetW = maxDim;
+                        targetH = Math.max(1, Math.round((nh / nw) * maxDim));
+                    } else {
+                        targetH = maxDim;
+                        targetW = Math.max(1, Math.round((nw / nh) * maxDim));
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = targetW;
+                canvas.height = targetH;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, targetW, targetH);
+                cachedTrackImageBase64 = canvas.toDataURL('image/png');
+                updatePipPeekingVinyl();
+            } catch (e) {
+                // If canvas tainted due to CORS, fallback to original URL
+                cachedTrackImageBase64 = imageUrl;
+                updatePipPeekingVinyl();
+            }
+        };
+        img.onerror = () => {
+            cachedTrackImageBase64 = imageUrl;
+            updatePipPeekingVinyl();
+        };
+        img.src = imageUrl;
+    }
+
     let lastPeekingTrackKey = "";
     let isPeekingTransitioning = false;
 
@@ -822,6 +957,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasTrack = !!(ytTrackData.title || ytTrackData.author);
         const isPlaying = !!ytTrackData.isPlaying;
 
+        const effectiveImageUrl = cachedTrackImageBase64 || ytTrackData.image || '';
+
         // Show peeking vinyl whenever enabled and track is active
         const shouldShowPeeking = isEnabled && hasTrack;
 
@@ -831,7 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
             visible: shouldShowPeeking,
             side: side,
             isPlaying: isPlaying,
-            imageUrl: ytTrackData.image || '',
+            imageUrl: effectiveImageUrl,
             title: ytTrackData.title || '',
             speedSec: userData.vinylSpeed || 6
         });
@@ -1330,50 +1467,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateYtMusicUI();
 
-        } else if (userData.ambientMode === 'custom' && userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:'))) {
+        } else if (userData.ambientMode === 'custom') {
             if (btnSelectCustomGif) btnSelectCustomGif.classList.add('active');
             if (plantInfoBadge) plantInfoBadge.style.display = 'none';
             if (recentGifsSection) recentGifsSection.style.display = (userData.recentGifs && userData.recentGifs.length > 0) ? 'block' : 'none';
+            if (gifStyleSection) gifStyleSection.style.display = 'block';
+            if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
+            if (gifOpacityRow) gifOpacityRow.style.display = 'block';
+            if (gifOpacitySlider) gifOpacitySlider.value = userData.gifOpacity || 78;
+            if (opacityLabel) opacityLabel.textContent = `${userData.gifOpacity || 78}%`;
 
-            // Load data from IndexedDB or use directly if it's still base64
-            (async () => {
-                let actualData = userData.customGifData;
-                if (actualData && !actualData.startsWith('data:image')) {
-                    actualData = await gifDb.get(actualData);
-                }
+            if (userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:'))) {
+                // Load data from IndexedDB or use directly if it's still base64
+                (async () => {
+                    let actualData = userData.customGifData;
+                    if (actualData && !actualData.startsWith('data:image')) {
+                        actualData = await gifDb.get(actualData);
+                    }
 
-                if (!actualData) return;
+                    if (!actualData) return;
 
-                if (isFullMode) {
-                    cardGifImg.src = actualData;
-                    cardGifImg.style.opacity = opacity;
-                    cardGifContainer.style.display = 'block';
-                } else {
-                    gaugeGifImg.src = actualData;
-                    gaugeGifImg.style.opacity = opacity;
-                    gaugeGifContainer.style.display = 'block';
-                }
+                    if (isFullMode) {
+                        cardGifImg.src = actualData;
+                        cardGifImg.style.opacity = opacity;
+                        cardGifContainer.style.display = 'block';
+                    } else {
+                        gaugeGifImg.src = actualData;
+                        gaugeGifImg.style.opacity = opacity;
+                        gaugeGifContainer.style.display = 'block';
+                    }
 
-                // Sync modal preview thumbnail & controls
-                if (gifPreviewImg) {
-                    gifPreviewImg.src = actualData;
-                    gifPreviewImg.style.opacity = opacity;
-                }
-                if (gifPreviewContainer) {
-                    gifPreviewContainer.style.borderRadius = isFullMode ? '8px' : '50%';
-                }
-                if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'block';
-                if (customGifNameDisplay) customGifNameDisplay.textContent = userData.customGifName || 'Custom GIF';
-                if (gifStyleSection) gifStyleSection.style.display = 'block';
-                if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
-                if (gifOpacityRow) gifOpacityRow.style.display = 'block';
-                if (gifOpacitySlider) gifOpacitySlider.value = userData.gifOpacity || 78;
-                if (opacityLabel) opacityLabel.textContent = `${userData.gifOpacity || 78}%`;
+                    // Sync modal preview thumbnail & controls
+                    if (gifPreviewImg) {
+                        gifPreviewImg.src = actualData;
+                        gifPreviewImg.style.opacity = opacity;
+                    }
+                    if (gifPreviewContainer) {
+                        gifPreviewContainer.style.borderRadius = isFullMode ? '8px' : '50%';
+                    }
+                    if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'block';
+                    if (customGifNameDisplay) customGifNameDisplay.textContent = userData.customGifName || 'Custom GIF';
 
-                document.querySelectorAll('.gif-mode-chip').forEach(chip => {
-                    chip.classList.toggle('active', chip.getAttribute('data-mode') === (userData.gifDisplayMode || 'circle'));
-                });
-            })();
+                    document.querySelectorAll('.gif-mode-chip').forEach(chip => {
+                        chip.classList.toggle('active', chip.getAttribute('data-mode') === (userData.gifDisplayMode || 'circle'));
+                    });
+                })();
+            } else {
+                if (gifPreviewWrapper) gifPreviewWrapper.style.display = 'none';
+                if (customGifNameDisplay) customGifNameDisplay.textContent = '';
+            }
         } else {
             if (defaultChip) defaultChip.classList.add('active');
             if (plantGrowthContainer) plantGrowthContainer.style.display = 'flex';
@@ -1384,8 +1526,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (vinylSpeedSection) vinylSpeedSection.style.display = 'none';
             if (gifOpacityRow) gifOpacityRow.style.display = 'none';
             if (customGifNameDisplay) customGifNameDisplay.textContent = '';
-            updateYtMusicUI();
         }
+
+        // Always keep YouTube Music tickers & side peeking vinyl overlay in sync
+        updateYtMusicUI();
 
         // In-place synchronization of active state on Recent GIF cards (Zero-Flicker)
         document.querySelectorAll('.recent-gif-card').forEach(c => {
@@ -1524,8 +1668,36 @@ document.addEventListener('DOMContentLoaded', () => {
         applyGifTheme();
     });
 
-    // File Upload Handler
+    // File Upload / Mode Switch Handler
     btnSelectCustomGif.addEventListener('click', () => {
+        const hasHistory = (userData.recentGifs && userData.recentGifs.length > 0);
+        const hasCustomData = !!(userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:')));
+
+        // If already in custom mode, clicking it allows picking a new file
+        if (userData.ambientMode === 'custom') {
+            gifFileInput.click();
+            return;
+        }
+
+        // Switch to custom mode
+        userData.ambientMode = 'custom';
+        if (!hasCustomData && hasHistory) {
+            userData.customGifData = userData.recentGifs[0].data;
+            userData.customGifName = userData.recentGifs[0].name;
+        }
+
+        saveUserData();
+        applyGifTheme();
+        renderRecentGifs();
+
+        // If user has never selected/uploaded any GIF, open file dialog immediately
+        if (!hasCustomData && !hasHistory) {
+            gifFileInput.click();
+        }
+    });
+
+    // Upload New GIF Button inside Recent GIFs Section
+    document.getElementById('btn-upload-new-gif')?.addEventListener('click', () => {
         gifFileInput.click();
     });
 
@@ -2266,6 +2438,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const chkAutoPip = document.getElementById('chk-auto-pip');
             if (chkAutoPip) chkAutoPip.checked = !!userData.autoPipOnStart;
 
+            const chkAutoPipBlur = document.getElementById('chk-auto-pip-blur');
+            if (chkAutoPipBlur) chkAutoPipBlur.checked = !!userData.autoPipOnBlur;
+
             const chkHideTaskbarPip = document.getElementById('chk-hide-taskbar-pip');
             if (chkHideTaskbarPip) chkHideTaskbarPip.checked = !!userData.hideTaskbarInPip;
 
@@ -2309,6 +2484,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('chk-auto-pip')?.addEventListener('change', (e) => {
         userData.autoPipOnStart = e.target.checked;
+        saveUserData();
+    });
+
+    document.getElementById('chk-auto-pip-blur')?.addEventListener('change', (e) => {
+        userData.autoPipOnBlur = e.target.checked;
         saveUserData();
     });
 
@@ -4285,6 +4465,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.onCppStateUpdate(msg.data, msg.isPip);
                 } else if (msg.type === 'runningApps') {
                     window.renderAppList(msg.apps);
+                } else if (msg.type === 'windowBlur') {
+                    handleWindowBlur();
+                } else if (msg.type === 'windowFocus') {
+                    handleWindowFocus();
                 }
             } catch (err) {
                 console.error('IPC JSON parse error:', err);

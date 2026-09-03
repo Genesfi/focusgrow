@@ -954,7 +954,10 @@
                         <div id="recent-gifs-section" style="margin-top: 10px; display: none;">
                             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
                                 <span>Recent GIFs (Max 5):</span>
-                                <button id="btn-clear-recent-gifs" class="text-link-btn">Clear history</button>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <button id="btn-upload-new-gif" class="text-link-btn" style="color: var(--accent-blue); font-weight: 600;">+ Upload New</button>
+                                    <button id="btn-clear-recent-gifs" class="text-link-btn">Clear history</button>
+                                </div>
                             </div>
                             <div class="recent-gifs-grid" id="recent-gifs-container"></div>
                         </div>
@@ -1119,6 +1122,16 @@
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="chk-auto-pip">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Auto-PIP on Blur (Click Outside)</span>
+                            <span class="option-sub">Automatically switches to mini floating PiP when clicking outside the dashboard during a session</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-auto-pip-blur">
                             <span class="slider"></span>
                         </label>
                     </div>

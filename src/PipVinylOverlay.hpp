@@ -13,9 +13,11 @@
 #include <functional>
 #include <wininet.h>
 #include <wincodec.h>
+#include <wincrypt.h>
 
 #pragma comment(lib, "wininet.lib")
 #pragma comment(lib, "windowscodecs.lib")
+#pragma comment(lib, "crypt32.lib")
 
 enum class VinylTransitionState {
     Normal,
@@ -39,6 +41,7 @@ private:
 
     VinylTransitionState m_transitionState = VinylTransitionState::Normal;
 
+    std::wstring m_requestedUrl = L"__INIT__";
     std::wstring m_currentCoverUrl = L"";
     std::wstring m_pendingCoverUrl = L"";
     std::unique_ptr<Gdiplus::Bitmap> m_coverBitmap = nullptr;
@@ -64,6 +67,63 @@ private:
     UINT_PTR m_animTimerId = 0;
     std::function<void()> m_onClick = nullptr;
     std::function<void(short delta)> m_onWheel = nullptr;
+
+    static std::unique_ptr<Gdiplus::Bitmap> CreateBitmapFromStream(IStream* pStream) {
+        if (!pStream) return nullptr;
+
+        // 1. Try standard GDI+ first (JPEG, PNG, BMP, GIF)
+        LARGE_INTEGER zero = { 0 };
+        pStream->Seek(zero, STREAM_SEEK_SET, NULL);
+        auto bmp = std::make_unique<Gdiplus::Bitmap>(pStream);
+        if (bmp && bmp->GetLastStatus() == Gdiplus::Ok && bmp->GetWidth() > 0 && bmp->GetHeight() > 0) {
+            return bmp;
+        }
+
+        // 2. Fallback to Windows Imaging Component (WIC) for WebP and modern web formats
+        pStream->Seek(zero, STREAM_SEEK_SET, NULL);
+        IWICImagingFactory* pFactory = nullptr;
+        HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFactory));
+        if (SUCCEEDED(hr) && pFactory) {
+            IWICBitmapDecoder* pDecoder = nullptr;
+            hr = pFactory->CreateDecoderFromStream(pStream, NULL, WICDecodeMetadataCacheOnDemand, &pDecoder);
+            if (SUCCEEDED(hr) && pDecoder) {
+                IWICBitmapFrameDecode* pFrame = nullptr;
+                hr = pDecoder->GetFrame(0, &pFrame);
+                if (SUCCEEDED(hr) && pFrame) {
+                    IWICFormatConverter* pConverter = nullptr;
+                    hr = pFactory->CreateFormatConverter(&pConverter);
+                    if (SUCCEEDED(hr) && pConverter) {
+                        hr = pConverter->Initialize(pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.0, WICBitmapPaletteTypeCustom);
+                        if (SUCCEEDED(hr)) {
+                            UINT w = 0, h = 0;
+                            pConverter->GetSize(&w, &h);
+                            if (w > 0 && h > 0) {
+                                auto wicBmp = std::make_unique<Gdiplus::Bitmap>(w, h, PixelFormat32bppPARGB);
+                                if (wicBmp && wicBmp->GetLastStatus() == Gdiplus::Ok) {
+                                    Gdiplus::Rect rect(0, 0, w, h);
+                                    Gdiplus::BitmapData bmpData;
+                                    if (wicBmp->LockBits(&rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppPARGB, &bmpData) == Gdiplus::Ok) {
+                                        pConverter->CopyPixels(NULL, bmpData.Stride, bmpData.Stride * h, (BYTE*)bmpData.Scan0);
+                                        wicBmp->UnlockBits(&bmpData);
+                                        pConverter->Release();
+                                        pFrame->Release();
+                                        pDecoder->Release();
+                                        pFactory->Release();
+                                        return wicBmp;
+                                    }
+                                }
+                            }
+                        }
+                        pConverter->Release();
+                    }
+                    pFrame->Release();
+                }
+                pDecoder->Release();
+            }
+            pFactory->Release();
+        }
+        return nullptr;
+    }
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         PipVinylOverlay* pThis = (PipVinylOverlay*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
@@ -203,6 +263,7 @@ public:
         std::lock_guard<std::mutex> lock(m_bitmapMutex);
         m_coverBitmap.reset();
         m_pendingCoverBitmap.reset();
+        m_requestedUrl = L"__INIT__";
     }
 
     void SetVisible(bool visible, const std::string& side = "left") {
@@ -268,7 +329,22 @@ public:
     }
 
     void LoadCoverFromUrl(const std::wstring& url) {
-        if (url == m_currentCoverUrl) return;
+        if (url == m_requestedUrl) {
+            return; // Already requested or currently active! Never spam or bounce!
+        }
+        m_requestedUrl = url;
+
+        if (url.empty()) {
+            std::lock_guard<std::mutex> lock(m_bitmapMutex);
+            m_coverBitmap.reset();
+            m_pendingCoverBitmap.reset();
+            m_hasPendingBitmap = false;
+            m_currentCoverUrl = L"";
+            m_pendingCoverUrl = L"";
+            m_transitionState = VinylTransitionState::Normal;
+            if (m_visible) m_targetSlide = 1.0f;
+            return;
+        }
 
         // If currently peeking out, trigger slide-in retraction animation first
         if (m_visible && m_slideProgress > 0.15f) {
@@ -282,23 +358,32 @@ public:
             if (m_visible) m_targetSlide = 1.0f;
         }
 
-        if (url.empty()) {
-            std::lock_guard<std::mutex> lock(m_bitmapMutex);
-            m_coverBitmap.reset();
-            m_hasPendingBitmap = false;
-            return;
-        }
-
         // Run download in background thread so UI is 100% fluid
         std::wstring fetchUrl = url;
         std::thread([this, fetchUrl]() {
+            CoInitializeEx(NULL, COINIT_MULTITHREADED);
             std::vector<BYTE> buffer;
-            if (fetchUrl.rfind(L"http", 0) == 0) {
-                HINTERNET hInternet = InternetOpenW(L"FocusGrow/1.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+
+            if (fetchUrl.rfind(L"data:image/", 0) == 0) {
+                size_t b64Pos = fetchUrl.find(L"base64,");
+                if (b64Pos != std::wstring::npos) {
+                    std::wstring b64Str = fetchUrl.substr(b64Pos + 7);
+                    DWORD binLen = 0;
+                    if (CryptStringToBinaryW(b64Str.c_str(), (DWORD)b64Str.length(), CRYPT_STRING_BASE64, NULL, &binLen, NULL, NULL) && binLen > 0) {
+                        buffer.resize(binLen);
+                        CryptStringToBinaryW(b64Str.c_str(), (DWORD)b64Str.length(), CRYPT_STRING_BASE64, buffer.data(), &binLen, NULL, NULL);
+                    }
+                }
+            } else if (fetchUrl.rfind(L"http", 0) == 0) {
+                HINTERNET hInternet = InternetOpenW(L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) FocusGrow/1.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
                 if (hInternet) {
-                    HINTERNET hUrl = InternetOpenUrlW(hInternet, fetchUrl.c_str(), NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_SECURE, 0);
+                    DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_DONT_CACHE | INTERNET_FLAG_IGNORE_REDIRECT_TO_HTTPS | INTERNET_FLAG_IGNORE_REDIRECT_TO_HTTP | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_IGNORE_CERT_DATE_INVALID | INTERNET_FLAG_NO_CACHE_WRITE;
+                    if (fetchUrl.rfind(L"https://", 0) == 0) {
+                        flags |= INTERNET_FLAG_SECURE;
+                    }
+                    HINTERNET hUrl = InternetOpenUrlW(hInternet, fetchUrl.c_str(), NULL, 0, flags, 0);
                     if (hUrl) {
-                        BYTE chunk[4096];
+                        BYTE chunk[8192];
                         DWORD bytesRead = 0;
                         while (InternetReadFile(hUrl, chunk, sizeof(chunk), &bytesRead) && bytesRead > 0) {
                             buffer.insert(buffer.end(), chunk, chunk + bytesRead);
@@ -321,6 +406,7 @@ public:
                 }
             }
 
+            bool loaded = false;
             if (!buffer.empty()) {
                 HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, buffer.size());
                 if (hMem) {
@@ -331,22 +417,36 @@ public:
 
                         IStream* pStream = nullptr;
                         if (SUCCEEDED(CreateStreamOnHGlobal(hMem, TRUE, &pStream))) {
-                            auto bmp = std::make_unique<Gdiplus::Bitmap>(pStream);
-                            if (bmp && bmp->GetLastStatus() == Gdiplus::Ok) {
+                            auto bmp = CreateBitmapFromStream(pStream);
+                            if (bmp && bmp->GetLastStatus() == Gdiplus::Ok && bmp->GetWidth() > 0) {
                                 std::lock_guard<std::mutex> lock(m_bitmapMutex);
                                 if (m_transitionState == VinylTransitionState::Retracting) {
                                     m_pendingCoverBitmap = std::move(bmp);
                                     m_hasPendingBitmap = true;
                                 } else {
                                     m_coverBitmap = std::move(bmp);
+                                    m_currentCoverUrl = fetchUrl;
                                     m_hasPendingBitmap = false;
                                 }
+                                loaded = true;
                             }
                             pStream->Release();
                         }
                     }
                 }
             }
+
+            if (!loaded) {
+                // If download or format failed, ensure vinyl doesn't get stuck inside the card
+                std::lock_guard<std::mutex> lock(m_bitmapMutex);
+                m_currentCoverUrl = fetchUrl;
+                m_hasPendingBitmap = false;
+                if (m_transitionState == VinylTransitionState::Retracting) {
+                    m_transitionState = VinylTransitionState::Extending;
+                    if (m_visible) m_targetSlide = 1.0f;
+                }
+            }
+            CoUninitialize();
         }).detach();
     }
 
