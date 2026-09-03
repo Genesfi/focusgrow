@@ -446,8 +446,8 @@
                         </button>
                     </div>
 
-                    <div class="up-next-info">
-                        <span id="up-next-text">Up next: 5 min break</span>
+                    <div class="up-next-info" id="up-next-container">
+                        <span id="up-next-text" title="Click to cycle timer subtitle info">Break in 30 mins</span>
                     </div>
 
                     <!-- Live YT Music Marquee Ticker (Timer View) -->
@@ -1061,6 +1061,21 @@
                             <option value="15" selected style="background: #242424; color: white;">15 seconds (Default)</option>
                             <option value="30" style="background: #242424; color: white;">30 seconds</option>
                             <option value="60" style="background: #242424; color: white;">60 seconds</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-section-title" style="margin-top: 10px;">Session Timer Subtitle</div>
+                    <div class="option-row">
+                        <div class="option-info-col">
+                            <span>Timer Subtitle Info</span>
+                            <span class="option-sub">Information displayed beneath timer controls (click to cycle)</span>
+                        </div>
+                        <select id="select-timer-subtitle-mode" class="small-action-btn"
+                            style="width: 175px; text-align: left; background: var(--card-bg); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 8px; font-size: 11px;">
+                            <option value="countdown" selected style="background: #242424; color: white;">Break Countdown</option>
+                            <option value="finishtime" style="background: #242424; color: white;">Estimated Finish Time</option>
+                            <option value="totalrem" style="background: #242424; color: white;">Total Time Remaining</option>
+                            <option value="hidden" style="background: #242424; color: white;">Off / Hidden</option>
                         </select>
                     </div>
 

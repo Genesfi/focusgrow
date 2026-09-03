@@ -359,7 +359,7 @@ public:
         m_totalPeriods = max(1, (int)ceil((double)totalFocusMinutes / chunkMins));
         m_currentPeriod = 1;
 
-        m_remainingSec = m_singlePeriodSec; // Starts counting down from user's selected period length!
+        m_remainingSec = GetCurrentPeriodDurationSec(); // Starts counting down from appropriate period duration!
 
         ResetSessionPasses();
 
@@ -546,7 +546,7 @@ public:
                     m_currentPeriod++;
                     if (m_currentPeriod <= m_totalPeriods) {
                         m_state = SessionState::Focusing;
-                        m_remainingSec = m_singlePeriodSec;
+                        m_remainingSec = GetCurrentPeriodDurationSec();
                         m_focusSecAccumulator = 0;
                         ResetSessionPasses();
                     } else {
@@ -677,7 +677,7 @@ public:
                 // Rest period finished -> Advance to next work period
                 m_currentPeriod++;
                 m_state = SessionState::Focusing;
-                m_remainingSec = m_singlePeriodSec;
+                m_remainingSec = GetCurrentPeriodDurationSec();
                 ResetSessionPasses();
                 m_overlay.Hide();
             }
@@ -789,7 +789,17 @@ public:
     SessionState GetState() const { return m_state; }
     bool IsPaused() const { return m_isPaused; }
     int GetRemainingSec() const { return m_remainingSec; }
-    int GetMaxPeriodSec() const { return (m_state == SessionState::Resting) ? m_breakDurationSec : m_singlePeriodSec; }
+    int GetCurrentPeriodDurationSec() const {
+        if (m_currentPeriod == m_totalPeriods && m_singlePeriodSec > 0) {
+            int chunkMins = m_singlePeriodSec / 60;
+            if (chunkMins > 0) {
+                int remMins = m_totalFocusMinutes % chunkMins;
+                if (remMins > 0) return remMins * 60;
+            }
+        }
+        return m_singlePeriodSec;
+    }
+    int GetMaxPeriodSec() const { return (m_state == SessionState::Resting) ? m_breakDurationSec : GetCurrentPeriodDurationSec(); }
     FocusStats GetStats() const { return m_stats; }
 
     std::wstring GetStateJson() const {

@@ -2516,10 +2516,52 @@ body.pip-mode.pip-peeking-active .pip-peeking-vinyl-container {
 
 /* Subtitle & Header High Contrast Shadows */
 #focus-period-title,
-#up-next-text,
 .card-header h2,
 .subtitle {
     text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.8), 1px -1px 0 rgba(0, 0, 0, 0.8), -1px 1px 0 rgba(0, 0, 0, 0.8), 1px 1px 0 rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+.up-next-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2px;
+    min-height: 16px;
+}
+
+#up-next-text {
+    cursor: pointer;
+    user-select: none;
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    color: rgba(255, 255, 255, 0.55);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    padding: 1px 6px;
+    border-radius: 4px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+}
+
+#up-next-text:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#up-next-text:active {
+    transform: scale(0.97);
+}
+
+body.pip-mode .up-next-info {
+    margin-top: 1px;
+    min-height: 14px;
+}
+
+body.pip-mode #up-next-text {
+    font-size: 8.5px;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 1px 4px;
 }
 
 /* Marquee Ticker for Live YT Music Playing Info & Media Controls */

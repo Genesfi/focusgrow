@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const pauseIcon = document.getElementById('pause-icon');
     const playIcon = document.getElementById('play-icon');
     const upNextText = document.getElementById('up-next-text');
+    const upNextContainer = document.getElementById('up-next-container');
+    const selectTimerSubtitleMode = document.getElementById('select-timer-subtitle-mode');
+    let latestSessionData = null;
     const gaugeProgressBar = document.getElementById('gauge-progress-bar');
     const gaugeTicks = document.getElementById('gauge-ticks');
 
@@ -347,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         neutralOverstayEnabled: true,
         neutralOverstayIntervalMins: 30,
         neutralSoftBlockEnabled: true,
+        timerSubtitleMode: 'countdown',
         ignoredNudgeStatsByDate: {} // { 'YYYY-MM-DD': count }
     };
 
@@ -2098,7 +2102,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const breaks = (periods > 1 && !chkSkipBreaks.checked) ? (periods - 1) : 0;
         
         if (breaks > 0) {
-            breaksCountText.textContent = `You'll have ${breaks} break${breaks > 1 ? 's' : ''} (${selectedBreakMins} mins each) across ${periods} focus periods (${selectedPeriodMins} mins each)`;
+            const fullPeriods = Math.floor(selectedMins / selectedPeriodMins);
+            const remainderMins = selectedMins % selectedPeriodMins;
+            if (remainderMins > 0 && fullPeriods > 0) {
+                breaksCountText.textContent = `You'll have ${breaks} break${breaks > 1 ? 's' : ''} (${selectedBreakMins} mins each) across ${fullPeriods} full period${fullPeriods > 1 ? 's' : ''} (${selectedPeriodMins} mins) + 1 final period (${remainderMins} mins)`;
+            } else {
+                breaksCountText.textContent = `You'll have ${breaks} break${breaks > 1 ? 's' : ''} (${selectedBreakMins} mins each) across ${periods} focus periods (${selectedPeriodMins} mins each)`;
+            }
         } else {
             breaksCountText.textContent = `Continuous ${selectedMins} min focus session (${selectedPeriodMins} min period)`;
         }
@@ -2183,18 +2193,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnPickerUp.addEventListener('click', () => {
         if (selectedMins < 480) {
-            if (selectedMins < 5) selectedMins += 1;
-            else if (selectedMins < 15) selectedMins += 5;
-            else selectedMins += 15;
+            const step = Math.max(1, selectedPeriodMins || 25);
+            if (selectedMins < step) {
+                if (selectedMins < 5) selectedMins = Math.min(step, selectedMins + 1);
+                else selectedMins = Math.min(step, selectedMins + 5);
+            } else {
+                let next = Math.floor(selectedMins / step) * step + step;
+                if (next <= selectedMins) next += step;
+                selectedMins = Math.min(480, next);
+            }
             updatePickerDisplay();
         }
     });
 
     btnPickerDown.addEventListener('click', () => {
         if (selectedMins > 1) {
-            if (selectedMins <= 5) selectedMins -= 1;
-            else if (selectedMins <= 15) selectedMins -= 5;
-            else selectedMins -= 15;
+            const step = Math.max(1, selectedPeriodMins || 25);
+            if (selectedMins <= step) {
+                if (selectedMins <= 5) selectedMins = Math.max(1, selectedMins - 1);
+                else selectedMins = Math.max(1, selectedMins - 5);
+            } else {
+                let prev = Math.ceil(selectedMins / step) * step - step;
+                if (prev >= selectedMins) prev -= step;
+                if (prev < step) prev = step;
+                selectedMins = Math.max(1, prev);
+            }
             updatePickerDisplay();
         }
     });
@@ -2694,6 +2717,134 @@ document.addEventListener('DOMContentLoaded', () => {
                 enabled: userData.autoPauseEnabled !== false,
                 sec: userData.autoPauseSec
             });
+        });
+    }
+
+    function updateTimerSubtitle(data) {
+        if (!upNextText) return;
+        if (data) latestSessionData = data;
+        const container = upNextContainer || upNextText.parentElement;
+        const mode = userData.timerSubtitleMode || 'countdown';
+
+        if (mode === 'hidden') {
+            if (container) container.style.display = 'none';
+            return;
+        }
+
+        if (container) container.style.display = 'flex';
+
+        const state = (data && data.state) ? data.state : activeState;
+        const curPeriod = (data && data.currentPeriod) ? data.currentPeriod : 1;
+        const totPeriods = (data && data.totalPeriods) ? data.totalPeriods : 1;
+        const remSec = (data && data.remainingSec !== undefined) ? data.remainingSec : 0;
+        const skipBreaks = !!chkSkipBreaks.checked;
+        const hasMoreBreaks = (curPeriod < totPeriods) && !skipBreaks;
+
+        // Calculate total remaining session seconds across future periods
+        const chunkMins = selectedPeriodMins || 25;
+        let futureFocusSec = 0;
+        for (let p = curPeriod + 1; p <= totPeriods; p++) {
+            if (p === totPeriods) {
+                let remMins = selectedMins % chunkMins;
+                if (remMins === 0) remMins = chunkMins;
+                futureFocusSec += remMins * 60;
+            } else {
+                futureFocusSec += chunkMins * 60;
+            }
+        }
+        let futureBreaksCount = 0;
+        if (!skipBreaks) {
+            if (state === 'focusing') futureBreaksCount = Math.max(0, totPeriods - curPeriod);
+            else if (state === 'resting') futureBreaksCount = Math.max(0, totPeriods - curPeriod - 1);
+        }
+        const futureBreakSec = futureBreaksCount * (selectedBreakMins || 5) * 60;
+        const totalRemainingSec = remSec + futureFocusSec + futureBreakSec;
+
+        if (mode === 'finishtime') {
+            const finishDate = new Date(Date.now() + totalRemainingSec * 1000);
+            const hh = String(finishDate.getHours()).padStart(2, '0');
+            const mm = String(finishDate.getMinutes()).padStart(2, '0');
+            const periodsLeft = Math.max(0, totPeriods - curPeriod);
+            const periodSuffix = periodsLeft > 0 ? ` • ${periodsLeft} period${periodsLeft > 1 ? 's' : ''} left` : ' • Final period';
+            upNextText.textContent = `Ends at ${hh}:${mm}${periodSuffix}`;
+            upNextText.title = 'Estimated Finish Time (Click to switch display)';
+        } else if (mode === 'totalrem') {
+            const totalMins = Math.ceil(totalRemainingSec / 60);
+            const h = Math.floor(totalMins / 60);
+            const m = totalMins % 60;
+            let durStr = '';
+            if (h > 0 && m > 0) durStr = `${h}h ${m}m`;
+            else if (h > 0) durStr = `${h}h`;
+            else durStr = `${m}m`;
+            upNextText.textContent = `${durStr} total remaining`;
+            upNextText.title = 'Total Time Remaining (Click to switch display)';
+        } else {
+            // mode === 'countdown' (Default)
+            if (container) container.style.display = 'flex';
+            if (state === 'focusing') {
+                if (hasMoreBreaks) {
+                    // When <= 10 mins (600s): show countdown to upcoming break
+                    // When > 10 mins: show calm 'Stay focused' so UI isn't empty/off
+                    if (remSec <= 600) {
+                        if (remSec <= 60 && remSec > 0) {
+                            upNextText.textContent = `Break in ${remSec}s`;
+                        } else {
+                            const m = Math.ceil(remSec / 60);
+                            upNextText.textContent = `Break in ${m} min${m > 1 ? 's' : ''}`;
+                        }
+                    } else {
+                        upNextText.textContent = 'Stay focused';
+                    }
+                } else {
+                    if (remSec <= 600) {
+                        const m = Math.ceil(remSec / 60);
+                        upNextText.textContent = (remSec <= 60 && remSec > 0) ? `Final stretch (${remSec}s)` : `Final period (${m}m left)`;
+                    } else {
+                        upNextText.textContent = 'Final focus period';
+                    }
+                }
+            } else if (state === 'resting') {
+                if (remSec <= 60 && remSec > 0) {
+                    upNextText.textContent = `Break ends in ${remSec}s`;
+                } else {
+                    const m = Math.ceil(remSec / 60);
+                    upNextText.textContent = `Break ends in ${m} min${m > 1 ? 's' : ''}`;
+                }
+            } else {
+                upNextText.textContent = 'Focus session';
+            }
+            upNextText.title = 'Break Countdown (Click to switch display)';
+        }
+    }
+
+    if (upNextText) {
+        upNextText.addEventListener('click', () => {
+            const visibleCycle = ['countdown', 'finishtime', 'totalrem'];
+            const currentMode = userData.timerSubtitleMode || 'countdown';
+            let nextIndex = visibleCycle.indexOf(currentMode) + 1;
+            if (nextIndex >= visibleCycle.length || nextIndex <= 0) nextIndex = 0;
+            const newMode = visibleCycle[nextIndex];
+
+            userData.timerSubtitleMode = newMode;
+            saveUserData();
+
+            if (selectTimerSubtitleMode) {
+                selectTimerSubtitleMode.value = newMode;
+            }
+            if (latestSessionData) {
+                updateTimerSubtitle(latestSessionData);
+            }
+        });
+    }
+
+    if (selectTimerSubtitleMode) {
+        selectTimerSubtitleMode.value = userData.timerSubtitleMode || 'countdown';
+        selectTimerSubtitleMode.addEventListener('change', (e) => {
+            userData.timerSubtitleMode = e.target.value;
+            saveUserData();
+            if (latestSessionData) {
+                updateTimerSubtitle(latestSessionData);
+            }
         });
     }
 
@@ -4392,8 +4543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timerView.classList.add('active');
             activeStatusLabel.textContent = isPaused ? 'PAUSED' : 'REMAINING';
             focusPeriodTitle.textContent = `Focus period (${data.currentPeriod || 1} of ${data.totalPeriods || 1})`;
-            const hasMoreBreaks = (data.currentPeriod || 1) < (data.totalPeriods || 1) && !chkSkipBreaks.checked;
-            upNextText.textContent = hasMoreBreaks ? `Up next: ${selectedBreakMins} min break` : `Final focus period`;
+            updateTimerSubtitle(data);
             
             pauseIcon.style.display = isPaused ? 'none' : 'block';
             playIcon.style.display = isPaused ? 'block' : 'none';
@@ -4407,7 +4557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timerView.classList.add('active');
             activeStatusLabel.textContent = 'RESTING & STEP OUTSIDE';
             focusPeriodTitle.textContent = 'Mandatory Break';
-            upNextText.textContent = 'Step away from screen & walk outside';
+            updateTimerSubtitle(data);
 
             if (autoPauseLabel) {
                 autoPauseLabel.classList.remove('show');
