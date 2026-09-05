@@ -1729,6 +1729,12 @@ body.pip-mode {
     background-color: var(--bg-dark) !important;
 }
 
+/* Ensure modals and settings overlays are completely hidden in PIP mode */
+body.pip-mode .modal-overlay,
+body.pip-mode .modal {
+    display: none !important;
+}
+
 body.pip-mode .app-container {
     height: 100vh !important;
     width: 100vw !important;

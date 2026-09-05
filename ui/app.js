@@ -136,13 +136,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.body.classList.contains('pip-mode')) return;
         if (isFileInputActive) return;
 
-        // Skip if any modal is currently active
-        const activeModal = document.querySelector('.modal.active, .modal.show, #options-modal.active, #custom-gif-modal.active, #import-export-modal.active, #tag-manager-modal.active, #music-browser-modal.active, #prayer-city-modal.active');
-        if (activeModal) return;
-
         // Only auto-pip if session is active or on timer view
         const isSessionActive = timerView?.classList.contains('active') || (activeState === 'focusing' || activeState === 'resting');
         if (!isSessionActive) return;
+
+        // Auto-dismiss any active modals/settings (e.g. ambient mixer, options) so they don't get stuck in PiP
+        document.querySelectorAll('.modal-overlay.active, .modal.active').forEach(m => m.classList.remove('active'));
 
         // If user just un-pipped / toggled recently, debounce and execute right after transition finishes
         const elapsedSinceToggle = Date.now() - lastPipToggleTime;
@@ -198,6 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetH && (targetH > 550 || targetH < 200)) targetH = 400;
 
             if (isEnteringPip) {
+                // Auto-dismiss any active modals when manually toggling into PiP
+                document.querySelectorAll('.modal-overlay.active, .modal.active').forEach(m => m.classList.remove('active'));
                 document.body.classList.add('pip-mode');
                 console.log(`[PIP] Entering PIP with target size: ${targetW}x${targetH}`);
             } else {
@@ -219,6 +220,9 @@ document.addEventListener('DOMContentLoaded', () => {
             isFileInputActive = true;
         }
     }, true);
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('click', () => { isFileInputActive = true; });
+    });
 
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('blur', handleWindowBlur);
@@ -4516,6 +4520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const titlebarText = document.getElementById('titlebar-text');
 
         if (isPip) {
+            document.querySelectorAll('.modal-overlay.active, .modal.active').forEach(m => m.classList.remove('active'));
             document.body.classList.add('pip-mode');
         } else {
             document.body.classList.remove('pip-mode');
