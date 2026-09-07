@@ -3593,7 +3593,7 @@ select option {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-    max-height: 330px;
+    max-height: 420px;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 4px;

@@ -65,6 +65,9 @@ private:
     int m_bufferSize = 0;
 
     UINT_PTR m_animTimerId = 0;
+    int m_lastSetPosX = -99999;
+    int m_lastSetPosY = -99999;
+    int m_lastSetSize = -1;
     std::function<void()> m_onClick = nullptr;
     std::function<void(short delta)> m_onWheel = nullptr;
 
@@ -214,6 +217,24 @@ public:
         }
     }
 
+    HWND GetHwnd() const { return m_hwnd; }
+
+    void ReassertZOrder() {
+        if (m_hwnd && m_visible && m_hParent && IsWindowVisible(m_hParent) && !IsIconic(m_hParent)) {
+            SetWindowPos(m_hwnd, m_hParent, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
+
+    void SetTopmost(bool topmost) {
+        if (m_hwnd) {
+            SetWindowPos(m_hwnd, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            if (topmost && m_hParent && IsWindowVisible(m_hParent)) {
+                SetWindowPos(m_hwnd, m_hParent, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            }
+        }
+    }
+
     void Init(HINSTANCE hInstance, HWND hParent) {
         m_hInstance = hInstance;
         m_hParent = hParent;
@@ -227,7 +248,7 @@ public:
         RegisterClassExW(&wc);
 
         m_hwnd = CreateWindowExW(
-            WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+            WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
             wc.lpszClassName,
             L"FocusGrow_VinylOverlay",
             WS_POPUP,
@@ -279,6 +300,9 @@ public:
         } else {
             m_targetSlide = 0.0f;
             m_transitionState = VinylTransitionState::Normal;
+            m_lastSetPosX = -99999;
+            m_lastSetPosY = -99999;
+            m_lastSetSize = -1;
             if (m_hwnd) {
                 ShowWindow(m_hwnd, SW_HIDE);
             }
@@ -317,7 +341,9 @@ public:
 
             if (sizeChanged) {
                 RenderAndPosition();
-            } else {
+            } else if (m_lastSetPosX != posX || m_lastSetPosY != posY) {
+                m_lastSetPosX = posX;
+                m_lastSetPosY = posY;
                 // Synchronous instant repositioning during mouse drag (Zero Latency)
                 SetWindowPos(m_hwnd, m_hParent, posX, posY, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
             }
@@ -675,13 +701,19 @@ private:
             g.ResetTransform();
         }
 
-        // Position directly behind m_hParent in Z-order
-        SetWindowPos(
-            m_hwnd,
-            m_hParent, // Insert right behind the main PiP card
-            posX, posY, size, size,
-            SWP_NOACTIVATE | SWP_SHOWWINDOW
-        );
+        // Position directly behind m_hParent in Z-order only when position or size has changed
+        bool posChanged = (m_lastSetPosX != posX || m_lastSetPosY != posY || m_lastSetSize != size);
+        if (posChanged) {
+            m_lastSetPosX = posX;
+            m_lastSetPosY = posY;
+            m_lastSetSize = size;
+            SetWindowPos(
+                m_hwnd,
+                m_hParent, // Insert right behind the main PiP card
+                posX, posY, size, size,
+                SWP_NOACTIVATE | SWP_SHOWWINDOW
+            );
+        }
 
         HDC hdcScreen = GetDC(NULL);
         POINT ptSrc = { 0, 0 };

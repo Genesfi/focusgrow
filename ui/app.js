@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const setupView = document.getElementById('setup-view');
     const timerView = document.getElementById('timer-view');
-    
+
     const pickerMinsInput = document.getElementById('picker-mins-input') || document.getElementById('picker-mins-display');
     const btnPickerUp = document.getElementById('btn-picker-up');
     const btnPickerDown = document.getElementById('btn-picker-down');
@@ -170,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[PIP] Auto switching to PIP on outside click/blur: ${targetW}x${targetH}`);
         sendToCpp({
             action: 'togglePip',
+            enabled: true,
             width: targetW,
             height: targetH,
             hideTaskbar: !!userData.hideTaskbarInPip
@@ -207,6 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             sendToCpp({
                 action: 'togglePip',
+                enabled: isEnteringPip,
                 width: targetW,
                 height: targetH,
                 hideTaskbar: !!userData.hideTaskbarInPip
@@ -394,8 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
             d.setDate(todayObj.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
 
-            let mins = (userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr]) 
-                ? userData.completedMinutesByDate[dateStr] 
+            let mins = (userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr])
+                ? userData.completedMinutesByDate[dateStr]
                 : 0;
 
             if (mins === 0 && userData.appStatsByDate && userData.appStatsByDate[dateStr]) {
@@ -451,8 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const yesterdayObj = new Date();
                 yesterdayObj.setDate(new Date().getDate() - 1);
                 const yDateStr = yesterdayObj.toISOString().split('T')[0];
-                const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr]) 
-                    ? userData.completedMinutesByDate[yDateStr] 
+                const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr])
+                    ? userData.completedMinutesByDate[yDateStr]
                     : 0;
                 userData.yesterdayHours = (yMins / 60).toFixed(1);
 
@@ -708,8 +710,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Clean parentheticals like (feat. Aizawa), [MV], etc.
         const cleanTitle = title.replace(/\([^\)]+\)/g, '').replace(/\[[^\]]+\]/g, '').split(/\s*[\-\|]\s*/)[0].trim();
-        const cleanAuthor = (author && author !== 'YouTube Music') 
-            ? author.replace(/\([^\)]+\)/g, '').replace(/\[[^\]]+\]/g, '').split(/\s*[\-\|]\s*/)[0].trim() 
+        const cleanAuthor = (author && author !== 'YouTube Music')
+            ? author.replace(/\([^\)]+\)/g, '').replace(/\[[^\]]+\]/g, '').split(/\s*[\-\|]\s*/)[0].trim()
             : '';
 
         const searchQueries = [
@@ -777,14 +779,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let rawTitle = ytApp.title || '';
         let cleaned = rawTitle.replace(/\s*[\-\|]\s*YouTube Music/gi, '')
-                             .replace(/^YouTube Music\s*[\-\|]\s*/gi, '')
-                             .replace(/\s*[\-\|]\s*YouTube/gi, '')
-                             .trim();
+            .replace(/^YouTube Music\s*[\-\|]\s*/gi, '')
+            .replace(/\s*[\-\|]\s*YouTube/gi, '')
+            .trim();
 
         const isGeneric = !cleaned ||
-                          cleaned.toLowerCase() === 'youtube music' ||
-                          cleaned.toLowerCase() === 'yt music' ||
-                          cleaned.toLowerCase() === 'youtube';
+            cleaned.toLowerCase() === 'youtube music' ||
+            cleaned.toLowerCase() === 'yt music' ||
+            cleaned.toLowerCase() === 'youtube';
 
         if (!isGeneric) {
             const parts = cleaned.split(/\s*[\-\|]\s*/);
@@ -821,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasTrack = !!(ytTrackData.title || ytTrackData.author);
 
         const trackString = (hasTrack)
-            ? `${ytTrackData.title} — ${ytTrackData.author}` 
+            ? `${ytTrackData.title} — ${ytTrackData.author}`
             : 'Not playing — YT Music';
 
         if (textSetup) textSetup.textContent = trackString;
@@ -847,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Keep the image if it exists
         const coverSrc = (ytTrackData.image) ? ytTrackData.image : defaultCover;
         syncVinylCoverWithCpp(coverSrc);
-        
+
         // Sync vinyl animation state with actual playback
         const isActuallyPlaying = ytTrackData.isPlaying;
         if (vinylCoverImg) {
@@ -1104,16 +1106,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const hue2rgb = (p, q, t) => {
                 if (t < 0) t += 1;
                 if (t > 1) t -= 1;
-                if (t < 1/6) return p + (q - p) * 6 * t;
-                if (t < 1/2) return q;
-                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
                 return p;
             };
             const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
             const p = 2 * l - q;
-            r = hue2rgb(p, q, h + 1/3);
+            r = hue2rgb(p, q, h + 1 / 3);
             g = hue2rgb(p, q, h);
-            b = hue2rgb(p, q, h - 1/3);
+            b = hue2rgb(p, q, h - 1 / 3);
         }
         const toHex = x => {
             const hex = Math.round(x * 255).toString(16);
@@ -1146,12 +1148,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, 32, 32);
                 const data = ctx.getImageData(0, 0, 32, 32).data;
-                
+
                 let rSum = 0, gSum = 0, bSum = 0, colorCount = 0;
                 let totalCount = 0;
 
                 for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i], g = data[i+1], b = data[i+2];
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
                     const max = Math.max(r, g, b);
                     const min = Math.min(r, g, b);
                     const saturation = max === 0 ? 0 : (max - min) / max;
@@ -1206,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const focusCard = document.getElementById('focus-card');
         const gaugeContainer = document.querySelector('.gauge-container');
         const cardVinylDisc = document.querySelector('.card-vinyl-disc');
-        
+
         if (!focusCard || !cardVinylDisc) return;
 
         let centerY = 208;
@@ -1553,7 +1555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!recentGifsSection || !recentGifsContainer) return;
 
         userData.recentGifs = userData.recentGifs || [];
-        
+
         // Auto-add current active GIF to recent list if not present
         if (userData.customGifData && (userData.customGifData.length > 50 || !userData.customGifData.startsWith('data:'))) {
             const exists = userData.recentGifs.some(g => g.data === userData.customGifData);
@@ -1754,12 +1756,12 @@ document.addEventListener('DOMContentLoaded', () => {
     gifOpacitySlider?.addEventListener('input', (e) => {
         userData.gifOpacity = parseInt(e.target.value);
         const opacity = userData.gifOpacity / 100;
-        
+
         if (opacityLabel) opacityLabel.textContent = `${userData.gifOpacity}%`;
         if (gaugeGifImg) gaugeGifImg.style.opacity = opacity;
         if (cardGifImg) cardGifImg.style.opacity = opacity;
         if (gifPreviewImg) gifPreviewImg.style.opacity = opacity;
-        
+
         saveUserData();
     });
 
@@ -1809,7 +1811,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.style.setProperty('--vinyl-size', `${userData.vinylSize}px`);
         const label = document.getElementById('vinyl-size-label');
         if (label) label.textContent = `${userData.vinylSize}px`;
-        
+
         document.querySelectorAll('.size-preset-chip').forEach(chip => {
             chip.classList.toggle('active', parseInt(chip.getAttribute('data-size')) === userData.vinylSize);
         });
@@ -2030,7 +2032,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gaugeTicks.innerHTML = '';
         const totalTicks = 28;
         const cx = 100, cy = 100, r = 88;
-        
+
         for (let i = 0; i < totalTicks; i++) {
             const angle = (i * 360 / totalTicks) * (Math.PI / 180);
             const x1 = cx + (r - 6) * Math.cos(angle);
@@ -2104,7 +2106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const periods = Math.ceil(selectedMins / selectedPeriodMins);
         const breaks = (periods > 1 && !chkSkipBreaks.checked) ? (periods - 1) : 0;
-        
+
         if (breaks > 0) {
             const fullPeriods = Math.floor(selectedMins / selectedPeriodMins);
             const remainderMins = selectedMins % selectedPeriodMins;
@@ -2118,7 +2120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         updateSetupPrediction();
-        
+
         userData.selectedMins = selectedMins;
         userData.selectedPeriodMins = selectedPeriodMins;
         userData.selectedBreakMins = selectedBreakMins;
@@ -2399,6 +2401,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             sendToCpp({
                 action: 'togglePip',
+                enabled: true,
                 width: pipW,
                 height: pipH,
                 hideTaskbar: !!userData.hideTaskbarInPip
@@ -2927,7 +2930,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Clean DOM Node App Whitelist Renderer
-    window.renderAppList = function(apps) {
+    window.renderAppList = function (apps) {
         if (apps) cachedAppList = apps;
         if (cachedAppList && Array.isArray(cachedAppList)) {
             userData.appIconMap = userData.appIconMap || {};
@@ -2972,7 +2975,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!searchQuery) return true;
             return (app.title && app.title.toLowerCase().includes(searchQuery)) ||
-                   (app.exeName && app.exeName.toLowerCase().includes(searchQuery));
+                (app.exeName && app.exeName.toLowerCase().includes(searchQuery));
         });
 
         // Sort by Name (A-Z) or Latest Open
@@ -3072,8 +3075,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const yesterdayObj = new Date();
         yesterdayObj.setDate(new Date().getDate() - 1);
         const yDateStr = yesterdayObj.toISOString().split('T')[0];
-        const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr]) 
-            ? userData.completedMinutesByDate[yDateStr] 
+        const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr])
+            ? userData.completedMinutesByDate[yDateStr]
             : 0;
         userData.yesterdayHours = (yMins / 60).toFixed(1);
 
@@ -3206,7 +3209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateRandomQuote(mode = 'focus') {
         const quotes = (mode === 'rest' || mode === 'resting') ? REST_QUOTES : FOCUS_QUOTES;
         const q = quotes[Math.floor(Math.random() * quotes.length)];
-        
+
         const qTextSetup = document.getElementById('quote-text-setup');
         const qAuthorSetup = document.getElementById('quote-author-setup');
         const qTextTimer = document.getElementById('quote-text-timer');
@@ -3460,7 +3463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // End date adjusted by heatmapWeekOffset
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + (heatmapWeekOffset * 7));
-        
+
         // Find the Saturday of that week (end of week column)
         const endDayOfWeek = endDate.getDay();
         const currentSaturday = new Date(endDate);
@@ -3754,13 +3757,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderStatsDashboard(range = activeStatsRange) {
         activeStatsRange = range;
-        
+
         document.querySelectorAll('.stats-tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-range') === range);
         });
 
         const targetDates = getDateRangeArray(range);
-        
+
         let totalSecs = 0;
         const appMap = {};
         userData.appStatsByDate = userData.appStatsByDate || {};
@@ -3784,7 +3787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const daysCount = (range === 'month' ? 30 : (range === 'week' ? 7 : 1));
         const targetGoalMins = (userData.dailyGoalHours || 1) * 60 * daysCount;
         const goalPercent = Math.min(100, Math.round((totalMins / targetGoalMins) * 100));
-        
+
         document.getElementById('stats-kpi-goal-percent').textContent = `${goalPercent}%`;
         document.getElementById('stats-kpi-goal-sub').textContent = `Target: ${(targetGoalMins / 60).toFixed(0)} hrs`;
         document.getElementById('stats-kpi-streak').textContent = `${userData.streakDays || 0} Days`;
@@ -4271,7 +4274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Process C++ IPC Messages & Trigger Notifications
-    window.onCppStateUpdate = function(data, isPip) {
+    window.onCppStateUpdate = function (data, isPip) {
         if (!data) return;
 
         activeState = data.state;
@@ -4493,13 +4496,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (activeState === 'idle' && (previousState === 'focusing' || previousState === 'resting')) {
                 sendNotification('Session Completed', `Great job! Focus session completed successfully.`, 'focus');
                 updateRandomQuote('focus');
-                
+
                 // Auto-exit PiP mode when focus session completes, restoring to full main window
                 if (document.body.classList.contains('pip-mode')) {
                     isInitializingPip = true;
                     setTimeout(() => { isInitializingPip = false; }, 1500);
                     document.body.classList.remove('pip-mode');
-                    sendToCpp({ action: 'togglePip' });
+                    sendToCpp({ action: 'togglePip', enabled: false });
                 }
             }
             previousState = activeState;
@@ -4549,7 +4552,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeStatusLabel.textContent = isPaused ? 'PAUSED' : 'REMAINING';
             focusPeriodTitle.textContent = `Focus period (${data.currentPeriod || 1} of ${data.totalPeriods || 1})`;
             updateTimerSubtitle(data);
-            
+
             pauseIcon.style.display = isPaused ? 'none' : 'block';
             playIcon.style.display = isPaused ? 'block' : 'none';
 
@@ -4695,7 +4698,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.displayedPrayerIndex = -1;
     window.actualNextPrayerName = "";
 
-    window.renderPrayerInfo = function() {
+    window.renderPrayerInfo = function () {
         if (window.displayedPrayerIndex === -1 || !window.allPrayerTimes.length) return;
         const p = window.allPrayerTimes[window.displayedPrayerIndex];
         const label = document.getElementById('prayer-display-label');
@@ -4880,6 +4883,633 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ========================================================
+    // High-Fidelity Natural Ambient DSP Synthesis Engines
+    // Acoustically engineered for rich, warm, non-fatiguing sound
+    // ========================================================
+
+    class PinkNoiseGen {
+        constructor() {
+            this.b0 = 0; this.b1 = 0; this.b2 = 0; this.b3 = 0; this.b4 = 0; this.b5 = 0; this.b6 = 0;
+        }
+        next() {
+            const white = Math.random() * 2 - 1;
+            this.b0 = 0.99886 * this.b0 + white * 0.0555179;
+            this.b1 = 0.99332 * this.b1 + white * 0.0750759;
+            this.b2 = 0.96900 * this.b2 + white * 0.1538520;
+            this.b3 = 0.86650 * this.b3 + white * 0.3104856;
+            this.b4 = 0.55000 * this.b4 + white * 0.5329522;
+            this.b5 = -0.7616 * this.b5 - white * 0.0168980;
+            const out = (this.b0 + this.b1 + this.b2 + this.b3 + this.b4 + this.b5 + this.b6 + white * 0.5362) * 0.11;
+            this.b6 = white * 0.115926;
+            return out;
+        }
+    }
+
+    class BiquadFilter {
+        constructor(type = 'lowpass', freq = 1000, Q = 0.707, sampleRate = 44100, gainDb = 0) {
+            this.sampleRate = sampleRate;
+            this.x1 = 0; this.x2 = 0;
+            this.y1 = 0; this.y2 = 0;
+            this.setParams(type, freq, Q, gainDb);
+        }
+        setParams(type, freq, Q = 0.707, gainDb = 0) {
+            const w0 = 2 * Math.PI * Math.min(Math.max(freq, 20), this.sampleRate * 0.48) / this.sampleRate;
+            const cosw0 = Math.cos(w0);
+            const sinw0 = Math.sin(w0);
+            const alpha = sinw0 / (2 * Math.max(0.01, Q));
+            let b0 = 0, b1 = 0, b2 = 0, a0 = 1, a1 = 0, a2 = 0;
+
+            if (type === 'lowpass') {
+                b0 = (1 - cosw0) / 2;
+                b1 = 1 - cosw0;
+                b2 = (1 - cosw0) / 2;
+                a0 = 1 + alpha;
+                a1 = -2 * cosw0;
+                a2 = 1 - alpha;
+            } else if (type === 'highpass') {
+                b0 = (1 + cosw0) / 2;
+                b1 = -(1 + cosw0);
+                b2 = (1 + cosw0) / 2;
+                a0 = 1 + alpha;
+                a1 = -2 * cosw0;
+                a2 = 1 - alpha;
+            } else if (type === 'bandpass') {
+                b0 = alpha;
+                b1 = 0;
+                b2 = -alpha;
+                a0 = 1 + alpha;
+                a1 = -2 * cosw0;
+                a2 = 1 - alpha;
+            } else if (type === 'peaking') {
+                const A = Math.pow(10, gainDb / 40);
+                b0 = 1 + alpha * A;
+                b1 = -2 * cosw0;
+                b2 = 1 - alpha * A;
+                a0 = 1 + alpha / A;
+                a1 = -2 * cosw0;
+                a2 = 1 - alpha / A;
+            }
+
+            this.b0 = b0 / a0;
+            this.b1 = b1 / a0;
+            this.b2 = b2 / a0;
+            this.a1 = a1 / a0;
+            this.a2 = a2 / a0;
+        }
+        process(input) {
+            const out = this.b0 * input + this.b1 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+            this.x2 = this.x1;
+            this.x1 = input;
+            this.y2 = this.y1;
+            this.y1 = (Math.abs(out) < 1e-15) ? 0 : out;
+            return this.y1;
+        }
+    }
+
+    // ========================================================
+    // 1. Natural Light Rain & Soothing Window Drizzle
+    // 100% Noise & Friction Based (ZERO sine waves, zero metallic ringing)
+    // Soft, cozy, velvety rain wash with delicate raindrop pats on leaves/glass
+    // ========================================================
+    class NaturalLightRainDSP {
+        constructor(sampleRate = 44100) {
+            this.sampleRate = sampleRate;
+            this.pinkL = new PinkNoiseGen();
+            this.pinkR = new PinkNoiseGen();
+
+            // Smooth Butterworth filters - ZERO peaking / ZERO resonant boost (eliminates all hollow hum/tinny ring!)
+            this.lpL = new BiquadFilter('lowpass', 2400, 0.707, sampleRate);
+            this.lpR = new BiquadFilter('lowpass', 2400, 0.707, sampleRate);
+            this.hpL = new BiquadFilter('highpass', 180, 0.707, sampleRate);
+            this.hpR = new BiquadFilter('highpass', 180, 0.707, sampleRate);
+
+            // Subtle second gentle lowpass to create that cozy, warm indoor rain feel
+            this.warmLpL = new BiquadFilter('lowpass', 3600, 0.5, sampleRate);
+            this.warmLpR = new BiquadFilter('lowpass', 3600, 0.5, sampleRate);
+
+            // NO SINE OSCILLATORS!
+            // Raindrops are subtle micro-bursts of soft friction noise (brushing/tapping)
+            this.maxDrops = 14;
+            this.drops = [];
+            for (let i = 0; i < this.maxDrops; i++) {
+                this.drops.push({
+                    active: false,
+                    age: 0,
+                    maxAge: 0.01,
+                    decayRate: 300,
+                    gain: 0.08,
+                    panL: 0.5,
+                    panR: 0.5,
+                    filter: new BiquadFilter('bandpass', 3200, 0.9, sampleRate)
+                });
+            }
+
+            this.lfoPhase = Math.random() * Math.PI * 2;
+            this.dropTimer = 0;
+            this.nextDropInterval = Math.floor(sampleRate / (10 + Math.random() * 12));
+        }
+
+        compute(length, out0, out1) {
+            const dt = 1.0 / this.sampleRate;
+            const lfoInc = (2 * Math.PI * 0.04) / this.sampleRate;
+
+            for (let i = 0; i < length; i++) {
+                this.lfoPhase += lfoInc;
+                if (this.lfoPhase > Math.PI * 2) this.lfoPhase -= Math.PI * 2;
+                const breath = 0.96 + 0.04 * Math.sin(this.lfoPhase);
+
+                // Smooth velvety rain bed
+                const rawL = this.pinkL.next();
+                const rawR = this.pinkR.next();
+                const bedL = this.warmLpL.process(this.hpL.process(this.lpL.process(rawL))) * 0.42 * breath;
+                const bedR = this.warmLpR.process(this.hpR.process(this.lpR.process(rawR))) * 0.42 * breath;
+
+                // Soft noise-based raindrops (micro friction pats, ZERO sine tones!)
+                this.dropTimer++;
+                if (this.dropTimer >= this.nextDropInterval) {
+                    this.dropTimer = 0;
+                    const v = this.drops.find(d => !d.active);
+                    if (v) {
+                        v.active = true;
+                        v.age = 0;
+                        v.maxAge = 0.006 + Math.random() * 0.008; // 6ms - 14ms (very short!)
+                        v.decayRate = 350 + Math.random() * 200;
+                        v.gain = 0.08 + Math.random() * 0.12;
+                        const f = 2600 + Math.random() * 1800; // soft high frequency water pat
+                        v.filter.setParams('bandpass', f, 1.0);
+                        const pan = (Math.random() * 1.6 - 0.8);
+                        v.panL = (1 - pan) * 0.5;
+                        v.panR = (1 + pan) * 0.5;
+                    }
+                    this.nextDropInterval = Math.floor(this.sampleRate / (10 + Math.random() * 16));
+                }
+
+                let dropL = 0;
+                let dropR = 0;
+                for (let d = 0; d < this.maxDrops; d++) {
+                    const drop = this.drops[d];
+                    if (!drop.active) continue;
+
+                    // Micro white noise burst shaped by fast decay
+                    const white = Math.random() * 2 - 1;
+                    const env = Math.exp(-drop.decayRate * drop.age);
+                    const shaped = drop.filter.process(white) * env * drop.gain;
+
+                    dropL += shaped * drop.panL;
+                    dropR += shaped * drop.panR;
+
+                    drop.age += dt;
+                    if (drop.age >= drop.maxAge) {
+                        drop.active = false;
+                    }
+                }
+
+                out0[i] = (bedL + dropL) * 0.95;
+                if (out1) out1[i] = (bedR + dropR) * 0.95;
+            }
+        }
+    }
+
+    // ========================================================
+    // 2. Natural Heavy Rain & Atmospheric Downpour
+    // Dynamic storm fluctuations ("bunyi hujan tidak menentu")
+    // Deep ground rumble + cascading sheet + heavy splatters
+    // 100% noise-based, zero synthetic ringing
+    // ========================================================
+    class NaturalHeavyRainDSP {
+        constructor(sampleRate = 44100) {
+            this.sampleRate = sampleRate;
+            this.pinkL = new PinkNoiseGen();
+            this.pinkR = new PinkNoiseGen();
+
+            // Ground wash & deep bass rumble
+            this.brownL = 0;
+            this.brownR = 0;
+            this.rumbleLpL = new BiquadFilter('lowpass', 200, 0.707, sampleRate);
+            this.rumbleLpR = new BiquadFilter('lowpass', 200, 0.707, sampleRate);
+
+            // Mid cascading downpour body
+            this.midBpL = new BiquadFilter('bandpass', 1250, 0.6, sampleRate);
+            this.midBpR = new BiquadFilter('bandpass', 1250, 0.6, sampleRate);
+
+            // High spray & air mist
+            this.sprayLpL = new BiquadFilter('lowpass', 3800, 0.6, sampleRate);
+            this.sprayLpR = new BiquadFilter('lowpass', 3800, 0.6, sampleRate);
+            this.sprayHpL = new BiquadFilter('highpass', 2000, 0.6, sampleRate);
+            this.sprayHpR = new BiquadFilter('highpass', 2000, 0.6, sampleRate);
+
+            // Compound storm fluctuation LFOs (Natural non-repeating surge cycles)
+            this.lfo1 = Math.random() * Math.PI * 2;
+            this.lfo2 = Math.random() * Math.PI * 2;
+            this.lfo3 = Math.random() * Math.PI * 2;
+
+            // Heavy Splatters Pool (Noise burst water slaps, ZERO sine tones!)
+            this.maxSplatters = 16;
+            this.splatters = [];
+            for (let i = 0; i < this.maxSplatters; i++) {
+                this.splatters.push({
+                    active: false,
+                    age: 0,
+                    maxAge: 0.02,
+                    decayRate: 150,
+                    gain: 0.15,
+                    panL: 0.5,
+                    panR: 0.5,
+                    filter: new BiquadFilter('bandpass', 1600, 0.8, sampleRate)
+                });
+            }
+            this.splatterTimer = 0;
+            this.nextSplatterInterval = Math.floor(sampleRate / 50);
+        }
+
+        compute(length, out0, out1) {
+            const dt = 1.0 / this.sampleRate;
+            const inc1 = (2 * Math.PI * 0.055) / this.sampleRate;
+            const inc2 = (2 * Math.PI * 0.118) / this.sampleRate;
+            const inc3 = (2 * Math.PI * 0.238) / this.sampleRate;
+
+            for (let i = 0; i < length; i++) {
+                // Compound storm dynamics ("bunyi hujan tidak menentu")
+                this.lfo1 += inc1; if (this.lfo1 > Math.PI * 2) this.lfo1 -= Math.PI * 2;
+                this.lfo2 += inc2; if (this.lfo2 > Math.PI * 2) this.lfo2 -= Math.PI * 2;
+                this.lfo3 += inc3; if (this.lfo3 > Math.PI * 2) this.lfo3 -= Math.PI * 2;
+
+                const stormSwell = 0.76 + 0.15 * Math.sin(this.lfo1) + 0.10 * Math.sin(this.lfo2 + 0.5) + 0.06 * Math.sin(this.lfo3 + 1.2);
+
+                const nL = this.pinkL.next();
+                const nR = this.pinkR.next();
+
+                // 1. Deep ground wash & heavy rumble
+                this.brownL = (this.brownL + (0.025 * (Math.random() * 2 - 1))) / 1.025;
+                this.brownR = (this.brownR + (0.025 * (Math.random() * 2 - 1))) / 1.025;
+                const rumbleL = this.rumbleLpL.process(this.brownL * 3.5) * (0.32 * stormSwell);
+                const rumbleR = this.rumbleLpR.process(this.brownR * 3.5) * (0.32 * stormSwell);
+
+                // 2. Mid cascading downpour body
+                const midL = this.midBpL.process(nL) * (0.45 * stormSwell);
+                const midR = this.midBpR.process(nR) * (0.45 * stormSwell);
+
+                // 3. Dense atmospheric mist spray
+                const sprayL = this.sprayLpL.process(this.sprayHpL.process(nL)) * (0.22 * stormSwell);
+                const sprayR = this.sprayLpR.process(this.sprayHpR.process(nR)) * (0.22 * stormSwell);
+
+                // Heavy splatter drops (noise bursts)
+                this.splatterTimer++;
+                if (this.splatterTimer >= this.nextSplatterInterval) {
+                    this.splatterTimer = 0;
+                    const v = this.splatters.find(s => !s.active);
+                    if (v) {
+                        v.active = true;
+                        v.age = 0;
+                        v.maxAge = 0.01 + Math.random() * 0.015;
+                        v.decayRate = 180 + Math.random() * 120;
+                        v.gain = (0.08 + Math.random() * 0.12) * stormSwell;
+                        const f = 1200 + Math.random() * 1200;
+                        v.filter.setParams('bandpass', f, 0.9);
+                        const pan = (Math.random() * 1.8 - 0.9);
+                        v.panL = (1 - pan) * 0.5;
+                        v.panR = (1 + pan) * 0.5;
+                    }
+                    const rate = 40 + stormSwell * 40;
+                    this.nextSplatterInterval = Math.floor(this.sampleRate / rate);
+                }
+
+                let splatL = 0;
+                let splatR = 0;
+                for (let s = 0; s < this.maxSplatters; s++) {
+                    const splat = this.splatters[s];
+                    if (!splat.active) continue;
+
+                    const white = Math.random() * 2 - 1;
+                    const env = Math.exp(-splat.decayRate * splat.age);
+                    const val = splat.filter.process(white) * env * splat.gain;
+
+                    splatL += val * splat.panL;
+                    splatR += val * splat.panR;
+
+                    splat.age += dt;
+                    if (splat.age >= splat.maxAge) {
+                        splat.active = false;
+                    }
+                }
+
+                out0[i] = (rumbleL + midL + sprayL + splatL) * 0.85;
+                if (out1) out1[i] = (rumbleR + midR + sprayR + splatR) * 0.85;
+            }
+        }
+    }
+
+    // ========================================================
+    // 3. Natural Campfire & Hearth Fire (Full Stereo)
+    // 100% NOISE & TRANSIENT BASED (ZERO sine waves, zero "kaleng dipentung"!)
+    // Warm low combustion draft + gentle ember sizzle + dry wood splinter snaps
+    // ========================================================
+    class NaturalCampfireDSP {
+        constructor(sampleRate = 44100) {
+            this.sampleRate = sampleRate;
+            this.pinkL = new PinkNoiseGen();
+            this.pinkR = new PinkNoiseGen();
+
+            // Warm combustion draft (gentle air convection rumble, smooth lowpass 150Hz, Q=0.707)
+            this.draftLpL = new BiquadFilter('lowpass', 150, 0.707, sampleRate);
+            this.draftLpR = new BiquadFilter('lowpass', 150, 0.707, sampleRate);
+            this.flickerPhase = Math.random() * Math.PI * 2;
+
+            // Continuous gentle ember sizzle bed (soft sap boiling, bandpass 1400-2400Hz)
+            this.sizzleBpL = new BiquadFilter('bandpass', 1800, 0.8, sampleRate);
+            this.sizzleBpR = new BiquadFilter('bandpass', 1800, 0.8, sampleRate);
+
+            // Wood Snaps & Crackles (100% NOISE & SPLINTER BASED - NO SINE WAVES, NO KALENG DIPENTUNG!)
+            this.maxPops = 12;
+            this.pops = [];
+            for (let i = 0; i < this.maxPops; i++) {
+                this.pops.push({
+                    active: false,
+                    age: 0,
+                    maxAge: 0.02,
+                    decayRate: 200,
+                    gain: 0.2,
+                    panL: 0.5,
+                    panR: 0.5,
+                    filter: new BiquadFilter('bandpass', 1800, 1.2, sampleRate)
+                });
+            }
+
+            this.popTimer = 0;
+            this.nextPopInterval = Math.floor(sampleRate * (0.3 + Math.random() * 0.8));
+        }
+
+        compute(length, out0, out1) {
+            const dt = 1.0 / this.sampleRate;
+            const flickerInc = (2 * Math.PI * 1.2) / this.sampleRate;
+
+            for (let i = 0; i < length; i++) {
+                this.flickerPhase += flickerInc;
+                if (this.flickerPhase > Math.PI * 2) this.flickerPhase -= Math.PI * 2;
+                const flicker = 0.88 + 0.12 * Math.sin(this.flickerPhase);
+
+                const nL = this.pinkL.next();
+                const nR = this.pinkR.next();
+
+                // Low-end combustion air warmth (soft draft, NO resonant boom)
+                const draftL = this.draftLpL.process(nL) * 0.38 * flicker;
+                const draftR = this.draftLpR.process(nR) * 0.38 * flicker;
+
+                // Soft continuous ember sizzle (delicate boiling sap in embers)
+                const sizzleL = this.sizzleBpL.process(nL) * 0.14 * (0.85 + 0.15 * Math.sin(this.flickerPhase * 2.8));
+                const sizzleR = this.sizzleBpR.process(nR) * 0.14 * (0.85 + 0.15 * Math.sin(this.flickerPhase * 2.8));
+
+                // Wood splinter snaps & ember crackles
+                this.popTimer++;
+                if (this.popTimer >= this.nextPopInterval) {
+                    this.popTimer = 0;
+
+                    // Clustered natural fire pops: 1 to 3 tiny snaps
+                    const burst = Math.random() < 0.3 ? (2 + Math.floor(Math.random() * 2)) : 1;
+                    for (let b = 0; b < burst; b++) {
+                        const v = this.pops.find(p => !p.active);
+                        if (v) {
+                            v.active = true;
+                            v.age = 0;
+                            // Real dry wood snaps are ultra-fast: 6ms to 18ms
+                            v.maxAge = 0.006 + Math.random() * 0.014;
+                            v.decayRate = 250 + Math.random() * 250;
+                            v.gain = 0.15 + Math.random() * 0.25;
+
+                            // Randomize filter frequency for each snap (dry twig crackle: 1200Hz - 3200Hz)
+                            const f = 1100 + Math.random() * 2200;
+                            v.filter.setParams('bandpass', f, 1.4);
+
+                            const pan = (Math.random() * 1.6 - 0.8);
+                            v.panL = (1 - pan) * 0.5;
+                            v.panR = (1 + pan) * 0.5;
+                        }
+                    }
+
+                    // Irregular pause: occasional quiet glowing pauses of 1.2s - 3.5s
+                    const isLongPause = Math.random() < 0.35;
+                    const pauseSec = isLongPause ? (1.2 + Math.random() * 2.5) : (0.15 + Math.random() * 0.5);
+                    this.nextPopInterval = Math.floor(this.sampleRate * pauseSec);
+                }
+
+                // Render active wood snaps (noise-based splinter transients, ZERO sine waves!)
+                let popL = 0;
+                let popR = 0;
+                for (let p = 0; p < this.maxPops; p++) {
+                    const pop = this.pops[p];
+                    if (!pop.active) continue;
+
+                    const white = Math.random() * 2 - 1;
+                    const env = Math.exp(-pop.decayRate * pop.age);
+                    const snap = pop.filter.process(white) * env * pop.gain;
+
+                    popL += snap * pop.panL;
+                    popR += snap * pop.panR;
+
+                    pop.age += dt;
+                    if (pop.age >= pop.maxAge) {
+                        pop.active = false;
+                    }
+                }
+
+                out0[i] = (draftL + sizzleL + popL) * 0.95;
+                if (out1) out1[i] = (draftR + sizzleR + popR) * 0.95;
+            }
+        }
+    }
+
+    // ========================================================
+    // 4. Natural Field Crickets & Peaceful Night Garden
+    // Classic peaceful chirps, natural long pauses, ZERO alien frequencies!
+    // ========================================================
+    class NaturalCricketDSP {
+        constructor(sampleRate = 44100) {
+            this.sampleRate = sampleRate;
+
+            // Soft nocturnal night breeze bed (warm brown noise < 220Hz)
+            this.pink = new PinkNoiseGen();
+            this.airLp = new BiquadFilter('lowpass', 220, 0.707, sampleRate);
+
+            // Natural Field Crickets (Sporadic gentle chirps, peaceful pauses)
+            this.c1 = {
+                phase: 0,
+                baseFreq: 4520,
+                curFreq: 4520,
+                panL: 0.65, panR: 0.35,
+                gain: 0.32,
+                state: 'idle',
+                syllableCount: 0,
+                targetSyllables: 3,
+                timeInState: 0,
+                nextChirpDelay: 0.8
+            };
+
+            this.c2 = {
+                phase: 0,
+                baseFreq: 4740,
+                curFreq: 4740,
+                panL: 0.30, panR: 0.70,
+                gain: 0.22,
+                state: 'idle',
+                syllableCount: 0,
+                targetSyllables: 2,
+                timeInState: 0,
+                nextChirpDelay: 1.8
+            };
+        }
+
+        updateCricket(c, dt) {
+            c.timeInState += dt;
+
+            if (c.state === 'idle') {
+                if (c.timeInState >= c.nextChirpDelay) {
+                    c.state = 'syllable';
+                    c.timeInState = 0;
+                    c.syllableCount = 0;
+                    c.targetSyllables = 2 + Math.floor(Math.random() * 2); // 2 to 3 gentle chirps
+                    c.curFreq = c.baseFreq + (Math.random() * 60 - 30);
+                }
+                return 0;
+            }
+
+            const syllableDur = 0.022; // 22ms gentle chirp
+            const gapDur = 0.024;      // 24ms silent gap
+
+            if (c.state === 'syllable') {
+                if (c.timeInState >= syllableDur) {
+                    c.syllableCount++;
+                    if (c.syllableCount >= c.targetSyllables) {
+                        c.state = 'idle';
+                        c.timeInState = 0;
+                        // Long, peaceful natural pauses between chirping phrases (1.5s - 3.8s)
+                        c.nextChirpDelay = 1.5 + Math.random() * 2.3;
+                    } else {
+                        c.state = 'gap';
+                        c.timeInState = 0;
+                    }
+                    return 0;
+                }
+
+                c.phase += (2 * Math.PI * c.curFreq) * dt;
+                // Hann envelope (smooth, zero clicks, soft attack & release)
+                const env = 0.5 * (1.0 - Math.cos((2 * Math.PI * c.timeInState) / syllableDur));
+                return Math.sin(c.phase) * env * c.gain;
+            }
+
+            if (c.state === 'gap') {
+                if (c.timeInState >= gapDur) {
+                    c.state = 'syllable';
+                    c.timeInState = 0;
+                }
+                return 0;
+            }
+
+            return 0;
+        }
+
+        compute(length, out0, out1) {
+            const dt = 1.0 / this.sampleRate;
+
+            for (let i = 0; i < length; i++) {
+                // Soft nocturnal air cushion
+                const air = this.airLp.process(this.pink.next()) * 0.15;
+
+                // Gentle sporadic field crickets (natural rhythm)
+                const s1 = this.updateCricket(this.c1, dt);
+                const s2 = this.updateCricket(this.c2, dt);
+
+                const cL = (s1 * this.c1.panL + s2 * this.c2.panL);
+                const cR = (s1 * this.c1.panR + s2 * this.c2.panR);
+
+                out0[i] = (cL + air) * 0.85;
+                if (out1) out1[i] = (cR + air) * 0.85;
+            }
+        }
+    }
+
+    // Aliases for compatibility
+    const FaustRainDSP = NaturalLightRainDSP;
+    const FaustHeavyRainDSP = NaturalHeavyRainDSP;
+    const FaustFireDSP = NaturalCampfireDSP;
+    const FaustCricketDSP = NaturalCricketDSP;
+
+    // ========================================================
+    // Continuous Dynamic Audio Streamer
+    // Computes sample-by-sample audio on the fly in sequential chunks.
+    // Preserves PRNG & DSP state across chunks so sound NEVER loops or repeats!
+    // ========================================================
+    class ContinuousAudioStreamer {
+        constructor(ctx, gainNode, dsp, chunkDuration = 4, isStereo = false) {
+            this.ctx = ctx;
+            this.gainNode = gainNode;
+            this.dsp = dsp;
+            this.chunkDuration = chunkDuration;
+            this.isStereo = isStereo;
+            this.isRunning = false;
+            this.timer = null;
+            this.nextStartTime = 0;
+            this.activeSources = [];
+        }
+
+        start() {
+            if (this.isRunning) return;
+            this.isRunning = true;
+            this.nextStartTime = this.ctx.currentTime + 0.05;
+            this.scheduleNextChunk();
+            this.scheduleNextChunk();
+            this.checkSchedule();
+        }
+
+        scheduleNextChunk() {
+            if (!this.isRunning || !this.ctx) return;
+            const sampleRate = this.ctx.sampleRate || 44100;
+            const length = Math.floor(sampleRate * this.chunkDuration);
+            const buffer = this.ctx.createBuffer(this.isStereo ? 2 : 1, length, sampleRate);
+            const out0 = buffer.getChannelData(0);
+            const out1 = this.isStereo ? buffer.getChannelData(1) : null;
+
+            if (this.isStereo) {
+                this.dsp.compute(length, out0, out1);
+            } else {
+                this.dsp.compute(length, out0);
+            }
+
+            const source = this.ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.gainNode);
+
+            const startTime = Math.max(this.ctx.currentTime + 0.01, this.nextStartTime);
+            source.start(startTime);
+            this.nextStartTime = startTime + this.chunkDuration;
+
+            this.activeSources.push(source);
+            source.onended = () => {
+                const idx = this.activeSources.indexOf(source);
+                if (idx !== -1) this.activeSources.splice(idx, 1);
+            };
+        }
+
+        checkSchedule() {
+            if (!this.isRunning) return;
+            if (this.nextStartTime - this.ctx.currentTime < 5.0) {
+                this.scheduleNextChunk();
+            }
+            this.timer = setTimeout(() => this.checkSchedule(), 1200);
+        }
+
+        stop() {
+            this.isRunning = false;
+            if (this.timer) clearTimeout(this.timer);
+            this.timer = null;
+            for (const src of this.activeSources) {
+                try { src.stop(); src.disconnect(); } catch (e) { }
+            }
+            this.activeSources = [];
+        }
+    }
+    const FaustStreamer = ContinuousAudioStreamer;
+
+    // ========================================================
     // Procedural Web Audio Ambient Soundscapes Engine
     // ========================================================
     class AmbientAudioEngine {
@@ -4890,21 +5520,49 @@ document.addEventListener('DOMContentLoaded', () => {
             this.isPlaying = false;
             this.isMasterMuted = false;
             this.typingTimer = null;
-            this.nightCricketTimer = null;
+
+            const defaultTracks = {
+                typing: { active: true, volume: 65 },
+                fire: { active: false, volume: 60 },
+                cricket: { active: true, volume: 50 },
+                rain_drizzle: { active: false, volume: 55 },
+                rain_heavy: { active: false, volume: 50 },
+                night: { active: false, volume: 45 },
+                clock: { active: false, volume: 50 },
+                ocean: { active: false, volume: 45 },
+                alpha: { active: false, volume: 30 }
+            };
+
             this.settings = userData.ambientSettings || {
                 enabled: true,
                 autoPlay: true,
                 masterVolume: 80,
                 activePreset: 'night_coder',
-                tracks: {
-                    typing: { active: true, volume: 65 },
-                    night: { active: true, volume: 50 },
-                    rain: { active: false, volume: 55 },
-                    vinyl: { active: false, volume: 40 },
-                    ocean: { active: false, volume: 45 },
-                    alpha: { active: false, volume: 30 }
-                }
+                tracks: defaultTracks
             };
+            if (!this.settings.tracks) this.settings.tracks = {};
+            // Migration for legacy vinyl track to wall clock
+            if (this.settings.tracks.vinyl) {
+                if (!this.settings.tracks.clock) {
+                    this.settings.tracks.clock = { active: this.settings.tracks.vinyl.active, volume: this.settings.tracks.vinyl.volume || 50 };
+                }
+                delete this.settings.tracks.vinyl;
+            }
+            // Migration for legacy rain setting
+            if (this.settings.tracks.rain) {
+                if (!this.settings.tracks.rain_drizzle) {
+                    this.settings.tracks.rain_drizzle = { active: this.settings.tracks.rain.active, volume: this.settings.tracks.rain.volume || 55 };
+                }
+                if (!this.settings.tracks.rain_heavy) {
+                    this.settings.tracks.rain_heavy = { active: false, volume: 50 };
+                }
+                delete this.settings.tracks.rain;
+            }
+            for (const key in defaultTracks) {
+                if (!this.settings.tracks[key]) {
+                    this.settings.tracks[key] = { ...defaultTracks[key] };
+                }
+            }
         }
 
         initContext() {
@@ -5077,7 +5735,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const scheduleTypingBurst = () => {
                 if (!this.tracks.typing || !this.isPlaying) return;
 
-                // 25% chance of doing mouse actions instead of typing (e.g. clicking links, selecting code, scrolling)
+                // 25% chance of doing mouse actions instead of typing
                 if (Math.random() < 0.25) {
                     const isDouble = Math.random() < 0.35;
                     this.playMouseClick(isDouble);
@@ -5121,6 +5779,98 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        startFireTrack() {
+            if (this.tracks.fire) return;
+            const gainNode = this.ctx.createGain();
+            const baseVolume = (this.settings.tracks.fire.volume / 100);
+            gainNode.gain.setValueAtTime(baseVolume, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            // Natural Stereo Campfire (Warm draft, gentle ember sizzle, non-repetitive wood pops)
+            const sampleRate = this.ctx.sampleRate || 44100;
+            const dsp = new NaturalCampfireDSP(sampleRate);
+            const streamer = new ContinuousAudioStreamer(this.ctx, gainNode, dsp, 4, true);
+            streamer.start();
+
+            this.tracks.fire = { gainNode, streamer, active: true };
+        }
+
+        stopFireTrack() {
+            if (this.tracks.fire) {
+                if (this.tracks.fire.streamer) this.tracks.fire.streamer.stop();
+                delete this.tracks.fire;
+            }
+        }
+
+        startCricketTrack() {
+            if (this.tracks.cricket) return;
+            const gainNode = this.ctx.createGain();
+            const baseVolume = (this.settings.tracks.cricket.volume / 100);
+            gainNode.gain.setValueAtTime(baseVolume, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            // Natural Stereo Crickets + Suara Tonggeret Shimmer (Warm nocturnal soundscape)
+            const sampleRate = this.ctx.sampleRate || 44100;
+            const dsp = new NaturalCricketDSP(sampleRate);
+            const streamer = new ContinuousAudioStreamer(this.ctx, gainNode, dsp, 4, true);
+            streamer.start();
+
+            this.tracks.cricket = { gainNode, streamer, active: true };
+        }
+
+        stopCricketTrack() {
+            if (this.tracks.cricket) {
+                if (this.tracks.cricket.streamer) this.tracks.cricket.streamer.stop();
+                delete this.tracks.cricket;
+            }
+        }
+
+        startRainDrizzleTrack() {
+            if (this.tracks.rain_drizzle) return;
+            const gainNode = this.ctx.createGain();
+            const baseVolume = (this.settings.tracks.rain_drizzle.volume / 100);
+            gainNode.gain.setValueAtTime(baseVolume, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            // Natural Stereo Light Rain (Soft drizzle bed + delicate raindrops on glass/leaves)
+            const sampleRate = this.ctx.sampleRate || 44100;
+            const dsp = new NaturalLightRainDSP(sampleRate);
+            const streamer = new ContinuousAudioStreamer(this.ctx, gainNode, dsp, 4, true);
+            streamer.start();
+
+            this.tracks.rain_drizzle = { gainNode, streamer, active: true };
+        }
+
+        stopRainDrizzleTrack() {
+            if (this.tracks.rain_drizzle) {
+                if (this.tracks.rain_drizzle.streamer) this.tracks.rain_drizzle.streamer.stop();
+                delete this.tracks.rain_drizzle;
+            }
+        }
+
+        startRainHeavyTrack() {
+            if (this.tracks.rain_heavy) return;
+            const gainNode = this.ctx.createGain();
+            const baseVolume = (this.settings.tracks.rain_heavy.volume / 100);
+            gainNode.gain.setValueAtTime(baseVolume, this.ctx.currentTime);
+            gainNode.connect(this.masterGain);
+
+            // Natural Stereo Heavy Rain ("Bunyi hujan tidak menentu" with dynamic storm surges)
+            const sampleRate = this.ctx.sampleRate || 44100;
+            const dsp = new NaturalHeavyRainDSP(sampleRate);
+            const streamer = new ContinuousAudioStreamer(this.ctx, gainNode, dsp, 4, true);
+            streamer.start();
+
+            this.tracks.rain_heavy = { gainNode, streamer, active: true };
+        }
+
+        stopRainHeavyTrack() {
+            if (this.tracks.rain_heavy) {
+                if (this.tracks.rain_heavy.streamer) this.tracks.rain_heavy.streamer.stop();
+                delete this.tracks.rain_heavy;
+            }
+        }
+
         startNightTrack() {
             if (this.tracks.night) return;
             const gainNode = this.ctx.createGain();
@@ -5133,156 +5883,207 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const windFilter = this.ctx.createBiquadFilter();
             windFilter.type = 'lowpass';
-            windFilter.frequency.setValueAtTime(280, this.ctx.currentTime);
+            windFilter.frequency.setValueAtTime(260, this.ctx.currentTime);
 
             const windGain = this.ctx.createGain();
-            windGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+            windGain.gain.setValueAtTime(0.32, this.ctx.currentTime);
+
+            // Gentle nocturnal wind wave swell (0.06Hz)
+            const windLfo = this.ctx.createOscillator();
+            windLfo.frequency.setValueAtTime(0.06, this.ctx.currentTime);
+            const windLfoGain = this.ctx.createGain();
+            windLfoGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+            windLfo.connect(windLfoGain);
+            windLfoGain.connect(windGain.gain);
+            windLfo.start();
 
             windNoise.connect(windFilter);
             windFilter.connect(windGain);
             windGain.connect(gainNode);
             windNoise.start();
 
-            const playCricketChirp = () => {
-                if (!this.tracks.night || !this.tracks.night.active || !this.isPlaying || this.isMasterMuted) return;
-                const now = this.ctx.currentTime;
-                const chirps = 2 + Math.floor(Math.random() * 3);
-                let t = now;
-
-                for (let i = 0; i < chirps; i++) {
-                    const osc1 = this.ctx.createOscillator();
-                    const osc2 = this.ctx.createOscillator();
-                    const chirpGain = this.ctx.createGain();
-
-                    osc1.type = 'sine';
-                    osc1.frequency.setValueAtTime(4550 + (Math.random() * 80), t);
-                    osc2.type = 'sine';
-                    osc2.frequency.setValueAtTime(4820 + (Math.random() * 80), t);
-
-                    chirpGain.gain.setValueAtTime(0.001, t);
-                    chirpGain.gain.linearRampToValueAtTime(0.07, t + 0.015);
-                    chirpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
-
-                    osc1.connect(chirpGain);
-                    osc2.connect(chirpGain);
-                    chirpGain.connect(gainNode);
-
-                    osc1.start(t);
-                    osc1.stop(t + 0.06);
-                    osc2.start(t);
-                    osc2.stop(t + 0.06);
-
-                    t += 0.075;
-                }
-
-                const nextChirp = 1200 + Math.random() * 2200;
-                this.nightCricketTimer = setTimeout(playCricketChirp, nextChirp);
-            };
-
-            playCricketChirp();
-
-            this.tracks.night = { gainNode, nodes: [windNoise], active: true };
+            this.tracks.night = { gainNode, nodes: [windNoise, windLfo], active: true };
         }
 
         stopNightTrack() {
-            if (this.nightCricketTimer) clearTimeout(this.nightCricketTimer);
             if (this.tracks.night) {
                 if (this.tracks.night.nodes) {
                     this.tracks.night.nodes.forEach(n => {
-                        try { n.stop(); } catch(e){}
+                        try { n.stop(); } catch (e) { }
                     });
                 }
                 delete this.tracks.night;
             }
         }
 
-        startRainTrack() {
-            if (this.tracks.rain) return;
-            const gainNode = this.ctx.createGain();
-            gainNode.gain.setValueAtTime(this.settings.tracks.rain.volume / 100, this.ctx.currentTime);
-            gainNode.connect(this.masterGain);
+        getClockTickBuffer(isTock = false) {
+            if (isTock && this._tockBuffer) return this._tockBuffer;
+            if (!isTock && this._tickBuffer) return this._tickBuffer;
 
-            const noise = this.ctx.createBufferSource();
-            noise.buffer = this.createNoiseBuffer('pink', 6);
-            noise.loop = true;
+            const sampleRate = this.ctx ? this.ctx.sampleRate : 44100;
+            // 95ms captures direct mechanical strike plus natural room reflections across the room
+            const duration = 0.095;
+            const length = Math.floor(sampleRate * duration);
+            const buffer = this.ctx.createBuffer(2, length, sampleRate); // True Stereo Spatial Buffer
+            const outL = buffer.getChannelData(0);
+            const outR = buffer.getChannelData(1);
 
-            const bandpass = this.ctx.createBiquadFilter();
-            bandpass.type = 'bandpass';
-            bandpass.frequency.setValueAtTime(1100, this.ctx.currentTime);
-            bandpass.Q.setValueAtTime(0.8, this.ctx.currentTime);
+            // True Acoustic Physical Resonator (Zero sine oscillators)
+            const createBP = (freq, Q) => {
+                const w0 = 2 * Math.PI * freq / sampleRate;
+                const alpha = Math.sin(w0) / (2 * Q);
+                const cosw = Math.cos(w0);
+                const a0 = 1 + alpha;
+                return {
+                    b0: alpha / a0,
+                    b2: -alpha / a0,
+                    a1: -2 * cosw / a0,
+                    a2: (1 - alpha) / a0,
+                    x1: 0, x2: 0, y1: 0, y2: 0,
+                    process(x) {
+                        const y = this.b0 * x + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+                        this.x2 = this.x1; this.x1 = x;
+                        this.y2 = this.y1; this.y1 = y;
+                        return y;
+                    }
+                };
+            };
 
-            const lowpass = this.ctx.createBiquadFilter();
-            lowpass.type = 'lowpass';
-            lowpass.frequency.setValueAtTime(3200, this.ctx.currentTime);
+            // Natural wood and brass movement modes:
+            // Tick (crisp wood housing & escapement) vs Tock (deeper hollow cabinet)
+            const f1 = isTock ? 450 : 660;
+            const f2 = isTock ? 920 : 1260;
+            const f3 = isTock ? 1480 : 1820;
 
-            noise.connect(bandpass);
-            bandpass.connect(lowpass);
-            lowpass.connect(gainNode);
-            noise.start();
+            const bp1 = createBP(f1, 1.4);
+            const bp2 = createBP(f2, 2.0);
+            const bp3 = createBP(f3, 2.2);
 
-            this.tracks.rain = { gainNode, nodes: [noise], active: true };
-        }
+            const dryLen = Math.floor(sampleRate * 0.024); // 24ms dry strike
+            const dry = new Float32Array(dryLen);
 
-        stopRainTrack() {
-            if (this.tracks.rain) {
-                if (this.tracks.rain.nodes) {
-                    this.tracks.rain.nodes.forEach(n => {
-                        try { n.stop(); } catch(e){}
-                    });
+            for (let i = 0; i < dryLen; i++) {
+                const t = i / sampleRate;
+                let impulse = 0;
+                if (t < 0.001) {
+                    impulse = (Math.random() * 2 - 1) * Math.exp(-t * 2600);
                 }
-                delete this.tracks.rain;
+                dry[i] = bp1.process(impulse) * 0.58 + bp2.process(impulse) * 0.30 + bp3.process(impulse) * 0.16;
             }
+
+            // Distant Room Acoustics Simulation (Jam Dinding di Dinding Seberang Ruangan):
+            // 1. Direct path with subtle interaural time difference (ITD ~0.3ms to place on room wall)
+            const directDelayL = 0;
+            const directDelayR = Math.floor(0.00028 * sampleRate);
+
+            for (let i = 0; i < dryLen; i++) {
+                if (i + directDelayL < length) outL[i + directDelayL] += dry[i] * 0.82;
+                if (i + directDelayR < length) outR[i + directDelayR] += dry[i] * 0.68;
+            }
+
+            // 2. Early room reflections off adjacent walls, ceiling, and floor (creates realistic distance & depth)
+            const reflections = [
+                { delayL: 0.008, delayR: 0.009, gain: 0.44, lp: 0.65 }, // Wall reflection directly behind clock
+                { delayL: 0.017, delayR: 0.016, gain: 0.28, lp: 0.50 }, // Ceiling bounce
+                { delayL: 0.027, delayR: 0.029, gain: 0.18, lp: 0.38 }, // Floor bounce
+                { delayL: 0.042, delayR: 0.039, gain: 0.10, lp: 0.26 }  // Opposite wall diffuse return
+            ];
+
+            for (const ref of reflections) {
+                const startL = Math.floor(ref.delayL * sampleRate);
+                const startR = Math.floor(ref.delayR * sampleRate);
+                let lpL = 0, lpR = 0;
+
+                for (let i = 0; i < dryLen; i++) {
+                    lpL += (dry[i] - lpL) * ref.lp;
+                    lpR += (dry[i] - lpR) * ref.lp;
+                    if (startL + i < length) outL[startL + i] += lpL * ref.gain;
+                    if (startR + i < length) outR[startR + i] += lpR * ref.gain;
+                }
+            }
+
+            // Normalize peak to 0.85 so it stays distinctly loud & clear without clipping
+            let maxAmp = 0;
+            for (let i = 0; i < length; i++) {
+                if (Math.abs(outL[i]) > maxAmp) maxAmp = Math.abs(outL[i]);
+                if (Math.abs(outR[i]) > maxAmp) maxAmp = Math.abs(outR[i]);
+            }
+            if (maxAmp > 0) {
+                const scale = 0.85 / maxAmp;
+                for (let i = 0; i < length; i++) {
+                    outL[i] *= scale;
+                    outR[i] *= scale;
+                }
+            }
+
+            if (isTock) this._tockBuffer = buffer;
+            else this._tickBuffer = buffer;
+            return buffer;
         }
 
-        startVinylTrack() {
-            if (this.tracks.vinyl) return;
+        playWallClockTick(time, isTock = false) {
+            if (!this.tracks.clock || !this.isPlaying || this.isMasterMuted) return;
+
+            const source = this.ctx.createBufferSource();
+            source.buffer = this.getClockTickBuffer(isTock);
+
+            const gain = this.ctx.createGain();
+            const vel = 0.92 + (Math.random() * 0.04 - 0.02);
+            gain.gain.setValueAtTime(vel, time);
+
+            source.connect(gain);
+            gain.connect(this.tracks.clock.gainNode);
+
+            source.start(time);
+        }
+
+        startClockTrack() {
+            if (this.tracks.clock) return;
             const gainNode = this.ctx.createGain();
-            gainNode.gain.setValueAtTime(this.settings.tracks.vinyl.volume / 100, this.ctx.currentTime);
+            const baseVolume = (this.settings.tracks.clock ? this.settings.tracks.clock.volume : 50) / 100;
+            gainNode.gain.setValueAtTime(baseVolume, this.ctx.currentTime);
             gainNode.connect(this.masterGain);
 
-            const hiss = this.ctx.createBufferSource();
-            hiss.buffer = this.createNoiseBuffer('pink', 5);
-            hiss.loop = true;
+            this.tracks.clock = { gainNode, active: true, timer: null, lastScheduledSec: -1 };
 
-            const hissFilter = this.ctx.createBiquadFilter();
-            hissFilter.type = 'lowpass';
-            hissFilter.frequency.setValueAtTime(550, this.ctx.currentTime);
+            // Real-time synchronization to wall clock seconds (Date.now())
+            const scheduleClockTicks = () => {
+                if (!this.tracks.clock || !this.isPlaying) return;
 
-            const hissGain = this.ctx.createGain();
-            hissGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                const nowMs = Date.now();
+                const currentSec = Math.floor(nowMs / 1000);
+                const nextSec = currentSec + 1;
+                const msUntilNextSec = (nextSec * 1000) - nowMs;
 
-            hiss.connect(hissFilter);
-            hissFilter.connect(hissGain);
-            hissGain.connect(gainNode);
-            hiss.start();
+                // Lookahead scheduling: if upcoming second boundary is within 500ms and not yet scheduled
+                if (this.tracks.clock.lastScheduledSec < nextSec && msUntilNextSec <= 500) {
+                    this.tracks.clock.lastScheduledSec = nextSec;
 
-            const popInterval = setInterval(() => {
-                if (!this.tracks.vinyl || !this.isPlaying || this.isMasterMuted) return;
-                if (Math.random() < 0.6) {
-                    const now = this.ctx.currentTime;
-                    const pop = this.ctx.createBufferSource();
-                    pop.buffer = this.createNoiseBuffer('white', 0.015);
-                    const popGain = this.ctx.createGain();
-                    popGain.gain.setValueAtTime(0.12 + Math.random() * 0.28, now);
-                    popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
-                    pop.connect(popGain);
-                    popGain.connect(gainNode);
-                    pop.start(now);
+                    const audioDelay = msUntilNextSec / 1000;
+                    const targetAudioTime = Math.max(this.ctx.currentTime, this.ctx.currentTime + audioDelay);
+                    const isTock = (nextSec % 2 !== 0);
+
+                    this.playWallClockTick(targetAudioTime, isTock);
+                } else if (this.tracks.clock.lastScheduledSec < currentSec) {
+                    // When first started, if we happen to be within the first 120ms of the current second, play immediately
+                    const msIntoCurrentSec = nowMs % 1000;
+                    if (msIntoCurrentSec < 120) {
+                        this.tracks.clock.lastScheduledSec = currentSec;
+                        const isTock = (currentSec % 2 !== 0);
+                        this.playWallClockTick(this.ctx.currentTime, isTock);
+                    }
                 }
-            }, 80);
 
-            this.tracks.vinyl = { gainNode, nodes: [hiss], interval: popInterval, active: true };
+                this.tracks.clock.timer = setTimeout(scheduleClockTicks, 40);
+            };
+
+            scheduleClockTicks();
         }
 
-        stopVinylTrack() {
-            if (this.tracks.vinyl) {
-                if (this.tracks.vinyl.interval) clearInterval(this.tracks.vinyl.interval);
-                if (this.tracks.vinyl.nodes) {
-                    this.tracks.vinyl.nodes.forEach(n => {
-                        try { n.stop(); } catch(e){}
-                    });
-                }
-                delete this.tracks.vinyl;
+        stopClockTrack() {
+            if (this.tracks.clock) {
+                if (this.tracks.clock.timer) clearTimeout(this.tracks.clock.timer);
+                delete this.tracks.clock;
             }
         }
 
@@ -5315,12 +6116,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.tracks.ocean = { gainNode, nodes: [noise, lfo], active: true };
         }
-
+        1
         stopOceanTrack() {
             if (this.tracks.ocean) {
                 if (this.tracks.ocean.nodes) {
                     this.tracks.ocean.nodes.forEach(n => {
-                        try { n.stop(); } catch(e){}
+                        try { n.stop(); } catch (e) { }
                     });
                 }
                 delete this.tracks.ocean;
@@ -5357,7 +6158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.tracks.alpha) {
                 if (this.tracks.alpha.nodes) {
                     this.tracks.alpha.nodes.forEach(n => {
-                        try { n.stop(); } catch(e){}
+                        try { n.stop(); } catch (e) { }
                     });
                 }
                 delete this.tracks.alpha;
@@ -5368,9 +6169,12 @@ document.addEventListener('DOMContentLoaded', () => {
             this.initContext();
             this.isPlaying = true;
             if (this.settings.tracks.typing && this.settings.tracks.typing.active) this.startTypingTrack();
+            if (this.settings.tracks.fire && this.settings.tracks.fire.active) this.startFireTrack();
+            if (this.settings.tracks.cricket && this.settings.tracks.cricket.active) this.startCricketTrack();
+            if (this.settings.tracks.rain_drizzle && this.settings.tracks.rain_drizzle.active) this.startRainDrizzleTrack();
+            if (this.settings.tracks.rain_heavy && this.settings.tracks.rain_heavy.active) this.startRainHeavyTrack();
             if (this.settings.tracks.night && this.settings.tracks.night.active) this.startNightTrack();
-            if (this.settings.tracks.rain && this.settings.tracks.rain.active) this.startRainTrack();
-            if (this.settings.tracks.vinyl && this.settings.tracks.vinyl.active) this.startVinylTrack();
+            if (this.settings.tracks.clock && this.settings.tracks.clock.active) this.startClockTrack();
             if (this.settings.tracks.ocean && this.settings.tracks.ocean.active) this.startOceanTrack();
             if (this.settings.tracks.alpha && this.settings.tracks.alpha.active) this.startAlphaTrack();
         }
@@ -5378,9 +6182,12 @@ document.addEventListener('DOMContentLoaded', () => {
         stopAllTracks() {
             this.isPlaying = false;
             this.stopTypingTrack();
+            this.stopFireTrack();
+            this.stopCricketTrack();
+            this.stopRainDrizzleTrack();
+            this.stopRainHeavyTrack();
             this.stopNightTrack();
-            this.stopRainTrack();
-            this.stopVinylTrack();
+            this.stopClockTrack();
             this.stopOceanTrack();
             this.stopAlphaTrack();
         }
@@ -5400,17 +6207,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (active) {
                 if (this.isPlaying) {
                     if (soundKey === 'typing') this.startTypingTrack();
+                    else if (soundKey === 'fire') this.startFireTrack();
+                    else if (soundKey === 'cricket') this.startCricketTrack();
+                    else if (soundKey === 'rain_drizzle') this.startRainDrizzleTrack();
+                    else if (soundKey === 'rain_heavy') this.startRainHeavyTrack();
                     else if (soundKey === 'night') this.startNightTrack();
-                    else if (soundKey === 'rain') this.startRainTrack();
-                    else if (soundKey === 'vinyl') this.startVinylTrack();
+                    else if (soundKey === 'clock') this.startClockTrack();
                     else if (soundKey === 'ocean') this.startOceanTrack();
                     else if (soundKey === 'alpha') this.startAlphaTrack();
                 }
             } else {
                 if (soundKey === 'typing') this.stopTypingTrack();
+                else if (soundKey === 'fire') this.stopFireTrack();
+                else if (soundKey === 'cricket') this.stopCricketTrack();
+                else if (soundKey === 'rain_drizzle') this.stopRainDrizzleTrack();
+                else if (soundKey === 'rain_heavy') this.stopRainHeavyTrack();
                 else if (soundKey === 'night') this.stopNightTrack();
-                else if (soundKey === 'rain') this.stopRainTrack();
-                else if (soundKey === 'vinyl') this.stopVinylTrack();
+                else if (soundKey === 'clock') this.stopClockTrack();
                 else if (soundKey === 'ocean') this.stopOceanTrack();
                 else if (soundKey === 'alpha') this.stopAlphaTrack();
             }
@@ -5436,11 +6249,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         applyPreset(presetName) {
             const presets = {
-                night_coder: { typing: { active: true, volume: 65 }, night: { active: true, volume: 50 }, rain: { active: false, volume: 55 }, vinyl: { active: false, volume: 40 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
-                rainy_cafe: { typing: { active: false, volume: 60 }, night: { active: false, volume: 40 }, rain: { active: true, volume: 70 }, vinyl: { active: true, volume: 45 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
-                office_flow: { typing: { active: true, volume: 75 }, night: { active: false, volume: 40 }, rain: { active: false, volume: 50 }, vinyl: { active: false, volume: 35 }, ocean: { active: false, volume: 45 }, alpha: { active: true, volume: 35 } },
-                zen_mind: { typing: { active: false, volume: 50 }, night: { active: false, volume: 40 }, rain: { active: false, volume: 40 }, vinyl: { active: false, volume: 30 }, ocean: { active: true, volume: 40 }, alpha: { active: true, volume: 55 } },
-                ocean_night: { typing: { active: false, volume: 50 }, night: { active: true, volume: 45 }, rain: { active: false, volume: 40 }, vinyl: { active: false, volume: 30 }, ocean: { active: true, volume: 65 }, alpha: { active: false, volume: 30 } }
+                night_coder: { typing: { active: true, volume: 65 }, fire: { active: false, volume: 55 }, cricket: { active: true, volume: 50 }, rain_drizzle: { active: false, volume: 45 }, rain_heavy: { active: false, volume: 45 }, night: { active: true, volume: 35 }, clock: { active: false, volume: 40 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
+                campfire_cozy: { typing: { active: false, volume: 50 }, fire: { active: true, volume: 70 }, cricket: { active: true, volume: 45 }, rain_drizzle: { active: false, volume: 40 }, rain_heavy: { active: false, volume: 40 }, night: { active: true, volume: 30 }, clock: { active: false, volume: 35 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
+                rainy_cafe: { typing: { active: false, volume: 60 }, fire: { active: false, volume: 40 }, cricket: { active: false, volume: 40 }, rain_drizzle: { active: true, volume: 65 }, rain_heavy: { active: false, volume: 40 }, night: { active: false, volume: 40 }, clock: { active: true, volume: 50 }, ocean: { active: false, volume: 45 }, alpha: { active: false, volume: 30 } },
+                office_flow: { typing: { active: true, volume: 75 }, fire: { active: false, volume: 40 }, cricket: { active: false, volume: 40 }, rain_drizzle: { active: false, volume: 40 }, rain_heavy: { active: false, volume: 40 }, night: { active: false, volume: 40 }, clock: { active: true, volume: 45 }, ocean: { active: false, volume: 45 }, alpha: { active: true, volume: 35 } },
+                zen_mind: { typing: { active: false, volume: 50 }, fire: { active: false, volume: 40 }, cricket: { active: false, volume: 40 }, rain_drizzle: { active: true, volume: 35 }, rain_heavy: { active: false, volume: 40 }, night: { active: false, volume: 40 }, clock: { active: false, volume: 30 }, ocean: { active: true, volume: 40 }, alpha: { active: true, volume: 55 } },
+                ocean_night: { typing: { active: false, volume: 50 }, fire: { active: false, volume: 40 }, cricket: { active: true, volume: 35 }, rain_drizzle: { active: false, volume: 40 }, rain_heavy: { active: false, volume: 40 }, night: { active: true, volume: 45 }, clock: { active: false, volume: 30 }, ocean: { active: true, volume: 65 }, alpha: { active: false, volume: 30 } },
+                heavy_downpour: { typing: { active: false, volume: 50 }, fire: { active: false, volume: 40 }, cricket: { active: false, volume: 40 }, rain_drizzle: { active: false, volume: 40 }, rain_heavy: { active: true, volume: 75 }, night: { active: true, volume: 40 }, clock: { active: false, volume: 30 }, ocean: { active: false, volume: 40 }, alpha: { active: false, volume: 30 } },
+                focus_clock: { typing: { active: false, volume: 50 }, fire: { active: false, volume: 40 }, cricket: { active: false, volume: 40 }, rain_drizzle: { active: false, volume: 40 }, rain_heavy: { active: false, volume: 40 }, night: { active: false, volume: 40 }, clock: { active: true, volume: 60 }, ocean: { active: false, volume: 40 }, alpha: { active: true, volume: 30 } }
             };
 
             const p = presets[presetName];
@@ -5632,7 +6448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         prayerClockDisplay.textContent = now.toLocaleTimeString();
         if (prayerDateDisplay) prayerDateDisplay.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        
+
         // Keep finish time prediction fresh every second in setup view
         if (setupView && setupView.classList.contains('active')) {
             updateSetupPrediction();

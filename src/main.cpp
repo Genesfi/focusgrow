@@ -335,6 +335,13 @@ void ToggleMusicWindow(const std::wstring &preferredTitle = L"") {
     // If YouTube Music is not open at all, open in default browser
     ShellExecuteW(NULL, L"open", L"https://music.youtube.com", NULL, NULL, SW_SHOWNORMAL);
   }
+
+  if (g_isPipMode && g_hWnd) {
+    SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->ReassertZOrder();
+    }
+  }
 }
 
 void RemoveSystemTrayIcon() {
@@ -346,8 +353,13 @@ void RemoveSystemTrayIcon() {
 
 void ResizeWebView(HWND hWnd);
 
-void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
-  g_isPipMode = !g_isPipMode;
+void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false,
+                   bool hasExplicitState = false, bool explicitState = false) {
+  if (hasExplicitState) {
+    g_isPipMode = explicitState;
+  } else {
+    g_isPipMode = !g_isPipMode;
+  }
   g_hideTaskbarInPip = hideTaskbar;
   BOOL enableShadow = TRUE;
   DwmSetWindowAttribute(g_hWnd, 38 /*DWMWA_NATIVE_WINDOW_SHADOW*/,
@@ -385,14 +397,16 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
     g_lastPipX = targetX;
     g_lastPipY = targetY;
 
-    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOCOPYBITS;
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOCOPYBITS | SWP_NOACTIVATE;
     SetWindowPos(g_hWnd, HWND_TOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(g_hWnd, !hideTaskbar);
     if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetTopmost(true);
       RECT rc;
       if (GetWindowRect(g_hWnd, &rc)) {
         g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
       }
+      g_pipVinylOverlay->ReassertZOrder();
     }
   } else {
     int w = (g_lastNormalW >= 760) ? g_lastNormalW : 960;
@@ -409,6 +423,7 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false) {
     SetWindowPos(g_hWnd, HWND_NOTOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(g_hWnd, true);
     if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetTopmost(false);
       g_pipVinylOverlay->SetVisible(false);
     }
   }
@@ -431,16 +446,18 @@ void RestoreWindowFromTray(HWND hWnd) {
       }
     }
     ClampWindowToWorkArea(hWnd, targetX, targetY, w, h, 12);
-    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED;
+    UINT flags = SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOACTIVATE;
     SetWindowPos(hWnd, HWND_TOPMOST, targetX, targetY, w, h, flags);
     SetTaskbarIconVisible(hWnd, !g_hideTaskbarInPip);
     ShowWindow(hWnd, SW_SHOW);
     if (g_pipVinylOverlay) {
+      g_pipVinylOverlay->SetTopmost(true);
       RECT rc;
       if (GetWindowRect(hWnd, &rc)) {
         g_pipVinylOverlay->SetParentPos(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
       }
       g_pipVinylOverlay->SetVisible(true);
+      g_pipVinylOverlay->ReassertZOrder();
     }
   } else {
     int w = (g_lastNormalW >= 760) ? g_lastNormalW : 960;
@@ -872,7 +889,7 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
   } else if (msg.find(L"\"action\":\"stopSession\"") != std::wstring::npos) {
     g_focusEngine->StopSession();
     if (g_isPipMode)
-      TogglePipMode();
+      TogglePipMode(0, 0, false, true, false);
   } else if (msg.find(L"\"action\":\"getRunningApps\"") != std::wstring::npos) {
     SendRunningAppsToUi();
   } else if (msg.find(L"\"action\":\"mediaNext\"") != std::wstring::npos) {
@@ -900,7 +917,18 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
       h = _wtoi(msg.c_str() + hPos + 9);
     bool hideTaskbar =
         (msg.find(L"\"hideTaskbar\":true") != std::wstring::npos);
-    TogglePipMode(w, h, hideTaskbar);
+
+    bool hasExplicit = false;
+    bool explicitState = false;
+    if (msg.find(L"\"enabled\":true") != std::wstring::npos) {
+      hasExplicit = true;
+      explicitState = true;
+    } else if (msg.find(L"\"enabled\":false") != std::wstring::npos) {
+      hasExplicit = true;
+      explicitState = false;
+    }
+
+    TogglePipMode(w, h, hideTaskbar, hasExplicit, explicitState);
   } else if (msg.find(L"\"action\":\"toggleMusicWindow\"") != std::wstring::npos) {
     std::wstring title = L"";
     size_t tPos = msg.find(L"\"title\":\"");
@@ -1091,7 +1119,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
   switch (message) {
   case WM_ERASEBKGND:
     return 1;
+  case WM_WINDOWPOSCHANGING: {
+    if (g_isPipMode) {
+      WINDOWPOS *pwp = (WINDOWPOS *)lParam;
+      if (pwp && !(pwp->flags & SWP_NOZORDER)) {
+        pwp->hwndInsertAfter = HWND_TOPMOST;
+      }
+    }
+    break;
+  }
   case WM_ACTIVATE: {
+    if (g_isPipMode) {
+      SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+      if (g_pipVinylOverlay) {
+        g_pipVinylOverlay->ReassertZOrder();
+      }
+    }
     if (LOWORD(wParam) == WA_INACTIVE) {
       if (g_webView) {
         g_webView->PostWebMessageAsJson(L"{\"type\":\"windowBlur\"}");
@@ -1272,6 +1316,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
   case WM_TIMER:
     if (wParam == 1 && g_focusEngine) {
       g_focusEngine->TickOneSecond();
+      if (g_isPipMode) {
+        SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        if (g_pipVinylOverlay) {
+          g_pipVinylOverlay->ReassertZOrder();
+        }
+      }
       if (g_trayIconCreated) {
         std::wstring tip = L"FocusGrow - Pomodoro & Focus Timer";
         if (g_focusEngine->GetState() == SessionState::Focusing) {

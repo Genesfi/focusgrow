@@ -1665,10 +1665,13 @@
             <div class="ambient-presets-bar">
                 <span class="ambient-preset-title">Presets:</span>
                 <button class="ambient-preset-chip active" data-preset="night_coder">🌙 Midnight Coder</button>
-                <button class="ambient-preset-chip" data-preset="rainy_cafe">🌧️ Cozy Rain</button>
+                <button class="ambient-preset-chip" data-preset="campfire_cozy">🔥 Cozy Campfire</button>
+                <button class="ambient-preset-chip" data-preset="rainy_cafe">🌧️ Soft Rain Cafe</button>
+                <button class="ambient-preset-chip" data-preset="heavy_downpour">⛈️ Heavy Downpour</button>
                 <button class="ambient-preset-chip" data-preset="office_flow">⌨️ ASMR Typing</button>
                 <button class="ambient-preset-chip" data-preset="zen_mind">🧘 Zen Alpha 432Hz</button>
                 <button class="ambient-preset-chip" data-preset="ocean_night">🌊 Night Ocean</button>
+                <button class="ambient-preset-chip" data-preset="focus_clock">🕰️ Steady Clock</button>
             </div>
 
             <!-- Multi-Track Sound Layers Grid -->
@@ -1692,64 +1695,121 @@
                     </div>
                 </div>
 
-                <!-- Track 2: Night Crickets & Breeze -->
-                <div class="ambient-track-card active" data-sound="night">
+                <!-- Track 2: Cozy Campfire -->
+                <div class="ambient-track-card" data-sound="fire">
                     <div class="track-card-top">
-                        <div class="track-icon-box">🌙</div>
+                        <div class="track-icon-box">🔥</div>
                         <div class="track-info">
-                            <div class="track-name">Night Ambience</div>
-                            <div class="track-desc">Gentle crickets & cold night wind</div>
+                            <div class="track-name">Cozy Campfire</div>
+                            <div class="track-desc">Crackling dry wood & warm glowing embers</div>
                         </div>
                         <label class="switch switch-sm">
-                            <input type="checkbox" class="track-toggle" data-sound="night" checked>
+                            <input type="checkbox" class="track-toggle" data-sound="fire">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div class="track-slider-row">
-                        <input type="range" class="track-volume-slider" data-sound="night" min="0" max="100" value="50">
-                        <span class="track-vol-text" data-sound="night">50%</span>
+                        <input type="range" class="track-volume-slider" data-sound="fire" min="0" max="100" value="60">
+                        <span class="track-vol-text" data-sound="fire">60%</span>
                     </div>
                 </div>
 
-                <!-- Track 3: Cozy Rain -->
-                <div class="ambient-track-card" data-sound="rain">
+                <!-- Track 3: Night Crickets & Cicadas -->
+                <div class="ambient-track-card active" data-sound="cricket">
+                    <div class="track-card-top">
+                        <div class="track-icon-box">🦗</div>
+                        <div class="track-info">
+                            <div class="track-name">Night Crickets</div>
+                            <div class="track-desc">Peaceful nocturnal crickets & distant cicadas</div>
+                        </div>
+                        <label class="switch switch-sm">
+                            <input type="checkbox" class="track-toggle" data-sound="cricket" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="track-slider-row">
+                        <input type="range" class="track-volume-slider" data-sound="cricket" min="0" max="100" value="50">
+                        <span class="track-vol-text" data-sound="cricket">50%</span>
+                    </div>
+                </div>
+
+                <!-- Track 4: Soft Drizzle / Rain on Window -->
+                <div class="ambient-track-card" data-sound="rain_drizzle">
                     <div class="track-card-top">
                         <div class="track-icon-box">🌧️</div>
                         <div class="track-info">
                             <div class="track-name">Rain on Window</div>
-                            <div class="track-desc">Soothing raindrops & rain gusts</div>
+                            <div class="track-desc">Gentle drizzle & delicate window drops</div>
                         </div>
                         <label class="switch switch-sm">
-                            <input type="checkbox" class="track-toggle" data-sound="rain">
+                            <input type="checkbox" class="track-toggle" data-sound="rain_drizzle">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div class="track-slider-row">
-                        <input type="range" class="track-volume-slider" data-sound="rain" min="0" max="100" value="55">
-                        <span class="track-vol-text" data-sound="rain">55%</span>
+                        <input type="range" class="track-volume-slider" data-sound="rain_drizzle" min="0" max="100" value="55">
+                        <span class="track-vol-text" data-sound="rain_drizzle">55%</span>
                     </div>
                 </div>
 
-                <!-- Track 4: Lo-Fi Vinyl Crackle -->
-                <div class="ambient-track-card" data-sound="vinyl">
+                <!-- Track 5: Heavy Rain / Heavy Downpour -->
+                <div class="ambient-track-card" data-sound="rain_heavy">
                     <div class="track-card-top">
-                        <div class="track-icon-box">📻</div>
+                        <div class="track-icon-box">⛈️</div>
                         <div class="track-info">
-                            <div class="track-name">Lo-Fi Vinyl Crackle</div>
-                            <div class="track-desc">Warm needle dust & turntable pops</div>
+                            <div class="track-name">Heavy Downpour</div>
+                            <div class="track-desc">Dynamic storm surges & atmospheric cascade</div>
                         </div>
                         <label class="switch switch-sm">
-                            <input type="checkbox" class="track-toggle" data-sound="vinyl">
+                            <input type="checkbox" class="track-toggle" data-sound="rain_heavy">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div class="track-slider-row">
-                        <input type="range" class="track-volume-slider" data-sound="vinyl" min="0" max="100" value="40">
-                        <span class="track-vol-text" data-sound="vinyl">40%</span>
+                        <input type="range" class="track-volume-slider" data-sound="rain_heavy" min="0" max="100" value="50">
+                        <span class="track-vol-text" data-sound="rain_heavy">50%</span>
                     </div>
                 </div>
 
-                <!-- Track 5: Deep Ocean Waves -->
+                <!-- Track 5: Night Breeze & Wind -->
+                <div class="ambient-track-card" data-sound="night">
+                    <div class="track-card-top">
+                        <div class="track-icon-box">🌙</div>
+                        <div class="track-info">
+                            <div class="track-name">Night Breeze</div>
+                            <div class="track-desc">Cold nocturnal wind & atmosphere</div>
+                        </div>
+                        <label class="switch switch-sm">
+                            <input type="checkbox" class="track-toggle" data-sound="night">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="track-slider-row">
+                        <input type="range" class="track-volume-slider" data-sound="night" min="0" max="100" value="45">
+                        <span class="track-vol-text" data-sound="night">45%</span>
+                    </div>
+                </div>
+
+                <!-- Track 6: Wall Clock (Detik Jam Dinding) -->
+                <div class="ambient-track-card" data-sound="clock">
+                    <div class="track-card-top">
+                        <div class="track-icon-box">🕰️</div>
+                        <div class="track-info">
+                            <div class="track-name">Wall Clock Tick</div>
+                            <div class="track-desc">Detik jam dinding presisi real-time (Tick-Tock)</div>
+                        </div>
+                        <label class="switch switch-sm">
+                            <input type="checkbox" class="track-toggle" data-sound="clock">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="track-slider-row">
+                        <input type="range" class="track-volume-slider" data-sound="clock" min="0" max="100" value="50">
+                        <span class="track-vol-text" data-sound="clock">50%</span>
+                    </div>
+                </div>
+
+                <!-- Track 7: Deep Ocean Waves -->
                 <div class="ambient-track-card" data-sound="ocean">
                     <div class="track-card-top">
                         <div class="track-icon-box">🌊</div>
@@ -1768,7 +1828,7 @@
                     </div>
                 </div>
 
-                <!-- Track 6: Alpha Waves (432Hz) -->
+                <!-- Track 8: Alpha Waves (432Hz) -->
                 <div class="ambient-track-card" data-sound="alpha">
                     <div class="track-card-top">
                         <div class="track-icon-box">🧘</div>
