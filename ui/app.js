@@ -86,7 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
         sendToCpp({ action: 'close', forceExit: forceExit });
     };
 
-    document.getElementById('btn-min')?.addEventListener('click', () => sendToCpp({ action: 'minimize' }));
+    let isExplicitlyMinimizing = false;
+    document.getElementById('btn-min')?.addEventListener('click', () => {
+        isExplicitlyMinimizing = true;
+        setTimeout(() => { isExplicitlyMinimizing = false; }, 1200);
+        sendToCpp({ action: 'minimize' });
+    });
     document.getElementById('btn-max')?.addEventListener('click', () => sendToCpp({ action: 'maximize' }));
     document.getElementById('btn-close')?.addEventListener('click', handleCloseClick);
     document.getElementById('btn-pip-close')?.addEventListener('click', handleCloseClick);
@@ -123,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleWindowFocus() {
         isWindowCurrentlyFocused = true;
+        isExplicitlyMinimizing = false;
         if (pendingBlurAutoPipTimer) {
             clearTimeout(pendingBlurAutoPipTimer);
             pendingBlurAutoPipTimer = null;
@@ -132,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleWindowBlur() {
         isWindowCurrentlyFocused = false;
+        if (isExplicitlyMinimizing) return;
         if (!userData.autoPipOnBlur) return;
         if (document.body.classList.contains('pip-mode')) return;
         if (isFileInputActive) return;

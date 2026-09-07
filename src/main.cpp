@@ -432,6 +432,11 @@ void TogglePipMode(int width = 0, int height = 0, bool hideTaskbar = false,
 }
 
 void RestoreWindowFromTray(HWND hWnd) {
+  bool wasIconic = IsIconic(hWnd);
+  if (wasIconic) {
+    ShowWindow(hWnd, SW_RESTORE);
+  }
+
   if (g_isPipMode) {
     int w = (g_lastPipW >= 160 && g_lastPipW <= 480) ? g_lastPipW : 280;
     int h = (g_lastPipH >= 200 && g_lastPipH <= 550) ? g_lastPipH : 400;
@@ -464,7 +469,7 @@ void RestoreWindowFromTray(HWND hWnd) {
     int h = (g_lastNormalH >= 520) ? g_lastNormalH : 660;
     int targetX = g_lastNormalX;
     int targetY = g_lastNormalY;
-    if (targetX < 0 || targetY < 0) {
+    if (targetX < -5000 || targetY < -5000 || targetX < 0 || targetY < 0) {
       HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
       MONITORINFO mi = {sizeof(MONITORINFO)};
       if (GetMonitorInfo(hMon, &mi)) {
@@ -476,10 +481,13 @@ void RestoreWindowFromTray(HWND hWnd) {
     SetWindowPos(hWnd, HWND_NOTOPMOST, targetX, targetY, w, h,
                  SWP_SHOWWINDOW | SWP_FRAMECHANGED);
     SetTaskbarIconVisible(hWnd, true);
-    ShowWindow(hWnd, SW_RESTORE);
+    ShowWindow(hWnd, wasIconic ? SW_RESTORE : SW_SHOW);
     if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(false);
     }
+  }
+  if (g_webController) {
+    g_webController->put_IsVisible(TRUE);
   }
   SetForegroundWindow(hWnd);
   ResizeWebView(hWnd);
@@ -585,7 +593,12 @@ void StartTabSyncHttpServer() {
         if (req.find("GET /state") != std::string::npos) {
           if (g_focusEngine) {
             std::wstring stateJson = g_focusEngine->GetStateJson();
-            std::string bodyStr(stateJson.begin(), stateJson.end());
+            std::string bodyStr;
+            int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, stateJson.c_str(), (int)stateJson.length(), NULL, 0, NULL, NULL);
+            if (sizeNeeded > 0) {
+              bodyStr.resize(sizeNeeded);
+              WideCharToMultiByte(CP_UTF8, 0, stateJson.c_str(), (int)stateJson.length(), &bodyStr[0], sizeNeeded, NULL, NULL);
+            }
             std::stringstream resp;
             resp << "HTTP/1.1 200 OK\r\n"
                  << "Access-Control-Allow-Origin: *\r\n"
@@ -1016,7 +1029,7 @@ void ProcessWebMessage(PCWSTR jsonMessage) {
     if (g_pipVinylOverlay) {
       g_pipVinylOverlay->SetVisible(false);
     }
-    ShowWindow(g_hWnd, SW_MINIMIZE);
+    PostMessage(g_hWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
   } else if (msg.find(L"\"action\":\"maximize\"") != std::wstring::npos) {
     if (IsZoomed(g_hWnd))
       ShowWindow(g_hWnd, SW_RESTORE);
@@ -1137,7 +1150,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
       }
     }
     if (LOWORD(wParam) == WA_INACTIVE) {
-      if (g_webView) {
+      if (!IsIconic(hWnd) && g_webView) {
         g_webView->PostWebMessageAsJson(L"{\"type\":\"windowBlur\"}");
       }
     } else {
@@ -1165,6 +1178,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     return 0;
   case WM_NCCALCSIZE:
     if (wParam == TRUE) {
+      if (IsZoomed(hWnd)) {
+        NCCALCSIZE_PARAMS *pParams = (NCCALCSIZE_PARAMS *)lParam;
+        HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO mi = {sizeof(MONITORINFO)};
+        if (GetMonitorInfo(hMon, &mi)) {
+          pParams->rgrc[0] = mi.rcWork;
+        }
+      }
       return 0;
     }
     break;
@@ -1224,23 +1245,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     }
   } break;
   case WM_EXITSIZEMOVE: {
-    RECT rc;
-    if (GetWindowRect(hWnd, &rc)) {
-      int w = rc.right - rc.left;
-      int h = rc.bottom - rc.top;
-      if (g_isPipMode) {
-        if (w > 120 && h > 120 && (w < 800 || h < 600)) {
-          g_lastPipW = w;
-          g_lastPipH = h;
-          g_lastPipX = rc.left;
-          g_lastPipY = rc.top;
-        }
-      } else {
-        if (w >= 760 && h >= 520) {
-          g_lastNormalW = w;
-          g_lastNormalH = h;
-          g_lastNormalX = rc.left;
-          g_lastNormalY = rc.top;
+    if (!IsIconic(hWnd)) {
+      RECT rc;
+      if (GetWindowRect(hWnd, &rc)) {
+        int w = rc.right - rc.left;
+        int h = rc.bottom - rc.top;
+        if (g_isPipMode) {
+          if (w > 120 && h > 120 && (w < 800 || h < 600)) {
+            g_lastPipW = w;
+            g_lastPipH = h;
+            g_lastPipX = rc.left;
+            g_lastPipY = rc.top;
+          }
+        } else {
+          if (w >= 760 && h >= 520) {
+            g_lastNormalW = w;
+            g_lastNormalH = h;
+            g_lastNormalX = rc.left;
+            g_lastNormalY = rc.top;
+          }
         }
       }
     }
@@ -1269,46 +1292,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     if (wParam == FALSE) {
       if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
     } else if (g_pipVinylOverlay) {
-      g_pipVinylOverlay->SetVisible(true);
+      if (g_isPipMode) g_pipVinylOverlay->SetVisible(true);
     }
     break;
   case WM_MOVE:
   case WM_SIZE:
-    if (message == WM_SIZE && wParam == SIZE_MINIMIZED) {
-      if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
-    } else if (message == WM_SIZE && wParam == SIZE_RESTORED) {
-      if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(true);
+    if (message == WM_SIZE) {
+      if (wParam == SIZE_MINIMIZED) {
+        if (g_pipVinylOverlay) g_pipVinylOverlay->SetVisible(false);
+        if (g_webController) {
+          g_webController->put_IsVisible(FALSE);
+        }
+        return 0;
+      } else if (wParam == SIZE_RESTORED || wParam == SIZE_MAXIMIZED) {
+        if (g_pipVinylOverlay) {
+          if (g_isPipMode) {
+            g_pipVinylOverlay->SetVisible(true);
+          }
+        }
+        if (g_webController) {
+          g_webController->put_IsVisible(TRUE);
+        }
+      }
     }
-    ResizeWebView(hWnd);
-    RECT rc;
-    if (GetWindowRect(hWnd, &rc)) {
-      int w = rc.right - rc.left;
-      int h = rc.bottom - rc.top;
-      if (g_isPipMode) {
-        if (w >= 160 && w <= 480 && h >= 200 && h <= 550) {
-          g_lastPipW = w;
-          g_lastPipH = h;
-          g_lastPipX = rc.left;
-          g_lastPipY = rc.top;
-        }
-        if (g_pipVinylOverlay) {
-          g_pipVinylOverlay->SetParentPos(rc.left, rc.top, w, h);
-        }
-      } else {
-        if (w >= 760 && h >= 520) {
-          g_lastNormalW = w;
-          g_lastNormalH = h;
-          g_lastNormalX = rc.left;
-          g_lastNormalY = rc.top;
-        }
-        if (g_pipVinylOverlay) {
-          int cardW = 340;
-          int cardH = h - 48;
-          int cardX = (g_pipVinylOverlay->GetSide() == "right")
-                          ? (rc.right - cardW - 24)
-                          : (rc.left + 24);
-          int cardY = rc.top + 24;
-          g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
+    if (!IsIconic(hWnd)) {
+      ResizeWebView(hWnd);
+      RECT rc;
+      if (GetWindowRect(hWnd, &rc)) {
+        int w = rc.right - rc.left;
+        int h = rc.bottom - rc.top;
+        if (g_isPipMode) {
+          if (w >= 160 && w <= 480 && h >= 200 && h <= 550) {
+            g_lastPipW = w;
+            g_lastPipH = h;
+            g_lastPipX = rc.left;
+            g_lastPipY = rc.top;
+          }
+          if (g_pipVinylOverlay) {
+            g_pipVinylOverlay->SetParentPos(rc.left, rc.top, w, h);
+          }
+        } else {
+          if (w >= 760 && h >= 520) {
+            g_lastNormalW = w;
+            g_lastNormalH = h;
+            g_lastNormalX = rc.left;
+            g_lastNormalY = rc.top;
+          }
+          if (g_pipVinylOverlay) {
+            int cardW = 340;
+            int cardH = h - 48;
+            int cardX = (g_pipVinylOverlay->GetSide() == "right")
+                            ? (rc.right - cardW - 24)
+                            : (rc.left + 24);
+            int cardY = rc.top + 24;
+            g_pipVinylOverlay->SetParentPos(cardX, cardY, cardW, cardH);
+          }
         }
       }
     }
@@ -1363,7 +1401,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     return 0;
   }
   case WM_TRAYICON: {
-    if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK) {
+    if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK ||
+        lParam == NIN_BALLOONUSERCLICK) {
       RestoreWindowFromTray(hWnd);
     } else if (lParam == WM_RBUTTONUP) {
       POINT pt;
@@ -1406,6 +1445,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
         if (cmd == IDM_TRAY_RESTORE) {
           RestoreWindowFromTray(hWnd);
         } else if (cmd == IDM_TRAY_TOGGLE_PIP) {
+          if (IsIconic(hWnd)) {
+            ShowWindow(hWnd, SW_RESTORE);
+          }
           TogglePipMode();
         } else if (cmd == IDM_TRAY_PAUSE) {
           if (g_focusEngine)
@@ -1437,7 +1479,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                    LPSTR lpCmdLine, int nCmdShow) {
-  SetCurrentProcessExplicitAppUserModelID(L"Genesfi.FocusGrow.App.v1");
   CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
   Gdiplus::GdiplusStartupInput gdiplusStartupInput;
@@ -1470,7 +1511,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
   g_hWnd = CreateWindowExW(
       WS_EX_APPWINDOW, L"FocusGrowAppWindow", L"FocusGrow",
-      WS_POPUP | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX, xPos, yPos,
+      WS_OVERLAPPEDWINDOW, xPos, yPos,
       windowWidth, windowHeight, NULL, NULL, hInstance, NULL);
 
   if (!g_hWnd)
