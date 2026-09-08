@@ -1758,13 +1758,25 @@ body.pip-mode .btn-pip-close {
 
 body.pip-mode .card-header .icon-btn,
 body.pip-mode .btn-pip-close {
-    width: 22px !important;
-    height: 22px !important;
+    width: 20px !important;
+    height: 20px !important;
     padding: 0 !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     border-radius: 4px !important;
     outline: none !important;
     box-shadow: none !important;
+    flex-shrink: 0 !important;
+}
+
+body.pip-mode .card-header .icon-btn svg,
+body.pip-mode .btn-pip-close svg {
+    width: 12px !important;
+    height: 12px !important;
+}
+
+body.pip-mode .header-actions {
+    gap: 3px !important;
+    flex-shrink: 0 !important;
 }
 
 body.pip-mode #setup-view {
@@ -1786,7 +1798,7 @@ body.pip-mode #right-stack-panel {
 }
 
 body.pip-mode .card {
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
     margin: 0 !important;
     box-shadow: none !important;
     background: var(--card-bg) !important;
@@ -1834,11 +1846,21 @@ body.pip-mode #timer-view .card-header {
     margin: 0 !important;
     padding: 0 !important;
     flex-shrink: 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 4px !important;
 }
 
 body.pip-mode #timer-view .card-header h2 {
-    font-size: clamp(11px, 2.5vh, 13px);
+    font-size: clamp(10px, 4.5vw, 12px) !important;
     font-weight: 600;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    letter-spacing: -0.2px;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
 }
 
 body.pip-mode .view-content {
