@@ -509,7 +509,7 @@ input[type="number"] {
     position: relative;
     width: 230px;
     height: 230px;
-    margin: auto auto 20px auto;
+    margin: auto auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1880,7 +1880,7 @@ body.pip-mode .gauge-container {
     min-height: 80px;
     max-width: 240px;
     max-height: 240px;
-    margin: auto auto 2px auto;
+    margin: auto auto;
     flex: 0 1 auto;
     flex-shrink: 1;
 }
