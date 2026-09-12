@@ -309,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     };
+    window.gifDb = gifDb;
 
     // Persistent State Management
     const STORAGE_KEY = 'focusgrow_user_data_v1';
@@ -1685,6 +1686,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 userData.customGifName = gif.name;
                 saveUserData();
                 applyGifTheme();
+                syncCurrentStateToFirebase(true);
             });
 
             // Click remove button
@@ -1707,6 +1709,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveUserData();
                 applyGifTheme();
                 renderRecentGifs();
+                syncCurrentStateToFirebase(true);
             });
 
             fragment.appendChild(card);
@@ -1719,6 +1722,11 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTimerTheme();
     renderRecentGifs();
     updateYtMusicUI();
+
+    // Auto-sync current active GIF & stats to Android / Firebase on startup
+    setTimeout(() => {
+        syncCurrentStateToFirebase(true);
+    }, 1200);
 
     // Clear Recent GIFs Button Listener
     document.getElementById('btn-clear-recent-gifs')?.addEventListener('click', async () => {
@@ -1733,6 +1741,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
         applyGifTheme();
         renderRecentGifs();
+        syncCurrentStateToFirebase(true);
     });
 
     // YT Music Vinyl Preset Button
@@ -1740,6 +1749,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userData.ambientMode = 'ytmusic';
         saveUserData();
         applyGifTheme();
+        syncCurrentStateToFirebase(true);
     });
 
     // File Upload / Mode Switch Handler
@@ -1763,6 +1773,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveUserData();
         applyGifTheme();
         renderRecentGifs();
+        syncCurrentStateToFirebase(true);
 
         // If user has never selected/uploaded any GIF, open file dialog immediately
         if (!hasCustomData && !hasHistory) {
@@ -1812,6 +1823,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveUserData();
             applyGifTheme();
             renderRecentGifs();
+            syncCurrentStateToFirebase(true);
         };
         reader.readAsDataURL(file);
     });
@@ -1827,6 +1839,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gifPreviewImg) gifPreviewImg.style.opacity = opacity;
 
         saveUserData();
+    });
+
+    gifOpacitySlider?.addEventListener('change', () => {
+        syncCurrentStateToFirebase(true);
     });
 
     // Display Style Mode Switcher (Circle vs Full Panel)
@@ -2581,7 +2597,78 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             const pane = document.getElementById(`settings-pane-${targetTab}`);
             if (pane) pane.classList.add('active');
+            if (targetTab === 'mobile') {
+                updateMobileSyncQrCode();
+            }
         });
+    });
+
+    const selectAppLang = document.getElementById('select-app-language');
+    if (selectAppLang) {
+        selectAppLang.value = userData.appLanguage || 'en';
+        selectAppLang.addEventListener('change', (e) => {
+            userData.appLanguage = e.target.value;
+            saveUserData();
+            location.reload();
+        });
+    }
+
+    // --- Mobile Sync QR Code Generator & Connection Handler ---
+    let cachedLocalIp = '';
+
+    function detectLocalIp(callback) {
+        if (cachedLocalIp) {
+            callback(cachedLocalIp);
+            return;
+        }
+        try {
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            pc.createDataChannel('');
+            pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+            let found = false;
+            pc.onicecandidate = (ice) => {
+                if (!ice || !ice.candidate || !ice.candidate.candidate || found) return;
+                const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
+                if (ipMatch && ipMatch[1] !== '127.0.0.1') {
+                    found = true;
+                    cachedLocalIp = ipMatch[1];
+                    callback(ipMatch[1]);
+                    pc.onicecandidate = null;
+                }
+            };
+            setTimeout(() => {
+                if (!found) {
+                    cachedLocalIp = '192.168.1.13';
+                    callback('192.168.1.13');
+                }
+            }, 1200);
+        } catch (e) {
+            cachedLocalIp = '192.168.1.13';
+            callback('192.168.1.13');
+        }
+    }
+
+    function updateMobileSyncQrCode() {
+        const qrImg = document.getElementById('qr-code-img');
+        const ipDisplay = document.getElementById('local-ip-display');
+        if (!qrImg || !ipDisplay) return;
+
+        detectLocalIp((ip) => {
+            const port = 8766;
+            const qrData = `http://${ip}:${port}`;
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(qrData)}`;
+            ipDisplay.textContent = `PC IP: ${ip} (Port ${port})`;
+        });
+    }
+
+    // Connect Phone button on Top Header Bar
+    document.getElementById('btn-connect-phone')?.addEventListener('click', () => {
+        document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.settings-tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelector('.settings-tab-btn[data-tab="mobile"]')?.classList.add('active');
+        document.getElementById('settings-pane-mobile')?.classList.add('active');
+        updateMobileSyncQrCode();
+        optionsModal.classList.add('active');
     });
 
     document.getElementById('chk-auto-pip')?.addEventListener('change', (e) => {
@@ -4348,6 +4435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Process C++ IPC Messages & Trigger Notifications
     window.onCppStateUpdate = function (data, isPip) {
         if (!data) return;
+        latestSessionData = data;
 
         activeState = data.state;
         isPaused = data.isPaused;
@@ -4677,7 +4765,173 @@ document.addEventListener('DOMContentLoaded', () => {
             const topBud = document.getElementById('plant-top-bud');
             if (topBud) topBud.classList.toggle('grown', progressRatio >= 0.90);
         }
+
+        // Trigger Direct Cloud Sync for Android (Standalone, no extension required)
+        triggerFirebaseDirectSync(data);
     };
+
+    // --- Direct Firebase Cloud Sync (Standalone Cross-Platform without Extension) ---
+    const FIREBASE_RTDB_URL = "https://focusgrow-e2d8f-default-rtdb.asia-southeast1.firebasedatabase.app/.json";
+    let lastDirectFirebasePush = 0;
+    let lastPushedState = null;
+    let isPushingFirebase = false;
+
+    async function triggerFirebaseDirectSync(data, force = false) {
+        if (!data) return;
+        const now = Date.now();
+        const isPrayerBreak = !!(data.prayer && data.prayer.isBreakActive);
+        const stateChanged = lastPushedState !== data.state || (isPrayerBreak !== (window._lastPrayerBreakActive || false));
+        window._lastPrayerBreakActive = isPrayerBreak;
+
+        const minInterval = (data.state === 'focusing' || data.state === 'resting' || isPrayerBreak) ? 3500 : 10000;
+        if (!force && !stateChanged && (now - lastDirectFirebasePush < minInterval)) {
+            return;
+        }
+
+        if (isPushingFirebase) return;
+        isPushingFirebase = true;
+        lastDirectFirebasePush = now;
+        lastPushedState = data.state;
+
+        try {
+            const passesMap = {};
+            let hasLocalActivePass = false;
+            if (Array.isArray(data.activePasses)) {
+                data.activePasses.forEach(p => {
+                    if (p && p.domain && p.remainingSec > 0) {
+                        const k = p.domain.replace(/\./g, '_');
+                        passesMap[k] = {
+                            domain: p.domain,
+                            remainingSec: p.remainingSec,
+                            targetEndTime: Date.now() + (p.remainingSec * 1000),
+                            passesLeft: p.passesLeft !== undefined ? p.passesLeft : 0,
+                            lastGrantTime: Date.now()
+                        };
+                        hasLocalActivePass = true;
+                    }
+                });
+            }
+
+            const payload = {
+                state: data.state || 'idle',
+                formattedTime: data.formattedTime || '00:00',
+                remainingSec: data.remainingSec || 0,
+                maxPeriodSec: data.maxPeriodSec || 1,
+                currentPeriod: data.currentPeriod || 1,
+                totalPeriods: data.totalPeriods || 1,
+                completedMinutes: (data.completedMinutes !== undefined && data.completedMinutes > 0) ? data.completedMinutes : (userData.completedMinutesToday || 0),
+                dailyGoalHours: parseFloat(userData.dailyGoalHours || 1),
+                yesterdayHours: parseFloat(userData.yesterdayHours || 0),
+                streakDays: parseInt(userData.streakDays || 0),
+                isPaused: !!data.isPaused,
+                isAutoPaused: !!data.isAutoPaused,
+                activeExe: data.activeExe || '',
+                activeDomain: data.activeDomain || '',
+                prayer: data.prayer || null,
+                lastUpdate: now
+            };
+
+            // STRICT: Only include activePasses if we actually have active passes locally
+            // Otherwise, never send activePasses in root PATCH so cloud passes from HP are preserved!
+            if (hasLocalActivePass) {
+                payload.activePasses = passesMap;
+            }
+
+            // Include active ambient GIF if configured
+            try {
+                let rawGif = userData.customGifData || '';
+                // If stored in cardGifImg or gaugeGifImg, use it directly
+                if (!rawGif || (!rawGif.startsWith('data:') && !rawGif.startsWith('http'))) {
+                    if (cardGifImg && cardGifImg.src && (cardGifImg.src.startsWith('data:') || cardGifImg.src.startsWith('http'))) {
+                        rawGif = cardGifImg.src;
+                    } else if (gaugeGifImg && gaugeGifImg.src && (gaugeGifImg.src.startsWith('data:') || gaugeGifImg.src.startsWith('http'))) {
+                        rawGif = gaugeGifImg.src;
+                    }
+                }
+                // Fallback to IndexedDB lookup if still an ID
+                if (rawGif && !rawGif.startsWith('data:') && !rawGif.startsWith('http')) {
+                    const db = window.gifDb || gifDb;
+                    if (db && typeof db.get === 'function') {
+                        const fetched = await db.get(rawGif);
+                        if (fetched) rawGif = fetched;
+                    }
+                }
+                if (rawGif && (rawGif.startsWith('http') || (rawGif.startsWith('data:') && rawGif.length < 10000000))) {
+                    payload.customGif = rawGif;
+                    payload.gifOpacity = (userData.gifOpacity || 78) / 100;
+                } else if (!userData.customGifData || userData.ambientMode === 'plant') {
+                    payload.customGif = "";
+                }
+            } catch (gifErr) {
+                console.warn('[Sync] Error resolving custom gif:', gifErr);
+            }
+
+            await fetch(FIREBASE_RTDB_URL, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            // Periodically check if HP granted an active pass via Firebase
+            checkCloudPassesForDesktop();
+        } catch (e) {
+            // Silently ignore network failures when offline
+        } finally {
+            isPushingFirebase = false;
+        }
+    }
+
+    // Check Firebase for passes granted by phone so C++ Desktop engine knows
+    let lastCloudPassCheck = 0;
+    async function checkCloudPassesForDesktop() {
+        const now = Date.now();
+        if (now - lastCloudPassCheck < 5000) return;
+        lastCloudPassCheck = now;
+        try {
+            const res = await fetch(FIREBASE_RTDB_URL);
+            if (!res.ok) return;
+            const cloudData = await res.json();
+            if (cloudData && cloudData.activePasses) {
+                for (const k in cloudData.activePasses) {
+                    const pass = cloudData.activePasses[k];
+                    if (pass && pass.domain && pass.remainingSec > 0) {
+                        const grantTime = pass.lastGrantTime || 0;
+                        if (now - grantTime < 7200 * 1000) {
+                            const currentC = (latestSessionData && Array.isArray(latestSessionData.activePasses))
+                                ? latestSessionData.activePasses.find(x => x.domain === pass.domain)
+                                : null;
+                            if (!currentC || currentC.remainingSec <= 0) {
+                                sendToCpp({
+                                    action: 'grantPass',
+                                    domain: pass.domain,
+                                    minutes: Math.max(1, Math.ceil(pass.remainingSec / 60))
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+    setInterval(checkCloudPassesForDesktop, 6000);
+
+    function syncCurrentStateToFirebase(force = false) {
+        const fallback = latestSessionData || {
+            state: activeState || 'idle',
+            formattedTime: activeTimerDisplay ? activeTimerDisplay.textContent : '00:00',
+            remainingSec: 0,
+            maxPeriodSec: (selectedPeriodMins || 25) * 60,
+            currentPeriod: 1,
+            totalPeriods: 1,
+            completedMinutes: userData.completedMinutesToday || 0,
+            dailyGoalHours: parseFloat(userData.dailyGoalHours || 1),
+            yesterdayHours: parseFloat(userData.yesterdayHours || 0),
+            streakDays: parseInt(userData.streakDays || 0),
+            isPaused: false
+        };
+        triggerFirebaseDirectSync(fallback, force);
+    }
+    window.syncCurrentStateToFirebase = syncCurrentStateToFirebase;
 
     function sendToCpp(payload) {
         if (window.chrome && window.chrome.webview) {

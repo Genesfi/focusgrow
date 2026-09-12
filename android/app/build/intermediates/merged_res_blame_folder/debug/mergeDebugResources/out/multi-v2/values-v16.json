@@ -1,10 +1,29 @@
 {
     "logs": [
         {
-            "outputFile": "com.genesfi.focusgrow.app-mergeDebugResources-42:/values-v16/values-v16.xml",
+            "outputFile": "com.genesfi.focusgrow.app-mergeDebugResources-56:/values-v16/values-v16.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Gusti N\\.gradle\\caches\\transforms-4\\c3881d7049ba77c0a323b0de4d0ec4fe\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
+                    "source": "C:\\Users\\Gusti N\\.gradle\\caches\\9.3.0\\transforms\\8b2ecaa806db5cae8ed3ebba16d0cccf\\workspace\\transformed\\appcompat-1.6.1\\res\\values-v16\\values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "5",
+                        "endColumns": "12",
+                        "endOffsets": "223"
+                    },
+                    "to": {
+                        "startLines": "3",
+                        "startColumns": "4",
+                        "startOffsets": "121",
+                        "endLines": "6",
+                        "endColumns": "12",
+                        "endOffsets": "289"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\Gusti N\\.gradle\\caches\\9.3.0\\transforms\\f45723ba2dc2e9dd682057658c69bb6c\\workspace\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

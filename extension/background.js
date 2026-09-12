@@ -272,87 +272,169 @@ async function enforceTabPolicy(tab, domain) {
 
   const matchedPattern = getMatchedRestrictedPattern(domain);
 
-  // 1. Check if an Emergency Pass is active for this domain (HIGHEST PRIORITY)
-  const activeLocalKey = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
-  const activeCloudKey = Object.keys(cloudPasses).find(d => {
-    const cleanD = d.replace(/_/g, '.');
-    return matchesDomain(domain, cleanD) && cloudPasses[d].remainingSec > 0;
-  });
+  // 1. Cloud Check: Ingest Firebase state (doomTracker, activePasses, siteConfigs) for restricted domain
+  if (matchedPattern) {
+    try {
+      const fbRes = await fetch(FIREBASE_URL);
+      if (fbRes.ok) {
+        const cloudData = await fbRes.json();
+        const now = Date.now();
 
-  if (activeLocalKey || activeCloudKey) {
-    const passObj = activeLocalKey ? localPasses[activeLocalKey] : cloudPasses[activeCloudKey];
-    const now = Date.now();
-    let sec = passObj.targetEndTime > 0 ? Math.max(0, Math.ceil((passObj.targetEndTime - now) / 1000)) : passObj.remainingSec;
+        // 1a. Ingest cloud doomTracker (Crucial: synchronizes cooldown from Android Phone!)
+        if (cloudData && cloudData.doomTracker) {
+          for (let k in cloudData.doomTracker) {
+            const cleanD = k.replace(/_/g, '.');
+            const p = getMatchedRestrictedPattern(cleanD) || cleanD;
+            const cd = cloudData.doomTracker[k]?.cooldownStart || 0;
+            const siteCd = getSiteCooldown(p);
+            if (cd > 0 && ((now - cd) / 60000 < siteCd)) {
+              if (!doomTracker[p]) doomTracker[p] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+              // Only adopt if local cooldown is not newer
+              if (!doomTracker[p].cooldownStart || cd > doomTracker[p].cooldownStart) {
+                doomTracker[p].cooldownStart = cd;
+                doomTracker[p].isPassActive = false;
+                doomTracker[p].sessionEndTime = 0;
+              }
+              // Invalidate any local pass that was granted before this cooldown started
+              if (localPasses[p] && (localPasses[p].grantTimestamp || 0) < cd) {
+                delete localPasses[p];
+              }
+            }
+          }
+        }
 
-    if (sec > 0) {
-      // While Emergency Pass is running, disable doomTracker competition
-      const matched = getMatchedRestrictedPattern(domain);
-      if (matched && doomTracker[matched]) {
-        doomTracker[matched].isPassActive = false;
-        doomTracker[matched].cooldownStart = 0;
+        // 1b. Ingest cloud activePasses with strict expiration validation
+        if (cloudData && cloudData.activePasses) {
+          cloudPasses = cloudData.activePasses;
+          for (let k in cloudPasses) {
+            const pass = cloudPasses[k];
+            if (!pass) continue;
+            const pDomain = pass.domain || k.replace(/_/g, '.');
+            const cloudSec = pass.remainingSec || 0;
+            const cloudGrantTime = pass.lastGrantTime || 0;
+            const cloudTargetEnd = pass.targetEndTime || 0;
+
+            const isTargetExpired = (cloudTargetEnd > 0 && cloudTargetEnd <= now);
+            const isAgeExpired = (cloudGrantTime > 0 && (now - cloudGrantTime > 15 * 60 * 1000));
+
+            if (cloudSec > 0 && !isTargetExpired && !isAgeExpired) {
+              const targetEndTime = cloudTargetEnd || (now + (cloudSec * 1000));
+              const pPattern = getMatchedRestrictedPattern(pDomain) || pDomain;
+              const curCd = doomTracker[pPattern]?.cooldownStart || 0;
+
+              // Only accept cloud pass if not in cooldown OR granted after cooldown started
+              if (curCd === 0 || cloudGrantTime >= curCd) {
+                localPasses[pDomain] = {
+                  domain: pDomain,
+                  remainingSec: cloudSec,
+                  targetEndTime: targetEndTime,
+                  usedCount: 1,
+                  isOwner: false,
+                  grantTimestamp: cloudGrantTime || now
+                };
+                if (!doomTracker[pPattern]) doomTracker[pPattern] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+                doomTracker[pPattern].isPassActive = true;
+                doomTracker[pPattern].sessionEndTime = targetEndTime;
+              }
+            } else {
+              delete cloudPasses[k];
+              delete localPasses[pDomain];
+            }
+          }
+        }
+
+        // 1c. Ingest siteConfigs
+        if (cloudData && cloudData.siteConfigs) {
+          for (let k in cloudData.siteConfigs) {
+            const d = k.replace(/_/g, '.');
+            siteConfigs[d] = cloudData.siteConfigs[k];
+          }
+          chrome.storage.local.set({ siteConfigs });
+        }
       }
-
-      chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
-      updateFloatingTimer(tab.id, true, sec, "PASS", passObj.targetEndTime || (now + sec * 1000));
-      syncWithPcApp(tab, false);
-      return;
-    } else {
-      passObj.remainingSec = 0;
-      passObj.targetEndTime = 0;
-    }
+    } catch (e) {}
   }
 
-  // 2. If it's a restricted site and NO active pass
+  // 2. Resolve Active Pass vs Active Cooldown
   if (matchedPattern) {
     const trackerKey = matchedPattern;
     if (!doomTracker[trackerKey]) {
       doomTracker[trackerKey] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
     }
-
     const info = doomTracker[trackerKey];
+    const now = Date.now();
+    const siteCooldown = getSiteCooldown(trackerKey);
+    const isCooldownActive = info.cooldownStart > 0 && ((now - info.cooldownStart) / 60000 < siteCooldown);
 
-    // Cooldown check using per-site cooldown duration
-    if (info.cooldownStart > 0) {
-      const elapsedMins = (Date.now() - info.cooldownStart) / (1000 * 60);
-      const siteCooldown = getSiteCooldown(trackerKey);
-      if (elapsedMins < siteCooldown) {
-        // Active cooldown: HIDE floating timer and SHOW cooldown modal
-        updateFloatingTimer(tab.id, false, 0, "");
-        blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
+    // Find any local pass for this domain
+    let activePassKey = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
+    let passObj = activePassKey ? localPasses[activePassKey] : null;
+
+    if (passObj) {
+      const grantTime = passObj.grantTimestamp || 0;
+      const targetEnd = passObj.targetEndTime || 0;
+      // If cooldown is active, pass is ONLY valid if granted AFTER cooldown started!
+      if (isCooldownActive && grantTime < info.cooldownStart) {
+        delete localPasses[activePassKey];
+        passObj = null;
+      } else if (targetEnd > 0 && targetEnd <= now) {
+        delete localPasses[activePassKey];
+        passObj = null;
+      }
+    }
+
+    if (passObj) {
+      let sec = passObj.targetEndTime > 0 ? Math.max(0, Math.ceil((passObj.targetEndTime - now) / 1000)) : passObj.remainingSec;
+      if (sec > 0) {
+        chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
+        updateFloatingTimer(tab.id, true, sec, "PASS", passObj.targetEndTime || (now + sec * 1000));
+        syncWithPcApp(tab, false);
         return;
       } else {
-        // Cooldown expired
-        info.cooldownStart = 0;
-        info.isPassActive = false;
-        info.sessionEndTime = 0;
-        scheduleStorageSave();
+        delete localPasses[activePassKey];
       }
+    }
+
+    // Cooldown check: if cooldown is active, BLOCK IMMEDIATELY!
+    if (isCooldownActive) {
+      updateFloatingTimer(tab.id, false, 0, "");
+      blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
+      return;
+    } else if (info.cooldownStart > 0) {
+      // Cooldown expired
+      info.cooldownStart = 0;
+      info.isPassActive = false;
+      info.sessionEndTime = 0;
+      scheduleStorageSave();
     }
 
     // Real-Time Wall-Clock Session Limit Mode (Only when session is active and not on cooldown)
     if (info.isPassActive && info.sessionEndTime > 0) {
-      const sec = Math.max(0, Math.ceil((info.sessionEndTime - Date.now()) / 1000));
+      const sec = Math.max(0, Math.ceil((info.sessionEndTime - now) / 1000));
       if (sec > 0) {
         chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
         updateFloatingTimer(tab.id, true, sec, "LIMIT", info.sessionEndTime);
         syncWithPcApp(tab, false);
         return;
       } else {
-        // Real-time limit expired!
+        // Real-time limit expired! Trigger cooldown
         info.isPassActive = false;
         info.sessionEndTime = 0;
-        info.cooldownStart = Date.now();
+        info.cooldownStart = now;
         scheduleStorageSave();
+        syncToFirebase(true);
+        updateFloatingTimer(tab.id, false, 0, "");
+        blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
+        return;
       }
-    }
-
-    // Not active or limit exhausted: HIDE floating timer and block immediately
+    // Not on pass, not in session limit: require session allowance (or cooldown)
     updateFloatingTimer(tab.id, false, 0, "");
     blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
     return;
   } else {
     chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
     updateFloatingTimer(tab.id, false, 0, "");
+  }
   }
 
   // Sync to PC
@@ -525,20 +607,22 @@ function handleSecondTick() {
 
       // Pass expired right now!
       if (rem === 0) {
-        localPasses[d].targetEndTime = 0;
-        if (!doomTracker[d]) doomTracker[d] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
-        doomTracker[d].cooldownStart = now;
-        doomTracker[d].isPassActive = false;
-        doomTracker[d].sessionEndTime = 0;
+        delete localPasses[d];
+        const pPattern = getMatchedRestrictedPattern(d) || d;
+        if (!doomTracker[pPattern]) doomTracker[pPattern] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+        doomTracker[pPattern].cooldownStart = now;
+        doomTracker[pPattern].isPassActive = false;
+        doomTracker[pPattern].sessionEndTime = 0;
 
         if (currentActiveTab && matchesDomain(currentActiveTab.domain, d)) {
           updateFloatingTimer(currentActiveTab.id, false, 0, "");
           chrome.tabs.get(currentActiveTab.id, (tab) => {
             if (!chrome.runtime.lastError && tab) {
-              blockTab(tab, d, "focus", doomTracker[d].cooldownStart);
+              blockTab(tab, pPattern, "doomscroll", doomTracker[pPattern].cooldownStart);
             }
           });
         }
+        syncToFirebase(true);
       }
     }
   }
@@ -565,6 +649,7 @@ function handleSecondTick() {
             }
           });
         }
+        syncToFirebase(true);
       }
     }
   }
@@ -717,16 +802,60 @@ async function syncWithPcApp(tab, force = false) {
   }
 }
 
-async function syncToFirebase() {
+async function syncToFirebase(force = false) {
   const now = Date.now();
-  if (now - lastFirebaseSyncTimestamp < 8000) return; // Prevent quota burning (8s min interval)
+  if (!force && (now - lastFirebaseSyncTimestamp < 8000)) return; // Prevent quota burning (8s min interval unless forced)
   lastFirebaseSyncTimestamp = now;
 
   try {
     const res = await fetch(FIREBASE_URL);
+    let cloudData = null;
     if (res.ok) {
-      const cloudData = await res.json();
+      cloudData = await res.json();
 
+      // 1. Ingest Inbound doomTracker from Cloud (Android Cooldown Sync!)
+      if (cloudData && cloudData.doomTracker) {
+        for (let k in cloudData.doomTracker) {
+          const cleanD = k.replace(/_/g, '.');
+          const pattern = getMatchedRestrictedPattern(cleanD) || cleanD;
+          const cloudItem = cloudData.doomTracker[k];
+          if (!cloudItem) continue;
+
+          const siteCd = getSiteCooldown(pattern);
+          const cloudCdStart = cloudItem.cooldownStart || 0;
+          const isCloudCdActive = cloudCdStart > 0 && ((now - cloudCdStart) / 60000 < siteCd);
+
+          if (!doomTracker[pattern]) {
+            doomTracker[pattern] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0, totalSecThisSession: 0 };
+          }
+
+          if (isCloudCdActive) {
+            // Android or cloud triggered cooldown
+            if (!doomTracker[pattern].cooldownStart || cloudCdStart > doomTracker[pattern].cooldownStart) {
+              doomTracker[pattern].cooldownStart = cloudCdStart;
+              doomTracker[pattern].isPassActive = false;
+              doomTracker[pattern].sessionEndTime = 0;
+            }
+            // Purge any local passes for this domain that started before cooldown
+            if (localPasses[pattern] && (localPasses[pattern].grantTimestamp || 0) < cloudCdStart) {
+              delete localPasses[pattern];
+            }
+            // If user is currently browsing this domain, BLOCK IMMEDIATELY!
+            if (currentActiveTab && matchesDomain(currentActiveTab.domain, pattern)) {
+              updateFloatingTimer(currentActiveTab.id, false, 0, "");
+              chrome.tabs.get(currentActiveTab.id, (t) => {
+                if (!chrome.runtime.lastError && t) {
+                  blockTab(t, pattern, "doomscroll", cloudCdStart);
+                }
+              });
+            }
+          } else if (doomTracker[pattern].cooldownStart && (now - doomTracker[pattern].cooldownStart) / 60000 >= siteCd) {
+            doomTracker[pattern].cooldownStart = 0;
+          }
+        }
+      }
+
+      // 2. Ingest Active Passes with Strict Validation
       if (cloudData && cloudData.activePasses) {
         cloudPasses = cloudData.activePasses;
         chrome.storage.local.set({ cloudPasses });
@@ -734,31 +863,64 @@ async function syncToFirebase() {
         for (let k in cloudPasses) {
           const pass = cloudPasses[k];
           if (!pass) continue;
-          const domain = pass.domain;
-          const cloudSec = pass.remainingSec;
+          const domain = pass.domain || k.replace(/_/g, '.');
+          const cloudSec = pass.remainingSec || 0;
           const cloudGrantTime = pass.lastGrantTime || 0;
+          const cloudTargetEnd = pass.targetEndTime || 0;
 
-          // Reject expired or stale passes older than 2 hours
-          if (!cloudSec || cloudSec <= 0 || (Date.now() - cloudGrantTime > 7200 * 1000)) {
+          // Reject expired or stale passes older than 15 minutes
+          const isExpired = cloudSec <= 0 || (cloudTargetEnd > 0 && cloudTargetEnd <= now) || (cloudGrantTime > 0 && (now - cloudGrantTime > 15 * 60 * 1000));
+          if (isExpired) {
+            delete cloudPasses[k];
             if (localPasses[domain] && !localPasses[domain].isOwner) {
-              localPasses[domain].remainingSec = 0;
+              delete localPasses[domain];
             }
             continue;
           }
 
-          if (!localPasses[domain]) {
-            localPasses[domain] = {
-              remainingSec: cloudSec,
-              usedCount: 1,
-              isOwner: false,
-              grantTimestamp: cloudGrantTime
-            };
-          } else if (!localPasses[domain].isOwner && cloudGrantTime > (localPasses[domain].grantTimestamp || 0)) {
-            localPasses[domain].remainingSec = cloudSec;
-            localPasses[domain].grantTimestamp = cloudGrantTime;
+          const targetEndTime = cloudTargetEnd || (now + (cloudSec * 1000));
+          const pPattern = getMatchedRestrictedPattern(domain) || domain;
+          const curCd = doomTracker[pPattern]?.cooldownStart || 0;
+
+          // Only accept cloud pass if not in cooldown OR granted after cooldown started
+          if (curCd === 0 || cloudGrantTime >= curCd) {
+            if (!localPasses[domain]) {
+              localPasses[domain] = {
+                domain: domain,
+                remainingSec: cloudSec,
+                targetEndTime: targetEndTime,
+                usedCount: 1,
+                isOwner: false,
+                grantTimestamp: cloudGrantTime
+              };
+            } else if (!localPasses[domain].isOwner && cloudGrantTime > (localPasses[domain].grantTimestamp || 0)) {
+              localPasses[domain].remainingSec = cloudSec;
+              localPasses[domain].targetEndTime = targetEndTime;
+              localPasses[domain].grantTimestamp = cloudGrantTime;
+            }
+
+            if (!doomTracker[pPattern]) doomTracker[pPattern] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+            doomTracker[pPattern].isPassActive = true;
+            doomTracker[pPattern].sessionEndTime = targetEndTime;
+
+            // Notify C++ desktop app about cloud pass from HP
+            fetch(`${PC_APP_URL}/tab`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ grantPass: true, domain: domain, minutes: Math.max(1, Math.ceil(cloudSec / 60)) })
+            }).catch(() => {});
           }
         }
         scheduleStorageSave();
+      }
+
+      // 3. Ingest siteConfigs
+      if (cloudData && cloudData.siteConfigs) {
+        for (let k in cloudData.siteConfigs) {
+          const d = k.replace(/_/g, '.');
+          siteConfigs[d] = cloudData.siteConfigs[k];
+        }
+        chrome.storage.local.set({ siteConfigs });
       }
     }
 
@@ -777,39 +939,88 @@ async function syncToFirebase() {
       pcConnectionStatus = 'disconnected';
     }
 
+    // Build activePasses map with EXPLICIT null deletions for expired passes
     const activePassesMap = {};
-    for (let d in localPasses) {
+    restrictedSites.forEach(d => {
       const key = d.replace(/\./g, '_');
-      if (localPasses[d].remainingSec > 0 && localPasses[d].isOwner) {
+      const pass = localPasses[d];
+      if (pass && pass.remainingSec > 0 && (!pass.targetEndTime || pass.targetEndTime > now)) {
         activePassesMap[key] = {
           domain: d,
-          remainingSec: localPasses[d].remainingSec,
-          passesLeft: Math.max(0, MAX_EMERGENCY_PASSES - localPasses[d].usedCount),
-          lastGrantTime: localPasses[d].grantTimestamp || 0
+          remainingSec: pass.remainingSec,
+          passesLeft: Math.max(0, MAX_EMERGENCY_PASSES - (pass.usedCount || 0)),
+          lastGrantTime: pass.grantTimestamp || now,
+          targetEndTime: pass.targetEndTime || (now + pass.remainingSec * 1000)
         };
-      } else if (localPasses[d].remainingSec <= 0) {
-        // Crucial: send null so Firebase RTDB deletes the expired pass!
+      } else {
+        // Explicitly set null so Firebase RTDB removes the expired pass!
         activePassesMap[key] = null;
+      }
+    });
+
+    // Build safeDoomTracker: NEVER wipe active cooldowns!
+    const safeDoomTracker = {};
+    for (let d in doomTracker) {
+      const k = d.replace(/\./g, '_');
+      safeDoomTracker[k] = { ...doomTracker[d] };
+      // Preserve isPassActive if pass is active
+      if (activePassesMap[k] && activePassesMap[k] !== null && activePassesMap[k].remainingSec > 0) {
+        safeDoomTracker[k].isPassActive = true;
       }
     }
 
-    const safeDoomTracker = {};
-    for (let d in doomTracker) safeDoomTracker[d.replace(/\./g, '_')] = doomTracker[d];
+    // Preserve active cooldowns from cloudData if local didn't have it
+    if (cloudData && cloudData.doomTracker) {
+      for (let k in cloudData.doomTracker) {
+        const cleanD = k.replace(/_/g, '.');
+        const pattern = getMatchedRestrictedPattern(cleanD) || cleanD;
+        const siteCd = getSiteCooldown(pattern);
+        const cloudCd = cloudData.doomTracker[k]?.cooldownStart || 0;
+        if (cloudCd > 0 && ((now - cloudCd) / 60000 < siteCd)) {
+          if (!safeDoomTracker[k] || safeDoomTracker[k].cooldownStart < cloudCd) {
+            safeDoomTracker[k] = {
+              ...(safeDoomTracker[k] || {}),
+              cooldownStart: cloudCd,
+              isPassActive: false,
+              sessionEndTime: 0
+            };
+          }
+        }
+      }
+    }
 
     const globalState = {
-      state: pcState.state || "idle",
-      formattedTime: pcState.formattedTime || "00:00",
-      remainingSec: pcState.remainingSec || 0,
-      activeDomain: pcState.activeDomain || "",
-      activePasses: activePassesMap,
       settings: {
         doomLimit: settings.doomLimit,
         doomCooldown: settings.doomCooldown,
         protectionEnabled: settings.protectionEnabled
       },
       doomTracker: safeDoomTracker,
+      activePasses: activePassesMap,
       lastUpdate: Date.now()
     };
+
+    if (pcConnectionStatus === 'connected') {
+      globalState.state = pcState.state || "idle";
+      globalState.formattedTime = pcState.formattedTime || "00:00";
+      globalState.remainingSec = pcState.remainingSec || 0;
+      globalState.maxPeriodSec = pcState.maxPeriodSec || 1;
+      globalState.currentPeriod = pcState.currentPeriod || 1;
+      globalState.totalPeriods = pcState.totalPeriods || 1;
+      globalState.isPaused = !!pcState.isPaused;
+      globalState.isAutoPaused = !!pcState.isAutoPaused;
+      globalState.prayer = pcState.prayer || null;
+      globalState.activeDomain = pcState.activeDomain || "";
+    }
+
+    if (siteConfigs && Object.keys(siteConfigs).length > 0) {
+      const safeConfigs = {};
+      for (let d in siteConfigs) {
+        const k = d.replace(/\./g, '_');
+        safeConfigs[k] = siteConfigs[d];
+      }
+      globalState.siteConfigs = safeConfigs;
+    }
 
     await fetch(FIREBASE_URL, {
       method: 'PATCH',
@@ -883,12 +1094,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     doomTracker[pattern].sessionLimitSec = minutes * 60;
     doomTracker[pattern].sessionEndTime = targetEndTime;
 
-    // Clear any active emergency pass so session limit cleanly takes control
-    if (localPasses[pattern]) { localPasses[pattern].remainingSec = 0; localPasses[pattern].targetEndTime = 0; }
-    if (localPasses[domain]) { localPasses[domain].remainingSec = 0; localPasses[domain].targetEndTime = 0; }
+    // 0. Inform PC Desktop App so C++ marks it as pass_active
+    fetch(`${PC_APP_URL}/tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grantPass: true, domain: pattern, minutes: minutes })
+    }).catch(() => {});
+    fetch(`${PC_APP_URL}/grant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'grantPass', domain: pattern, minutes: minutes, grantPass: true })
+    }).catch(() => {});
+
+    // Set localPasses so activePasses syncs to Firebase & Android receives it!
+    localPasses[pattern] = {
+      domain: pattern,
+      remainingSec: minutes * 60,
+      targetEndTime: targetEndTime,
+      isOwner: true,
+      grantTimestamp: now,
+      usedCount: (localPasses[pattern] && localPasses[pattern].usedCount) || 0
+    };
 
     scheduleStorageSave();
     updateActiveTabContext();
+    syncToFirebase(true);
 
     if (sender && sender.tab && sender.tab.id) {
       chrome.tabs.sendMessage(sender.tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
@@ -911,6 +1141,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ grantPass: true, domain: domain, minutes: minutes })
+    }).catch(() => {});
+    fetch(`${PC_APP_URL}/grant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'grantPass', domain: domain, minutes: minutes, grantPass: true })
     }).catch(() => {});
 
     if (!localPasses[domain]) localPasses[domain] = { remainingSec: 0, usedCount: 0 };
@@ -937,7 +1172,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       doomTracker[domain].cooldownStart = 0;
 
       scheduleStorageSave();
-      syncToFirebase();
+      syncToFirebase(true);
       updateActiveTabContext();
 
       // Dismiss the modal on the sender tab immediately

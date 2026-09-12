@@ -143,11 +143,6 @@
       currentSiteCooldownMins = data.cooldownMins;
     }
 
-    if (modalBackdrop && document.getElementById('focusgrow-block-backdrop')) {
-      updateModalContent(data);
-      return;
-    }
-
     // Pause all HTML5 media on the page to prevent background noise
     try {
       document.querySelectorAll('video, audio').forEach(el => {
@@ -158,6 +153,12 @@
     // Lock page scrolling
     document.documentElement.style.setProperty('overflow', 'hidden', 'important');
     document.body.style.setProperty('overflow', 'hidden', 'important');
+
+    if (modalBackdrop && document.getElementById('focusgrow-block-backdrop')) {
+      modalBackdrop.style.display = 'flex';
+      updateModalContent(data);
+      return;
+    }
 
     modalBackdrop = document.createElement('div');
     modalBackdrop.id = 'focusgrow-block-backdrop';
@@ -252,14 +253,14 @@
           <div id="fg-quote-author" style="font-size: 11px; color: #64748b; margin-top: 5px; font-weight: 600; text-align: right;">— Nasihat Sehat</div>
         </div>
 
-        <div id="fg-cooldown-pass-box" style="margin-bottom: 8px; width: 100%; display: none;">
+        <div id="fg-cooldown-pass-box" style="margin-bottom: 26px; width: 100%; display: none;">
           <button id="fg-btn-emergency-pass" style="width: 100%; height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; box-sizing: border-box;">
-            <span>⚡ 5m Emergency Pass</span>
+            <span>5m Emergency Pass</span>
             <span style="font-size: 11px; padding: 2px 7px; border-radius: 10px; background: rgba(56, 189, 248, 0.2); color: #7dd3fc;"><span id="fg-cooldown-passes-left">2</span> left</span>
           </button>
         </div>
 
-        <button id="fg-btn-cooldown-close" style="width: 100%; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; color: #64748b; border: none; font-size: 12px; cursor: pointer; transition: color 0.15s; box-sizing: border-box;">Close Tab</button>
+        <button id="fg-btn-cooldown-close" style="width: 100%; height: 34px; display: flex; align-items: center; justify-content: center; background: transparent; color: #94a3b8; border: none; font-size: 12px; cursor: pointer; transition: color 0.15s; box-sizing: border-box;">Close Tab</button>
       </div>
     `;
 
@@ -763,6 +764,7 @@
       if (rem === 0) {
         activeFloatingEndTime = 0;
         if (floatingTickerInterval) clearInterval(floatingTickerInterval);
+        if (timerWidget) timerWidget.style.display = 'none';
         safeSendMessage({ type: 'CHECK_PAGE_RESTRICTION' });
       }
     }, 1000);

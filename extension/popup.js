@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           passAvailableText.textContent = `${data.passesLeft || 0} passes left`;
 
           if (data.activePassSec && data.activePassSec > 0) {
-            btnQuickPass.textContent = `⚡ Active (${formatTimeShort(data.activePassSec)})`;
+            btnQuickPass.textContent = `Active (${formatTimeShort(data.activePassSec)})`;
             btnQuickPass.style.background = '#10b981';
             btnQuickPass.style.color = '#090d16';
             btnQuickPass.style.cursor = 'default';
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnQuickPass.style.cursor = 'not-allowed';
             btnQuickPass.disabled = true;
           } else {
-            btnQuickPass.textContent = '⚡ 5m Emergency Pass';
+            btnQuickPass.textContent = '5m Emergency Pass';
             btnQuickPass.style.background = 'rgba(14, 165, 233, 0.15)';
             btnQuickPass.style.color = '#38bdf8';
             btnQuickPass.style.cursor = 'pointer';
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     chrome.runtime.sendMessage({ type: 'GRANT_PASS_LOCAL', domain: currentDomain, minutes: 5 }, (res) => {
       if (res && res.success) {
-        btnQuickPass.textContent = '⚡ Pass Active (5m)';
+        btnQuickPass.textContent = 'Pass Active (5m)';
         btnQuickPass.style.background = '#10b981';
         btnQuickPass.style.color = '#090d16';
         setTimeout(() => {
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
       } else {
         alert(res?.reason || 'Failed to grant pass. Limit reached.');
-        btnQuickPass.textContent = '⚡ 5m Emergency Pass';
+        btnQuickPass.textContent = '5m Emergency Pass';
         btnQuickPass.disabled = false;
       }
     });
