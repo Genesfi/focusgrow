@@ -1160,6 +1160,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
     }
     break;
   }
+  case WM_POWERBROADCAST:
+    if (wParam == PBT_APMRESUMEAUTOMATIC || wParam == PBT_APMRESUMESUSPEND) {
+      if (g_focusEngine) {
+        g_focusEngine->OnSystemResume();
+      }
+    }
+    break;
   case WM_NCACTIVATE: {
     LRESULT res = DefWindowProc(hWnd, message, wParam, lParam);
     DWORD noBorderColor = 0xFFFFFFFE; // DWMWA_COLOR_NONE

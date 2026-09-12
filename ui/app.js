@@ -129,6 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleWindowFocus() {
         isWindowCurrentlyFocused = true;
         isExplicitlyMinimizing = false;
+        if (typeof checkAndHandleMidnightRollover === 'function') {
+            checkAndHandleMidnightRollover();
+        }
         if (pendingBlurAutoPipTimer) {
             clearTimeout(pendingBlurAutoPipTimer);
             pendingBlurAutoPipTimer = null;
@@ -309,7 +312,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Persistent State Management
     const STORAGE_KEY = 'focusgrow_user_data_v1';
-    const todayDateStr = new Date().toISOString().split('T')[0];
+
+    // Helper: Formats Date into local 'YYYY-MM-DD' (based on user's PC local clock, not UTC)
+    function getLocalDateStr(d = new Date()) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    let todayDateStr = getLocalDateStr();
     const defaultIconSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2360cdff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>`;
     const defaultVinylSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><defs><radialGradient id="grooveGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23111115"/><stop offset="25%" stop-color="%231a1a22"/><stop offset="35%" stop-color="%230d0d12"/><stop offset="50%" stop-color="%2322222a"/><stop offset="65%" stop-color="%230f0f14"/><stop offset="80%" stop-color="%231c1c24"/><stop offset="95%" stop-color="%230a0a0d"/><stop offset="100%" stop-color="%23050507"/></radialGradient><linearGradient id="sheen" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.18)"/><stop offset="45%" stop-color="rgba(255,255,255,0.02)"/><stop offset="50%" stop-color="rgba(255,255,255,0.22)"/><stop offset="55%" stop-color="rgba(255,255,255,0.02)"/><stop offset="100%" stop-color="rgba(255,255,255,0.12)"/></linearGradient><radialGradient id="centerLabel" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%231e293b"/><stop offset="70%" stop-color="%230f172a"/><stop offset="100%" stop-color="%23020617"/></radialGradient><linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%2360cdff"/><stop offset="100%" stop-color="%233b82f6"/></linearGradient></defs><circle cx="250" cy="250" r="248" fill="url(%23grooveGrad)" stroke="%232d3748" stroke-width="2"/><circle cx="250" cy="250" r="230" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/><circle cx="250" cy="250" r="210" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2"/><circle cx="250" cy="250" r="190" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5"/><circle cx="250" cy="250" r="170" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/><circle cx="250" cy="250" r="150" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/><circle cx="250" cy="250" r="130" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/><circle cx="250" cy="250" r="248" fill="url(%23sheen)"/><circle cx="250" cy="250" r="95" fill="url(%23centerLabel)" stroke="url(%23goldAccent)" stroke-width="3"/><circle cx="250" cy="250" r="88" fill="none" stroke="rgba(255,255,255,0.15)" stroke-dasharray="4 4" stroke-width="1"/><g transform="translate(250, 215) scale(1.3)" opacity="0.9"><path d="M-6 12 A6 6 0 1 1 -18 12 A6 6 0 1 1 -6 12 M-6 12 L-6 -10 L10 -15 L10 5 A6 6 0 1 1 -2 5 A6 6 0 1 1 10 5 L10 -15 L-6 -10" fill="none" stroke="%2360cdff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></g><text x="250" y="272" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="%23ffffff" text-anchor="middle" letter-spacing="2">FOCUS %26 FLOW</text><text x="250" y="290" font-family="'Segoe UI', sans-serif" font-size="10" font-weight="600" fill="%2360cdff" text-anchor="middle" letter-spacing="1.5">HI-FI VINYL EDITION</text><text x="250" y="306" font-family="'Segoe UI', sans-serif" font-size="8" fill="%2394a3b8" text-anchor="middle" letter-spacing="1">PLAY MUSIC TO SYNC ALBUM ART</text><circle cx="250" cy="250" r="14" fill="%23020617" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/></svg>`;
 
@@ -401,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 1; i <= 365; i++) {
             const d = new Date();
             d.setDate(todayObj.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getLocalDateStr(d);
 
             let mins = (userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr])
                 ? userData.completedMinutesByDate[dateStr]
@@ -427,6 +439,54 @@ document.addEventListener('DOMContentLoaded', () => {
         return streak;
     }
 
+    function checkAndHandleMidnightRollover() {
+        const currentLocalDate = getLocalDateStr();
+        todayDateStr = currentLocalDate;
+
+        if (userData.lastDateStr && userData.lastDateStr !== currentLocalDate) {
+            console.log(`[FocusGrow] Midnight rollover detected (00:00 local): ${userData.lastDateStr} -> ${currentLocalDate}`);
+            const prevDayMins = userData.completedMinutesToday || 0;
+
+            // Save previous day's minutes to historical stats
+            userData.completedMinutesByDate = userData.completedMinutesByDate || {};
+            userData.completedMinutesByDate[userData.lastDateStr] = prevDayMins;
+
+            // Reset today's stats to 0
+            userData.completedMinutesToday = 0;
+            userData.lastDateStr = currentLocalDate;
+
+            // Compute Yesterday Hours dynamically from yesterday's actual date
+            const yesterdayObj = new Date();
+            yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+            const yDateStr = getLocalDateStr(yesterdayObj);
+            const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr])
+                ? userData.completedMinutesByDate[yDateStr]
+                : 0;
+            userData.yesterdayHours = (yMins / 60).toFixed(1);
+
+            // Dynamically recalculate streak
+            userData.streakDays = calculateStreakDays();
+            saveUserData();
+
+            // Sync 0 completed minutes to C++ FocusEngine (countdown continues seamlessly)
+            sendToCpp({
+                action: 'syncStats',
+                completedMinutesToday: 0,
+                dailyGoalMinutes: (userData.dailyGoalHours || 1) * 60
+            });
+
+            // Update UI elements in real time
+            updateStatsUI();
+            if (typeof renderWeeklyChart === 'function') renderWeeklyChart();
+            if (typeof renderMonthlyHeatmap === 'function') renderMonthlyHeatmap();
+            if (typeof renderHourlyBarChart === 'function') renderHourlyBarChart();
+            if (typeof renderActivityBreakdown === 'function') renderActivityBreakdown();
+            if (typeof renderRecentSessionsTable === 'function') renderRecentSessionsTable();
+            return true;
+        }
+        return false;
+    }
+
     function loadUserData() {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -445,21 +505,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Migration: Move base64 GIFs to IndexedDB
                 migrateGifsToIndexedDB();
 
-                if (userData.lastDateStr !== todayDateStr) {
-                    const yesterdayMins = userData.completedMinutesToday || 0;
-
-                    // Save yesterday's minutes to historical stats
-                    userData.completedMinutesByDate = userData.completedMinutesByDate || {};
-                    userData.completedMinutesByDate[userData.lastDateStr] = yesterdayMins;
-
-                    userData.completedMinutesToday = 0;
+                todayDateStr = getLocalDateStr();
+                if (!userData.lastDateStr) {
                     userData.lastDateStr = todayDateStr;
                 }
+
+                // Check and handle rollover if PC was turned off across midnight
+                checkAndHandleMidnightRollover();
 
                 // Compute Yesterday Hours dynamically from yesterday's actual date
                 const yesterdayObj = new Date();
                 yesterdayObj.setDate(new Date().getDate() - 1);
-                const yDateStr = yesterdayObj.toISOString().split('T')[0];
+                const yDateStr = getLocalDateStr(yesterdayObj);
                 const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr])
                     ? userData.completedMinutesByDate[yDateStr]
                     : 0;
@@ -3081,7 +3138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const yesterdayObj = new Date();
         yesterdayObj.setDate(new Date().getDate() - 1);
-        const yDateStr = yesterdayObj.toISOString().split('T')[0];
+        const yDateStr = getLocalDateStr(yesterdayObj);
         const yMins = (userData.completedMinutesByDate && userData.completedMinutesByDate[yDateStr])
             ? userData.completedMinutesByDate[yDateStr]
             : 0;
@@ -3257,7 +3314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < days; i++) {
             const d = new Date(now);
             d.setDate(d.getDate() - i);
-            dates.push(d.toISOString().split('T')[0]);
+            dates.push(getLocalDateStr(d));
         }
         return dates;
     }
@@ -3397,7 +3454,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(today.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getLocalDateStr(d);
             const dayName = dayNames[d.getDay()];
 
             let mins = (dateStr === todayDateStr) ? (userData.completedMinutesToday || 0) : ((userData.completedMinutesByDate && userData.completedMinutesByDate[dateStr]) || 0);
@@ -3496,7 +3553,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cellDate = new Date(startDate);
                 cellDate.setDate(cellDate.getDate() + dayIndex);
 
-                const dateStr = cellDate.toISOString().split('T')[0];
+                const dateStr = getLocalDateStr(cellDate);
                 const dayName = cellDate.toLocaleDateString('en-US', { weekday: 'short' });
                 const monthName = cellDate.toLocaleDateString('en-US', { month: 'short' });
                 const monthNum = cellDate.getMonth();
@@ -6451,6 +6508,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updatePrayerClock() {
+        if (typeof checkAndHandleMidnightRollover === 'function') {
+            checkAndHandleMidnightRollover();
+        }
+
         if (!prayerClockDisplay) return;
         const now = new Date();
         prayerClockDisplay.textContent = now.toLocaleTimeString();

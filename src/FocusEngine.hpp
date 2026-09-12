@@ -117,6 +117,7 @@ private:
     double m_nextPrayerTime = 0.0;
     PrayerTimes m_currentPrayerTimes;
     bool m_advanceNotified = false;
+    int m_lastPrayerDay = -1;
 
     std::function<void(const std::wstring& jsonState)> m_onStateChanged;
     std::function<void()> m_onAppListNeedsUpdate;
@@ -454,11 +455,15 @@ public:
     void UpdatePrayerSchedule() {
         if (!m_prayerEnabled) return;
 
-        m_currentPrayerTimes = m_prayerMgr.GetTodayPrayerTimes();
-        PrayerTimes pt = m_currentPrayerTimes;
         time_t t = time(0);
         struct tm* now = localtime(&t);
-        double currentHour = now->tm_hour + now->tm_min / 60.0 + now->tm_sec / 3600.0;
+        if (now) {
+            m_lastPrayerDay = now->tm_mday;
+        }
+
+        m_currentPrayerTimes = m_prayerMgr.GetTodayPrayerTimes();
+        PrayerTimes pt = m_currentPrayerTimes;
+        double currentHour = now ? (now->tm_hour + now->tm_min / 60.0 + now->tm_sec / 3600.0) : 0.0;
 
         std::vector<std::pair<std::wstring, double>> times = {
             {L"Subuh", pt.subuh}, {L"Dhuha", pt.dhuha}, {L"Dzuhur", pt.dzuhur}, {L"Ashar", pt.ashar},
@@ -474,6 +479,14 @@ public:
                 m_nextPrayerTime = p.second;
                 break;
             }
+        }
+    }
+
+    void OnSystemResume() {
+        if (m_prayerEnabled) {
+            UpdatePrayerSchedule();
+            m_advanceNotified = false;
+            NotifyState();
         }
     }
 
@@ -499,11 +512,34 @@ public:
     void TickOneSecond() {
         time_t t_now = time(nullptr);
         struct tm* now = localtime(&t_now);
-        double currentHour = now->tm_hour + now->tm_min / 60.0 + now->tm_sec / 3600.0;
+        double currentHour = now ? (now->tm_hour + now->tm_min / 60.0 + now->tm_sec / 3600.0) : 0.0;
 
         // Check Prayer Times
         if (m_prayerEnabled) {
-            if (currentHour < 0.1) UpdatePrayerSchedule(); // Refresh at midnight
+            // 1. Auto-refresh whenever calendar day changes (midnight or waking up on a new day)
+            if (now && now->tm_mday != m_lastPrayerDay) {
+                UpdatePrayerSchedule();
+                m_advanceNotified = false;
+                NotifyState();
+            }
+
+            // 2. Catch up if the currently tracked next prayer has already passed (e.g. PC was asleep or off)
+            bool isPrayerMissed = false;
+            if (m_nextPrayerName != L"Subuh") {
+                if (currentHour > m_nextPrayerTime + (1.0 / 60.0)) {
+                    isPrayerMissed = true;
+                }
+            } else {
+                if (currentHour > m_nextPrayerTime + (1.0 / 60.0) && currentHour < 12.0) {
+                    isPrayerMissed = true;
+                }
+            }
+
+            if (isPrayerMissed) {
+                UpdatePrayerSchedule();
+                m_advanceNotified = false;
+                NotifyState();
+            }
 
             double diffMins = (m_nextPrayerTime - currentHour) * 60.0;
 
@@ -532,6 +568,7 @@ public:
                         }
                     }
                     UpdatePrayerSchedule();
+                    NotifyState();
                 }
             }
         }
