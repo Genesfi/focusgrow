@@ -895,6 +895,12 @@ public:
                 firstPass = false;
             }
         }
+        ss << L"],";
+        ss << L"\"restrictedSites\":[";
+        for (size_t i = 0; i < m_restrictedSites.size(); ++i) {
+            if (i > 0) ss << L",";
+            ss << L"\"" << m_restrictedSites[i].domain << L"\"";
+        }
         ss << L"]";
         ss << L"}";
         return ss.str();

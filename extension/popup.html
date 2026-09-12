@@ -1,157 +1,452 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusGrow — Web Tracker</title>
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
-      width: 280px;
-      padding: 14px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0f172a;
+      width: 350px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #090d16;
       color: #f8fafc;
       margin: 0;
+      user-select: none;
     }
+    /* Header */
     .header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
       gap: 10px;
-      margin-bottom: 12px;
     }
     .logo-badge {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
-      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #0ea5e9, #10b981);
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
+      font-weight: 800;
+      font-size: 14px;
       color: #fff;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
     }
     .title {
       font-size: 14px;
       font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
     }
     .subtitle {
       font-size: 11px;
       color: #94a3b8;
     }
-    .section-title {
-      font-size: 11px;
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+      font-size: 10px;
       font-weight: 700;
-      color: #38bdf8;
-      margin: 12px 0 6px 0;
-      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 9999px;
       letter-spacing: 0.5px;
     }
-    .card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 12px;
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
     }
-    .status-row {
+
+    /* Connection Banner */
+    .conn-banner {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .conn-label {
+      color: #94a3b8;
+    }
+    .conn-val {
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .conn-val.online {
+      color: #38bdf8;
+    }
+    .conn-val.offline {
+      color: #94a3b8;
+    }
+
+    /* Active Website Card (StayFree Style) */
+    .active-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.3);
+    }
+    .active-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .site-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 210px;
+    }
+    .site-favicon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+    .site-domain {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .site-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+    .site-tag.restricted {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #f43f5e;
+    }
+    .site-tag.safe {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+    }
+    .usage-row {
+      display: flex;
+      align-items: baseline;
       justify-content: space-between;
       margin-bottom: 6px;
     }
-    .status-row:last-child {
-      margin-bottom: 0;
-    }
-    .label {
+    .usage-label {
+      font-size: 11px;
       color: #94a3b8;
     }
-    .val {
-      font-weight: 600;
-    }
-    .val-connected {
-      color: #10b981;
-    }
-    .val-disconnected {
-      color: #f43f5e;
-    }
-    .domain-tag {
-      background: #1e293b;
-      padding: 2px 6px;
-      border-radius: 4px;
+    .usage-time {
+      font-size: 18px;
+      font-weight: 800;
       color: #38bdf8;
-      font-family: monospace;
-      max-width: 130px;
+      font-family: ui-monospace, monospace;
+    }
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, #0ea5e9);
+      border-radius: 9999px;
+      transition: width 0.4s ease, background 0.4s ease;
+    }
+    .progress-bar-fill.warning {
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+    .limit-caption {
+      font-size: 10px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Quick Pass Action on Active Card */
+    .quick-pass-box {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-quick-pass {
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      color: #38bdf8;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-quick-pass:hover {
+      background: #0ea5e9;
+      color: #090d16;
+    }
+
+    /* Top Visited Sites Today (StayFree List) */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .top-sites-card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+    }
+    .site-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+    }
+    .site-row:last-child {
+      border-bottom: none;
+    }
+    .site-row-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      max-width: 200px;
+    }
+    .site-row-left img {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+    .site-row-domain {
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
+      color: #cbd5e1;
+      font-size: 12px;
     }
-    .input-group {
+    .site-row-time {
+      font-family: ui-monospace, monospace;
+      font-weight: 600;
+      color: #38bdf8;
+      font-size: 11px;
+    }
+    .empty-state {
+      padding: 10px;
+      text-align: center;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    /* Settings Card */
+    .settings-card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .input-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 8px;
-    }
-    input[type="number"] {
-      background: #1e293b;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #fff;
-      border-radius: 4px;
-      padding: 2px 6px;
-      width: 40px;
       font-size: 12px;
     }
+    .input-label {
+      color: #cbd5e1;
+    }
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    input[type="number"] {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #f8fafc;
+      border-radius: 6px;
+      padding: 4px 6px;
+      width: 46px;
+      font-size: 12px;
+      text-align: center;
+      font-weight: 600;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+    .unit-label {
+      font-size: 10px;
+      color: #64748b;
+    }
     .btn-save {
-      background: #38bdf8;
-      color: #0f172a;
-      border: none;
-      border-radius: 4px;
-      padding: 6px;
       width: 100%;
+      background: #0ea5e9;
+      color: #090d16;
+      border: none;
+      border-radius: 8px;
+      padding: 8px;
       font-weight: 700;
       font-size: 11px;
       cursor: pointer;
-      margin-top: 4px;
+      margin-top: 6px;
+      transition: all 0.2s;
     }
     .btn-save:hover {
-      background: #7dd3fc;
+      background: #38bdf8;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
     }
   </style>
 </head>
 <body>
+  <!-- Header -->
   <div class="header">
-    <div class="logo-badge">FG</div>
-    <div>
-      <div class="title">FocusGrow Sync</div>
-      <div class="subtitle">Global Focus & Anti-Doomscroll</div>
+    <div class="header-left">
+      <div class="logo-badge">FG</div>
+      <div>
+        <div class="title">FocusGrow</div>
+        <div class="subtitle">Smart Web Tracker</div>
+      </div>
+    </div>
+    <div class="status-badge" id="protection-status">
+      <span class="status-dot"></span> ACTIVE
     </div>
   </div>
 
-  <div class="section-title">Status</div>
-  <div class="card">
-    <div class="status-row">
-      <span class="label">PC App:</span>
-      <span class="val val-disconnected" id="conn-status">Checking...</span>
+  <!-- Connection Banner -->
+  <div class="conn-banner">
+    <span class="conn-label">Desktop Link:</span>
+    <span class="conn-val offline" id="conn-status">
+      Checking...
+    </span>
+  </div>
+
+  <!-- Active Website Card -->
+  <div class="active-card">
+    <div class="active-card-top">
+      <div class="site-info">
+        <img id="active-favicon" class="site-favicon" src="" style="display: none;">
+        <span class="site-domain" id="active-domain">Detecting tab...</span>
+      </div>
+      <span class="site-tag safe" id="site-tag">SAFE</span>
     </div>
-    <div class="status-row">
-      <span class="label">Current Site:</span>
-      <span class="domain-tag" id="active-domain">-</span>
+
+    <div class="usage-row">
+      <span class="usage-label">Used Today</span>
+      <span class="usage-time" id="usage-time">0m 00s</span>
+    </div>
+
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+
+    <div class="limit-caption">
+      <span id="progress-percent">0% of session limit</span>
+      <span id="limit-text">Limit: 5m</span>
+    </div>
+
+    <div class="quick-pass-box" id="quick-pass-box" style="display: none;">
+      <span style="font-size: 11px; color: #94a3b8;" id="pass-available-text">Passes left</span>
+      <button class="btn-quick-pass" id="btn-quick-pass">⚡ 5m Emergency Pass</button>
+    </div>
+
+    <!-- Per-site Config Box on Active Card (Cooldown only, limits chosen via modal) -->
+    <div class="site-config-box" id="site-config-box" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+      <div style="font-size: 11px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">Cooldown for <span id="site-config-domain">site</span></div>
+      <div class="input-row" style="margin-bottom: 6px;">
+        <span class="input-label" style="font-size: 11px;">Rest Cooldown:</span>
+        <div class="input-wrapper">
+          <input type="number" id="site-cooldown-input" value="30" min="1" max="240" style="width: 44px; padding: 2px 4px; font-size: 11px;">
+          <span class="unit-label">mins</span>
+        </div>
+      </div>
+      <button class="btn-save" id="btn-save-site-config" style="padding: 5px; font-size: 10px; margin-top: 2px; background: #38bdf8;">SAVE COOLDOWN</button>
     </div>
   </div>
 
-  <div class="section-title">Restrict Mode (Anti-Doomscroll)</div>
-  <div class="card">
-    <div class="input-group">
-      <span class="label">Max Scroll Time:</span>
-      <div>
-        <input type="number" id="doom-limit" value="5" min="1">
-        <span class="label" style="font-size: 10px;">mins</span>
+  <!-- StayFree Top Visited Sites -->
+  <div class="section-title">
+    <span>Today's Top Tracked Sites</span>
+    <span style="font-size: 10px; color: #64748b;" id="today-date-label">Today</span>
+  </div>
+  <div class="top-sites-card" id="top-sites-list">
+    <div class="empty-state">No browsing time recorded yet today.</div>
+  </div>
+
+  <!-- Per-Site Cooldowns Section -->
+  <div class="section-title">
+    <span>Per-Website Cooldowns</span>
+  </div>
+  <div class="top-sites-card" id="per-site-cooldown-list" style="padding: 6px 12px; margin-bottom: 14px;">
+    <!-- Populated dynamically with each restricted site -->
+  </div>
+
+  <!-- Global Settings -->
+  <div class="section-title">Global Fallback Limits</div>
+  <div class="settings-card" style="margin-bottom: 14px;">
+    <div class="input-row">
+      <span class="input-label">Default Limit:</span>
+      <div class="input-wrapper">
+        <input type="number" id="doom-limit" value="5" min="1" max="120">
+        <span class="unit-label">mins</span>
       </div>
     </div>
-    <div class="input-group">
-      <span class="label">Cooldown:</span>
-      <div>
-        <input type="number" id="doom-cooldown" value="30" min="1">
-        <span class="label" style="font-size: 10px;">mins</span>
+    <div class="input-row">
+      <span class="input-label">Default Cooldown:</span>
+      <div class="input-wrapper">
+        <input type="number" id="doom-cooldown" value="30" min="1" max="240">
+        <span class="unit-label">mins</span>
       </div>
     </div>
-    <button class="btn-save" id="btn-save-settings">SAVE & SYNC TO CLOUD</button>
+    <button class="btn-save" id="btn-save-settings">SAVE & SYNC SETTINGS</button>
   </div>
 
   <script src="popup.js"></script>

@@ -589,6 +589,31 @@ void StartTabSyncHttpServer() {
 
         std::string statusStr = "ok";
         int remainingSec = 0;
+        std::string matchedDomainStr = "";
+
+        if (req.find("GET /restricted-sites") != std::string::npos) {
+          std::string sitesJson = "[]";
+          if (g_focusEngine) {
+            sitesJson = "[";
+            const auto &sites = g_focusEngine->GetRestrictedSites();
+            for (size_t i = 0; i < sites.size(); ++i) {
+              std::string dStr(sites[i].domain.begin(), sites[i].domain.end());
+              sitesJson += "\"" + dStr + "\"";
+              if (i + 1 < sites.size()) sitesJson += ",";
+            }
+            sitesJson += "]";
+          }
+          std::stringstream resp;
+          resp << "HTTP/1.1 200 OK\r\n"
+               << "Access-Control-Allow-Origin: *\r\n"
+               << "Content-Type: application/json\r\n"
+               << "Content-Length: " << sitesJson.length() << "\r\n\r\n"
+               << sitesJson;
+          std::string respStr = resp.str();
+          send(clientSocket, respStr.c_str(), (int)respStr.length(), 0);
+          closesocket(clientSocket);
+          continue;
+        }
 
         if (req.find("GET /state") != std::string::npos) {
           if (g_focusEngine) {
@@ -669,24 +694,43 @@ void StartTabSyncHttpServer() {
             std::wstring lowerDomain = domain;
             std::transform(lowerDomain.begin(), lowerDomain.end(),
                            lowerDomain.begin(), ::tolower);
-            for (const auto &site : g_focusEngine->GetRestrictedSites()) {
-              std::wstring lowerSite = site.domain;
-              std::transform(lowerSite.begin(), lowerSite.end(),
-                             lowerSite.begin(), ::tolower);
-              if (!lowerSite.empty() &&
-                  lowerDomain.find(lowerSite) != std::wstring::npos &&
-                  site.passRemainingSec > 0) {
-                statusStr = "pass_active";
-                remainingSec = site.passRemainingSec;
-                break;
+            matchedDomainStr = "";
+            if (lowerDomain.find(L"music.youtube.com") == std::wstring::npos &&
+                lowerDomain.find(L"youtube music") == std::wstring::npos) {
+              for (const auto &site : g_focusEngine->GetRestrictedSites()) {
+                std::wstring lowerSite = site.domain;
+                std::transform(lowerSite.begin(), lowerSite.end(),
+                               lowerSite.begin(), ::tolower);
+                if (!lowerSite.empty() &&
+                    lowerDomain.find(lowerSite) != std::wstring::npos &&
+                    site.passRemainingSec > 0) {
+                  statusStr = "pass_active";
+                  remainingSec = site.passRemainingSec;
+                  matchedDomainStr = std::string(lowerSite.begin(), lowerSite.end());
+                  break;
+                }
               }
             }
           }
         }
 
+        std::string sitesJson = "[]";
+        if (g_focusEngine) {
+          sitesJson = "[";
+          const auto &sites = g_focusEngine->GetRestrictedSites();
+          for (size_t i = 0; i < sites.size(); ++i) {
+            std::string dStr(sites[i].domain.begin(), sites[i].domain.end());
+            sitesJson += "\"" + dStr + "\"";
+            if (i + 1 < sites.size()) sitesJson += ",";
+          }
+          sitesJson += "]";
+        }
+
         std::stringstream respJson;
         respJson << "{\"status\":\"" << statusStr
-                 << "\",\"remainingSec\":" << remainingSec << "}";
+                 << "\",\"remainingSec\":" << remainingSec
+                 << ",\"activeDomain\":\"" << matchedDomainStr << "\""
+                 << ",\"restrictedSites\":" << sitesJson << "}";
         std::string bodyStr = respJson.str();
 
         std::stringstream resp;

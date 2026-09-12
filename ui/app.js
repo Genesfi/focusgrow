@@ -2371,14 +2371,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return d;
     }
 
-    // Sync restricted sites list to Chrome extension via runtime message
+    // Sync restricted sites list to C++ engine and extension
     function syncRestrictedSitesToExtension(sites) {
-        try {
-            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                chrome.runtime.sendMessage({ type: 'UPDATE_RESTRICTED_SITES', sites: sites });
-            }
-        } catch (e) {
-            // Extension not available (e.g. standalone mode)
+        sendToCpp({ action: 'setRestrictedSites', restrictedSites: sites || [] });
+
+        const badge = document.getElementById('ext-status-badge');
+        if (badge) {
+            badge.textContent = 'Synced \u2713';
+            badge.style.background = 'rgba(56, 189, 248, 0.25)';
+            badge.style.color = '#38bdf8';
+            badge.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+            setTimeout(() => {
+                badge.textContent = 'Extension Sync';
+                badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                badge.style.color = '#10b981';
+                badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+            }, 1200);
         }
     }
 

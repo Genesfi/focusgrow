@@ -1,302 +1,796 @@
-// FocusGrow Tab & URL Sync Extension - Background Service Worker
+// FocusGrow Tab & URL Sync Extension - StayFree-Grade Service Worker (MV3)
 
 const FIREBASE_URL = "https://focusgrow-e2d8f-default-rtdb.asia-southeast1.firebasedatabase.app/.json";
+const PC_APP_URL = "http://127.0.0.1:8766";
 
-let doomLimit = 5;
-let doomCooldown = 30;
-let doomTracker = {};
-let localPasses = {}; // { domain: { remainingSec, usedCount } }
-
-// Load settings and state from storage
+// Default restricted sites
 const DEFAULT_RESTRICTED = ['facebook.com', 'youtube.com', 'instagram.com', 'tiktok.com', 'twitter.com', 'x.com', 'reddit.com'];
-let restrictedSites = [...DEFAULT_RESTRICTED];
-
 const DOOMSCROLL_EXCEPTIONS = ['music.youtube.com'];
 
-chrome.storage.local.get(['doomLimit', 'doomCooldown', 'doomTracker', 'localPasses', 'restrictedSites'], (res) => {
-  if (res.doomLimit) doomLimit = res.doomLimit;
-  if (res.doomCooldown) doomCooldown = res.doomCooldown;
-  if (res.doomTracker) doomTracker = res.doomTracker;
-  if (res.localPasses) localPasses = res.localPasses;
-  if (res.restrictedSites && res.restrictedSites.length > 0) restrictedSites = res.restrictedSites;
-});
+// Core runtime state
+let settings = {
+  doomLimit: 5,       // in minutes
+  doomCooldown: 30,   // in minutes
+  protectionEnabled: true
+};
+
+let restrictedSites = [...DEFAULT_RESTRICTED];
+let siteConfigs = {};      // { [domain]: { limit: number, cooldown: number } }
+let localPasses = {};      // { [domain]: { remainingSec, usedCount, isOwner, grantTimestamp } }
+let cloudPasses = {};      // from Firebase
+let doomTracker = {};      // { [domain]: { totalSecThisSession, cooldownStart, isPassActive } }
+let dailyUsage = {};       // { [domain]: totalSecondsSpentToday }
+let todayDate = getTodayString();
+const MAX_EMERGENCY_PASSES = 2; // Strict limit: 2 Emergency Passes per session/day
+
+function getSiteCooldown(domain) {
+  if (!domain) return settings.doomCooldown;
+  const pattern = getMatchedRestrictedPattern(domain) || domain;
+  if (siteConfigs[pattern] && typeof siteConfigs[pattern].cooldown === 'number') {
+    return siteConfigs[pattern].cooldown;
+  }
+  return settings.doomCooldown || 30;
+}
+
+function getSiteLimit(domain) {
+  if (!domain) return settings.doomLimit;
+  const pattern = getMatchedRestrictedPattern(domain) || domain;
+  if (siteConfigs[pattern] && typeof siteConfigs[pattern].limit === 'number') {
+    return siteConfigs[pattern].limit;
+  }
+  return settings.doomLimit || 5;
+}
+
+// Active tracking context
+let currentActiveTab = null;
+let isUserIdle = false;
+let isWindowFocused = true;
+let pcConnectionStatus = 'disconnected'; // 'connected' | 'disconnected'
+let lastPcSyncTimestamp = 0;
+let lastFirebaseSyncTimestamp = 0;
+let storageDirty = false;
+
+// Helpers
+function getTodayString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function extractDomain(url) {
   if (!url) return '';
   try {
     const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
     return parsed.hostname.toLowerCase().replace(/^www\./, '');
-  } catch (e) { return ''; }
+  } catch (e) {
+    return '';
+  }
 }
 
 function matchesDomain(domain, pattern) {
+  if (!domain || !pattern) return false;
+  domain = domain.toLowerCase();
+  pattern = pattern.toLowerCase();
+  // YouTube Music exemption: music.youtube.com is an audio productivity app, NEVER treat as youtube.com
+  if ((domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com')) && pattern === 'youtube.com') {
+    return false;
+  }
   return domain === pattern || domain.endsWith('.' + pattern);
 }
 
-async function syncActiveTab() {
+function isDomainRestricted(domain) {
+  if (!domain) return false;
+  domain = domain.toLowerCase();
+  if (domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com')) return false;
+  const isExempt = DOOMSCROLL_EXCEPTIONS.some(e => matchesDomain(domain, e));
+  if (isExempt) return false;
+  return restrictedSites.some(d => matchesDomain(domain, d));
+}
+
+function getMatchedRestrictedPattern(domain) {
+  if (!domain) return null;
+  domain = domain.toLowerCase();
+  if (domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com')) return null;
+  if (DOOMSCROLL_EXCEPTIONS.some(e => matchesDomain(domain, e))) return null;
+  return restrictedSites.find(d => matchesDomain(domain, d)) || null;
+}
+
+// Ensure daily usage resets at midnight
+function checkDailyReset() {
+  const currentToday = getTodayString();
+  if (todayDate !== currentToday) {
+    todayDate = currentToday;
+    dailyUsage = {};
+    doomTracker = {};
+    chrome.storage.local.set({ todayDate, dailyUsage, doomTracker });
+  }
+}
+
+// Initialize state from storage
+chrome.storage.local.get([
+  'doomLimit',
+  'doomCooldown',
+  'protectionEnabled',
+  'restrictedSites',
+  'siteConfigs',
+  'localPasses',
+  'cloudPasses',
+  'doomTracker',
+  'dailyUsage',
+  'todayDate'
+], (res) => {
+  if (typeof res.doomLimit === 'number') settings.doomLimit = res.doomLimit;
+  if (typeof res.doomCooldown === 'number') settings.doomCooldown = res.doomCooldown;
+  if (typeof res.protectionEnabled === 'boolean') settings.protectionEnabled = res.protectionEnabled;
+  if (Array.isArray(res.restrictedSites) && res.restrictedSites.length > 0) restrictedSites = res.restrictedSites;
+  if (res.siteConfigs) siteConfigs = res.siteConfigs;
+  if (res.localPasses) localPasses = res.localPasses;
+  if (res.cloudPasses) cloudPasses = res.cloudPasses;
+  if (res.doomTracker) doomTracker = res.doomTracker;
+
+  const currentToday = getTodayString();
+  if (res.todayDate === currentToday && res.dailyUsage) {
+    dailyUsage = res.dailyUsage;
+    todayDate = currentToday;
+  } else {
+    todayDate = currentToday;
+    dailyUsage = {};
+    chrome.storage.local.set({ todayDate, dailyUsage });
+  }
+
+  // Refresh active tab state immediately upon start
+  updateActiveTabContext();
+});
+
+// Periodic save to local storage (throttled to save disk I/O)
+function scheduleStorageSave() {
+  storageDirty = true;
+}
+
+setInterval(() => {
+  if (storageDirty) {
+    storageDirty = false;
+    chrome.storage.local.set({
+      dailyUsage,
+      doomTracker,
+      localPasses,
+      siteConfigs,
+      todayDate
+    });
+  }
+}, 3000);
+
+// ==========================================
+// MV3 Event-Driven Instant Tab Detection
+// ==========================================
+
+async function updateActiveTabContext(preferredTabId = null) {
+  checkDailyReset();
+
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) return;
-
-    const domain = extractDomain(tab.url);
-
-    // V21 FIX: Strict Bidirectional Unblock Check
-    if (tab.url.includes(chrome.runtime.id) && tab.url.includes('blocked.html')) {
-        const urlObj = new URL(tab.url);
-        const targetDomain = urlObj.searchParams.get('domain');
-        const originalUrl = urlObj.searchParams.get('target');
-
-        const activeLocal = Object.keys(localPasses).find(d => matchesDomain(targetDomain, d) && localPasses[d].remainingSec > 0);
-        if (activeLocal) { chrome.tabs.update(tab.id, { url: originalUrl }); return; }
-
-        const cloudPassesRes = await chrome.storage.local.get(['cloudPasses']);
-        const cloudPasses = cloudPassesRes.cloudPasses || {};
-        const activeCloud = Object.keys(cloudPasses).find(d => {
-            const cleanD = d.replace(/_/g, '.');
-            return matchesDomain(targetDomain, cleanD) && cloudPasses[d].remainingSec > 0;
-        });
-        if (activeCloud) { chrome.tabs.update(tab.id, { url: originalUrl }); return; }
-        return;
+    let tab = null;
+    if (preferredTabId) {
+      try {
+        tab = await chrome.tabs.get(preferredTabId);
+      } catch (e) {}
     }
 
-    if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:') || tab.url.includes(chrome.runtime.id)) {
+    if (!tab) {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs && tabs.length > 0) {
+        tab = tabs[0];
+      } else {
+        const fallbackTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        if (fallbackTabs && fallbackTabs.length > 0) tab = fallbackTabs[0];
+      }
+    }
+
+    if (!tab) {
+      currentActiveTab = null;
       return;
     }
 
-    const matchedRestricted = restrictedSites.find(d => matchesDomain(domain, d));
+    const domain = extractDomain(tab.url);
 
-    // 1. Tick local passes
-    for (let d in localPasses) {
-        if (localPasses[d].remainingSec > 0) {
-            localPasses[d].remainingSec--;
-        }
-    }
-    chrome.storage.local.set({ localPasses });
-
-    // 1b. Tick cloud passes (V27 FIX)
-    const cpRes = await chrome.storage.local.get(['cloudPasses']);
-    const cloudPasses = cpRes.cloudPasses || {};
-    let cpChanged = false;
-    for (let d in cloudPasses) {
-        if (cloudPasses[d].remainingSec > 0) {
-            cloudPasses[d].remainingSec--;
-            cpChanged = true;
-        }
-    }
-    if (cpChanged) chrome.storage.local.set({ cloudPasses });
-
-    // 2. DOMAIN ISOLATION CHECK (V21 FIX - DO NOT LEAK STATUS)
-    // Check if THIS SPECIFIC domain has a Pass (Either local or cloud)
-    const activeLocalPassKey = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
-    const activeCloudPassKey = Object.keys(cloudPasses).find(d => {
-        const cleanD = d.replace(/_/g, '.');
-        return matchesDomain(domain, cleanD) && cloudPasses[d].remainingSec > 0;
-    });
-
-    // V22 FIX: Also check if there's an active DOOMSCROLL pass (User has explicitly allowed this domain for the session)
-    const doomPassKey = Object.keys(doomTracker).find(d => matchesDomain(domain, d) && doomTracker[d].isPassActive && doomTracker[d].totalSecThisSession < doomLimit * 60);
-
-    if (activeLocalPassKey || activeCloudPassKey || doomPassKey) {
-        let sec = 0;
-        let label = "PASS";
-
-        if (activeLocalPassKey) sec = localPasses[activeLocalPassKey].remainingSec;
-        else if (activeCloudPassKey) sec = cloudPasses[activeCloudPassKey].remainingSec;
-        else {
-            sec = (doomLimit * 60) - doomTracker[doomPassKey].totalSecThisSession;
-            label = "LIMIT";
-
-            // Increment Doomscroll counter ONLY if pass is explicitly active for THIS domain
-            doomTracker[doomPassKey].totalSecThisSession += 1;
-            if (doomTracker[doomPassKey].totalSecThisSession >= doomLimit * 60) {
-                doomTracker[doomPassKey].cooldownStart = Date.now();
-                doomTracker[doomPassKey].isPassActive = false;
-                chrome.storage.local.set({ doomTracker });
-                blockTab(tab, domain, "doomscroll", doomTracker[doomPassKey].cooldownStart);
-                return;
-            }
-            chrome.storage.local.set({ doomTracker });
-        }
-
-        updateFloatingTimer(tab.id, true, sec, label);
-        return;
+    // If current tab is internal extension page or system page, handle special logic
+    if (tab.url && tab.url.includes(chrome.runtime.id) && tab.url.includes('blocked.html')) {
+      handleBlockedPageTab(tab);
+      return;
     }
 
-    // YouTube Music Exception
-    const isYtm = domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com') || (tab.title && tab.title.toLowerCase().includes('youtube music'));
+    if (!domain) {
+      currentActiveTab = null;
+      return;
+    }
+
+    currentActiveTab = {
+      id: tab.id,
+      url: tab.url,
+      domain: domain,
+      title: tab.title || '',
+      windowId: tab.windowId
+    };
+
+    // Check YouTube Music exception
+    const isYtm = domain === 'music.youtube.com' || (tab.title && tab.title.toLowerCase().includes('youtube music'));
     if (isYtm) {
-        updateFloatingTimer(tab.id, false, 0, "");
-        return;
+      updateFloatingTimer(tab.id, false, 0, "");
+      syncWithPcApp(tab, false);
+      return;
     }
 
-    // 3. DOOMSCROLL LOGIC - V22 STRICT BLOCK-FIRST
-    const isExempt = DOOMSCROLL_EXCEPTIONS.some(e => domain === e || domain.endsWith('.' + e));
+    // Process website enforcement
+    enforceTabPolicy(tab, domain);
 
-    if (!isExempt && matchedRestricted) {
-      const trackerKey = matchedRestricted;
-      if (!doomTracker[trackerKey]) {
-          doomTracker[trackerKey] = { totalSecThisSession: 0, cooldownStart: 0, isPassActive: false };
-      }
+  } catch (e) {
+    // Ignore query errors during tab transition
+  }
+}
 
-      const info = doomTracker[trackerKey];
+// Handle unblock check if user is on blocked.html
+async function handleBlockedPageTab(tab) {
+  try {
+    const urlObj = new URL(tab.url);
+    const targetDomain = urlObj.searchParams.get('domain');
+    const originalUrl = urlObj.searchParams.get('target');
 
-      // A. Cooldown Check
-      if (info.cooldownStart > 0) {
-        const elapsedMins = (Date.now() - info.cooldownStart) / (1000 * 60);
-        if (elapsedMins < doomCooldown) {
-          blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
-          return;
-        } else {
-          info.cooldownStart = 0;
-          info.totalSecThisSession = 0;
-          info.isPassActive = false;
-        }
-      }
+    if (!targetDomain || !originalUrl) return;
 
-      // B. Block if no active pass for this restricted site
-      if (!info.isPassActive) {
-          blockTab(tab, trackerKey, "doomscroll", 0);
-          return;
-      }
-
-      // If we got here, it means isPassActive is true but the check at Step 2 somehow missed it.
-      // This shouldn't happen with the new Step 2 logic.
+    // Check if domain now has an active pass
+    const activeLocal = Object.keys(localPasses).find(d => matchesDomain(targetDomain, d) && localPasses[d].remainingSec > 0);
+    if (activeLocal) {
+      chrome.tabs.update(tab.id, { url: originalUrl });
+      return;
     }
 
-    // 4. Global Sync with PC App
-    const payload = { url: tab.url, domain: domain, title: tab.title || '', tabId: tab.id, timestamp: Date.now() };
-    try {
-      const res = await fetch('http://127.0.0.1:8766/tab', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    const activeCloud = Object.keys(cloudPasses).find(d => {
+      const cleanD = d.replace(/_/g, '.');
+      return matchesDomain(targetDomain, cleanD) && cloudPasses[d].remainingSec > 0;
+    });
+    if (activeCloud) {
+      chrome.tabs.update(tab.id, { url: originalUrl });
+      return;
+    }
+  } catch (e) {}
+}
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'blocked') {
-          blockTab(tab, domain, "focus");
-          return;
-        } else if (data.status === 'pass_active' && data.remainingSec > 0 && matchesDomain(domain, data.activeDomain)) {
-          updateFloatingTimer(tab.id, true, data.remainingSec, "PASS");
-          return;
-        }
+// Core enforcement: Check restriction, active pass, or block
+async function enforceTabPolicy(tab, domain) {
+  if (domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com') || (tab && tab.url && tab.url.toLowerCase().includes('music.youtube.com'))) {
+    syncWithPcApp(tab, false);
+    return;
+  }
+
+  if (!settings.protectionEnabled) {
+    updateFloatingTimer(tab.id, false, 0, "");
+    syncWithPcApp(tab, false);
+    return;
+  }
+
+  const matchedPattern = getMatchedRestrictedPattern(domain);
+
+  // 1. Check if an Emergency Pass is active for this domain (HIGHEST PRIORITY)
+  const activeLocalKey = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
+  const activeCloudKey = Object.keys(cloudPasses).find(d => {
+    const cleanD = d.replace(/_/g, '.');
+    return matchesDomain(domain, cleanD) && cloudPasses[d].remainingSec > 0;
+  });
+
+  if (activeLocalKey || activeCloudKey) {
+    const passObj = activeLocalKey ? localPasses[activeLocalKey] : cloudPasses[activeCloudKey];
+    const now = Date.now();
+    let sec = passObj.targetEndTime > 0 ? Math.max(0, Math.ceil((passObj.targetEndTime - now) / 1000)) : passObj.remainingSec;
+
+    if (sec > 0) {
+      // While Emergency Pass is running, disable doomTracker competition
+      const matched = getMatchedRestrictedPattern(domain);
+      if (matched && doomTracker[matched]) {
+        doomTracker[matched].isPassActive = false;
+        doomTracker[matched].cooldownStart = 0;
       }
-    } catch (e) {}
 
-    // V32 FINAL CATCH: If restricted but we don't have an active pass, Block.
-    if (matchedRestricted) {
-        blockTab(tab, matchedRestricted, "doomscroll", 0);
+      chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
+      updateFloatingTimer(tab.id, true, sec, "PASS", passObj.targetEndTime || (now + sec * 1000));
+      syncWithPcApp(tab, false);
+      return;
     } else {
-        updateFloatingTimer(tab.id, false, 0, "");
+      passObj.remainingSec = 0;
+      passObj.targetEndTime = 0;
     }
-  } catch (err) {}
+  }
+
+  // 2. If it's a restricted site and NO active pass
+  if (matchedPattern) {
+    const trackerKey = matchedPattern;
+    if (!doomTracker[trackerKey]) {
+      doomTracker[trackerKey] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+    }
+
+    const info = doomTracker[trackerKey];
+
+    // Cooldown check using per-site cooldown duration
+    if (info.cooldownStart > 0) {
+      const elapsedMins = (Date.now() - info.cooldownStart) / (1000 * 60);
+      const siteCooldown = getSiteCooldown(trackerKey);
+      if (elapsedMins < siteCooldown) {
+        // Active cooldown: HIDE floating timer and SHOW cooldown modal
+        updateFloatingTimer(tab.id, false, 0, "");
+        blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
+        return;
+      } else {
+        // Cooldown expired
+        info.cooldownStart = 0;
+        info.isPassActive = false;
+        info.sessionEndTime = 0;
+        scheduleStorageSave();
+      }
+    }
+
+    // Real-Time Wall-Clock Session Limit Mode (Only when session is active and not on cooldown)
+    if (info.isPassActive && info.sessionEndTime > 0) {
+      const sec = Math.max(0, Math.ceil((info.sessionEndTime - Date.now()) / 1000));
+      if (sec > 0) {
+        chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
+        updateFloatingTimer(tab.id, true, sec, "LIMIT", info.sessionEndTime);
+        syncWithPcApp(tab, false);
+        return;
+      } else {
+        // Real-time limit expired!
+        info.isPassActive = false;
+        info.sessionEndTime = 0;
+        info.cooldownStart = Date.now();
+        scheduleStorageSave();
+      }
+    }
+
+    // Not active or limit exhausted: HIDE floating timer and block immediately
+    updateFloatingTimer(tab.id, false, 0, "");
+    blockTab(tab, trackerKey, "doomscroll", info.cooldownStart);
+    return;
+  } else {
+    chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
+    updateFloatingTimer(tab.id, false, 0, "");
+  }
+
+  // Sync to PC
+  syncWithPcApp(tab, false);
 }
 
-function updateFloatingTimer(tabId, active, remaining, label) {
-    if (!tabId) return;
-    chrome.tabs.sendMessage(tabId, { type: 'PASS_STATUS_UPDATE', isPassActive: active, remainingSec: remaining, label: label })
-        .catch(() => reinjectScript(tabId));
-}
-
+// Show In-Page StayFree Modal Overlay instead of redirecting URL
 function blockTab(tab, domain, reason, cooldownStart = 0) {
-  const blockedUrl = chrome.runtime.getURL(`blocked.html?domain=${encodeURIComponent(domain)}&target=${encodeURIComponent(tab.url)}&reason=${reason}&start=${cooldownStart}`);
-  if (tab.id && !tab.url.startsWith(chrome.runtime.getURL(''))) {
-    chrome.tabs.update(tab.id, { url: blockedUrl });
+  if (!tab || !tab.id || !tab.url) return;
+  if (domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com')) return;
+  if (tab.url && tab.url.toLowerCase().includes('music.youtube.com')) return;
+  if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:') || tab.url.includes(chrome.runtime.id)) return;
+
+  const usageSec = dailyUsage[domain] || 0;
+  const siteLimit = getSiteLimit(domain);
+  const siteCooldown = getSiteCooldown(domain);
+  const limitSec = siteLimit * 60;
+  const passesLeft = (domain && localPasses[domain]) ? Math.max(0, MAX_EMERGENCY_PASSES - localPasses[domain].usedCount) : MAX_EMERGENCY_PASSES;
+
+  let actualCooldownStart = cooldownStart;
+
+  // Check if cooldown has finished using per-site cooldown duration
+  if (actualCooldownStart > 0) {
+    const elapsedMins = (Date.now() - actualCooldownStart) / (1000 * 60);
+    if (elapsedMins >= siteCooldown) {
+      if (localPasses[domain]) localPasses[domain].usedCount = 0;
+      if (doomTracker[domain]) {
+        doomTracker[domain].cooldownStart = 0;
+        doomTracker[domain].totalSecThisSession = 0;
+      }
+      actualCooldownStart = 0;
+      scheduleStorageSave();
+    }
+  }
+
+  const isCooldownMode = (actualCooldownStart > 0);
+
+  const modalPayload = {
+    type: 'SHOW_BLOCK_MODAL',
+    domain: domain,
+    reason: reason,
+    usageSec: usageSec,
+    limitSec: limitSec,
+    cooldownStart: actualCooldownStart,
+    cooldownMins: siteCooldown,
+    passesLeft: passesLeft,
+    isCooldown: isCooldownMode
+  };
+
+  chrome.tabs.sendMessage(tab.id, modalPayload).catch((err) => {
+    if (err && err.message && err.message.includes('context invalidated')) return;
+    if (tab.url && tab.url.toLowerCase().includes('music.youtube.com')) return;
+    // If content script isn't loaded yet, inject it and then dispatch modal
+    if (chrome.scripting && chrome.scripting.executeScript) {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      }).then(() => {
+        chrome.tabs.sendMessage(tab.id, modalPayload).catch(() => {});
+      }).catch(() => {});
+    }
+  });
+}
+
+// Send updates to in-page floating timer widget
+const lastScriptInjectionMap = {};
+function updateFloatingTimer(tabId, active, remaining, label, targetEndTime = 0) {
+  if (!tabId) return;
+  chrome.tabs.sendMessage(tabId, {
+    type: 'PASS_STATUS_UPDATE',
+    isPassActive: active,
+    remainingSec: remaining,
+    label: label,
+    targetEndTime: targetEndTime || (active ? (Date.now() + remaining * 1000) : 0)
+  }).catch(() => {
+    // If floating timer is deactivated, do NOT inject content script!
+    if (!active) return;
+
+    chrome.tabs.get(tabId, (tab) => {
+      if (chrome.runtime.lastError || !tab || !tab.url) return;
+      const url = tab.url.toLowerCase();
+      if (url.includes('music.youtube.com') || url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about:')) return;
+
+      // If content script isn't injected yet, inject safely (throttled to avoid injection storms)
+      const now = Date.now();
+      if (!lastScriptInjectionMap[tabId] || (now - lastScriptInjectionMap[tabId] > 10000)) {
+        lastScriptInjectionMap[tabId] = now;
+        if (chrome.scripting && chrome.scripting.executeScript) {
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+          }).catch(() => {});
+        }
+      }
+    });
+  });
+}
+
+// ==========================================
+// Real-time Event Listeners (StayFree Architecture)
+// ==========================================
+
+// 1. Instant tab switch
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  updateActiveTabContext(activeInfo.tabId);
+});
+
+// 2. Tab URL change or reload
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' || changeInfo.url) {
+    if (tab.active) {
+      updateActiveTabContext(tabId);
+    }
+  }
+});
+
+// 3. SPA (Single Page Application) Navigation Listener (YouTube, X, TikTok, Instagram)
+if (chrome.webNavigation && chrome.webNavigation.onHistoryStateUpdated) {
+  chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+    if (details.frameId === 0) { // Main frame only
+      chrome.tabs.get(details.tabId, (tab) => {
+        if (chrome.runtime.lastError || !tab) return;
+        if (tab.active) {
+          updateActiveTabContext(details.tabId);
+        }
+      });
+    }
+  });
+}
+
+// 4. Window focus change (stop tracking if user switches to another desktop app)
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    isWindowFocused = false;
+  } else {
+    isWindowFocused = true;
+    updateActiveTabContext();
+  }
+});
+
+// 5. Idle state detection (stop tracking if user leaves PC)
+if (chrome.idle) {
+  chrome.idle.setDetectionInterval(60); // 60 seconds of inactivity = idle
+  chrome.idle.onStateChanged.addListener((newState) => {
+    isUserIdle = (newState === 'idle' || newState === 'locked');
+  });
+}
+
+// ==========================================
+// 1-Second Timer Tick (Time Tracking & Passes)
+// ==========================================
+
+function handleSecondTick() {
+  checkDailyReset();
+
+  const now = Date.now();
+
+  // 1. Tick local passes down in real-time wall-clock
+  let localPassesChanged = false;
+  for (let d in localPasses) {
+    if (localPasses[d].remainingSec > 0 || (localPasses[d].targetEndTime && localPasses[d].targetEndTime > 0)) {
+      let rem = 0;
+      if (localPasses[d].targetEndTime > 0) {
+        rem = Math.max(0, Math.ceil((localPasses[d].targetEndTime - now) / 1000));
+      } else {
+        rem = Math.max(0, localPasses[d].remainingSec - 1);
+      }
+      localPasses[d].remainingSec = rem;
+      localPassesChanged = true;
+
+      // Pass expired right now!
+      if (rem === 0) {
+        localPasses[d].targetEndTime = 0;
+        if (!doomTracker[d]) doomTracker[d] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+        doomTracker[d].cooldownStart = now;
+        doomTracker[d].isPassActive = false;
+        doomTracker[d].sessionEndTime = 0;
+
+        if (currentActiveTab && matchesDomain(currentActiveTab.domain, d)) {
+          updateFloatingTimer(currentActiveTab.id, false, 0, "");
+          chrome.tabs.get(currentActiveTab.id, (tab) => {
+            if (!chrome.runtime.lastError && tab) {
+              blockTab(tab, d, "focus", doomTracker[d].cooldownStart);
+            }
+          });
+        }
+      }
+    }
+  }
+  if (localPassesChanged) scheduleStorageSave();
+
+  // 2. Real-Time Session Limits in doomTracker (Wall-clock, podcast/video safe)
+  let doomChanged = false;
+  for (let pattern in doomTracker) {
+    const tracker = doomTracker[pattern];
+    if (tracker && tracker.isPassActive && tracker.sessionEndTime > 0) {
+      const rem = Math.max(0, Math.ceil((tracker.sessionEndTime - now) / 1000));
+      if (rem <= 0) {
+        // Real-time session limit reached! Trigger cooldown
+        tracker.isPassActive = false;
+        tracker.sessionEndTime = 0;
+        tracker.cooldownStart = now;
+        doomChanged = true;
+
+        if (currentActiveTab && matchesDomain(currentActiveTab.domain, pattern)) {
+          updateFloatingTimer(currentActiveTab.id, false, 0, "");
+          chrome.tabs.get(currentActiveTab.id, (tab) => {
+            if (!chrome.runtime.lastError && tab) {
+              blockTab(tab, pattern, "doomscroll", tracker.cooldownStart);
+            }
+          });
+        }
+      }
+    }
+  }
+  if (doomChanged) scheduleStorageSave();
+
+  // 3. Track daily cumulative usage only when active & focused
+  if (!isUserIdle && isWindowFocused && currentActiveTab && currentActiveTab.domain) {
+    const domain = currentActiveTab.domain;
+    if (domain !== 'music.youtube.com' && !domain.endsWith('.music.youtube.com')) {
+      dailyUsage[domain] = (dailyUsage[domain] || 0) + 1;
+      scheduleStorageSave();
+    }
+  }
+
+  // 4. Broadcast floating timer updates to currently active tab (Real-Time Wall Clock)
+  if (currentActiveTab && currentActiveTab.domain) {
+    const domain = currentActiveTab.domain;
+    if (domain === 'music.youtube.com' || domain.endsWith('.music.youtube.com')) return;
+
+    const activeLocalKey = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
+    const doomPassKey = Object.keys(doomTracker).find(d => matchesDomain(domain, d) && doomTracker[d].isPassActive);
+
+    if (activeLocalKey) {
+      const pass = localPasses[activeLocalKey];
+      const rem = pass.targetEndTime > 0 ? Math.max(0, Math.ceil((pass.targetEndTime - now) / 1000)) : pass.remainingSec;
+      updateFloatingTimer(currentActiveTab.id, true, rem, "PASS", pass.targetEndTime || (now + rem * 1000));
+    } else if (doomPassKey) {
+      const tracker = doomTracker[doomPassKey];
+      const siteCooldown = getSiteCooldown(domain);
+      const isCooldown = tracker.cooldownStart > 0 && ((now - tracker.cooldownStart) / 60000 < siteCooldown);
+      if (isCooldown) {
+        updateFloatingTimer(currentActiveTab.id, false, 0, "");
+      } else if (tracker.sessionEndTime > 0) {
+        const rem = Math.max(0, Math.ceil((tracker.sessionEndTime - now) / 1000));
+        if (rem > 0) {
+          updateFloatingTimer(currentActiveTab.id, true, rem, "LIMIT", tracker.sessionEndTime);
+        } else {
+          updateFloatingTimer(currentActiveTab.id, false, 0, "");
+        }
+      }
+    } else {
+      updateFloatingTimer(currentActiveTab.id, false, 0, "");
+    }
+  }
+}
+
+// MV3 Resilient Alarm + Safe Interval Tick
+setInterval(handleSecondTick, 1000);
+
+// Use alarms to ensure worker wakes up if suspended
+if (chrome.alarms) {
+  chrome.alarms.create('fg_heartbeat', { periodInMinutes: 0.5 });
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'fg_heartbeat') {
+      updateActiveTabContext();
+      syncToFirebase();
+    }
+  });
+}
+
+// ==========================================
+// PC App & Firebase Sync
+// ==========================================
+
+function syncRestrictedSitesFromPc(newSites) {
+  if (!Array.isArray(newSites)) return;
+  const cleanNewSites = newSites.map(s => String(s).trim().toLowerCase()).filter(Boolean);
+  const currentKey = [...restrictedSites].sort().join(',');
+  const newKey = [...cleanNewSites].sort().join(',');
+  if (currentKey !== newKey) {
+    restrictedSites = cleanNewSites;
+    chrome.storage.local.set({ restrictedSites });
+    updateActiveTabContext();
+  }
+}
+
+async function syncWithPcApp(tab, force = false) {
+  if (!tab || !tab.url) return;
+  const now = Date.now();
+  if (!force && now - lastPcSyncTimestamp < 3000) return; // Debounce 3s
+  lastPcSyncTimestamp = now;
+
+  const domain = extractDomain(tab.url);
+
+  // Check if this domain has an active emergency pass or active session limit
+  const activeLocalKey = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
+  const activeCloudKey = Object.keys(cloudPasses).find(d => {
+    const cleanD = d.replace(/_/g, '.');
+    return matchesDomain(domain, cleanD) && cloudPasses[d].remainingSec > 0;
+  });
+  const matchedP = getMatchedRestrictedPattern(domain);
+  const isSessionLimitActive = !!(matchedP && doomTracker[matchedP] && doomTracker[matchedP].isPassActive);
+  const isPassActiveLocally = !!(activeLocalKey || activeCloudKey || isSessionLimitActive);
+
+  const payload = {
+    url: tab.url,
+    domain: domain,
+    title: tab.title || '',
+    tabId: tab.id,
+    timestamp: now
+  };
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+    const res = await fetch(`${PC_APP_URL}/tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      pcConnectionStatus = 'connected';
+      const data = await res.json();
+
+      // Automatically synchronize restricted sites list from Windows app
+      if (Array.isArray(data.restrictedSites)) {
+        syncRestrictedSitesFromPc(data.restrictedSites);
+      }
+
+      if (data.status === 'blocked') {
+        // ONLY block if local pass is NOT active!
+        if (!isPassActiveLocally) {
+          blockTab(tab, domain, "focus");
+        }
+      } else if (data.status === 'pass_active' && data.remainingSec > 0) {
+        const targetDomain = data.activeDomain || domain;
+        if (matchesDomain(domain, targetDomain)) {
+          if (!localPasses[targetDomain]) localPasses[targetDomain] = { usedCount: 1, isOwner: false };
+          if (!localPasses[targetDomain].isOwner || !localPasses[targetDomain].remainingSec) {
+            localPasses[targetDomain].remainingSec = data.remainingSec;
+          }
+
+          // Turn OFF doomTracker session and cooldown so there is NO competing LIMIT timer!
+          const matched = getMatchedRestrictedPattern(domain);
+          if (matched && doomTracker[matched]) {
+            doomTracker[matched].isPassActive = false;
+            doomTracker[matched].cooldownStart = 0;
+          }
+        }
+      }
+    } else {
+      pcConnectionStatus = 'disconnected';
+    }
+  } catch (e) {
+    pcConnectionStatus = 'disconnected';
   }
 }
 
 async function syncToFirebase() {
+  const now = Date.now();
+  if (now - lastFirebaseSyncTimestamp < 8000) return; // Prevent quota burning (8s min interval)
+  lastFirebaseSyncTimestamp = now;
+
   try {
     const res = await fetch(FIREBASE_URL);
     if (res.ok) {
-        const cloudData = await res.json();
+      const cloudData = await res.json();
 
-        // V26 FIX: Merge cloud passes into local state instead of just overwriting cloudPasses
-        if (cloudData.activePasses) {
-            chrome.storage.local.set({ cloudPasses: cloudData.activePasses });
+      if (cloudData && cloudData.activePasses) {
+        cloudPasses = cloudData.activePasses;
+        chrome.storage.local.set({ cloudPasses });
 
-            for (let k in cloudData.activePasses) {
-                const domain = cloudData.activePasses[k].domain;
-                const cloudSec = cloudData.activePasses[k].remainingSec;
-                const cloudGrantTime = cloudData.activePasses[k].lastGrantTime || 0;
+        for (let k in cloudPasses) {
+          const pass = cloudPasses[k];
+          if (!pass) continue;
+          const domain = pass.domain;
+          const cloudSec = pass.remainingSec;
+          const cloudGrantTime = pass.lastGrantTime || 0;
 
-                // V30: Timestamp Resolution Logic
-                if (!localPasses[domain]) {
-                    localPasses[domain] = {
-                        remainingSec: cloudSec,
-                        usedCount: 1,
-                        isOwner: false,
-                        grantTimestamp: cloudGrantTime
-                    };
-                } else {
-                    const localGrantTime = localPasses[domain].grantTimestamp || 0;
-                    if (cloudGrantTime > localGrantTime) {
-                        // Cloud is newer
-                        localPasses[domain].remainingSec = cloudSec;
-                        localPasses[domain].grantTimestamp = cloudGrantTime;
-                        localPasses[domain].isOwner = false;
-                    } else if (cloudGrantTime === localGrantTime) {
-                        // Same session, use minimum wins
-                        if (cloudSec < localPasses[domain].remainingSec) {
-                            localPasses[domain].remainingSec = cloudSec;
-                        }
-                    }
-                    // If local is newer, we ignore cloud for now
-                }
-
-                // V33: BIDIRECTIONAL AUTH - If cloud has a pass, ensure doomTracker is authorized
-                if (cloudSec > 0) {
-                    if (!doomTracker[domain] || !doomTracker[domain].isPassActive) {
-                        if (!doomTracker[domain]) doomTracker[domain] = { totalSecThisSession: 0, cooldownStart: 0, isPassActive: false };
-                        doomTracker[domain].isPassActive = true;
-                        doomTracker[domain].totalSecThisSession = 0;
-                        chrome.storage.local.set({ doomTracker });
-                    }
-                }
+          // Reject expired or stale passes older than 2 hours
+          if (!cloudSec || cloudSec <= 0 || (Date.now() - cloudGrantTime > 7200 * 1000)) {
+            if (localPasses[domain] && !localPasses[domain].isOwner) {
+              localPasses[domain].remainingSec = 0;
             }
-            chrome.storage.local.set({ localPasses });
+            continue;
+          }
+
+          if (!localPasses[domain]) {
+            localPasses[domain] = {
+              remainingSec: cloudSec,
+              usedCount: 1,
+              isOwner: false,
+              grantTimestamp: cloudGrantTime
+            };
+          } else if (!localPasses[domain].isOwner && cloudGrantTime > (localPasses[domain].grantTimestamp || 0)) {
+            localPasses[domain].remainingSec = cloudSec;
+            localPasses[domain].grantTimestamp = cloudGrantTime;
+          }
         }
-
-        // V21 FIX: Sync doomTracker from cloud as well to avoid "leak" from local state
-        if (cloudData.doomTracker) {
-            const translatedTracker = {};
-            for (let k in cloudData.doomTracker) {
-                translatedTracker[k.replace(/_/g, '.')] = cloudData.doomTracker[k];
-            }
-            // Deep merge or overwrite if cloud is more advanced
-            for (let k in translatedTracker) {
-                if (!doomTracker[k] || translatedTracker[k].totalSecThisSession > (doomTracker[k].totalSecThisSession || 0) || translatedTracker[k].isPassActive) {
-                    doomTracker[k] = translatedTracker[k];
-                }
-            }
-        }
+        scheduleStorageSave();
+      }
     }
 
+    // Check PC App status
     let pcState = { state: "idle" };
     try {
-      const resPC = await fetch('http://127.0.0.1:8766/state');
-      if (resPC.ok) pcState = await resPC.json();
-    } catch (e) {}
-
-    const activePassesMap = {};
-    if (pcState.activePasses && Array.isArray(pcState.activePasses)) {
-        pcState.activePasses.forEach(p => { activePassesMap[p.domain.replace(/\./g, '_')] = p; });
+      const resPC = await fetch(`${PC_APP_URL}/state`);
+      if (resPC.ok) {
+        pcState = await resPC.json();
+        pcConnectionStatus = 'connected';
+        if (Array.isArray(pcState.restrictedSites)) {
+          syncRestrictedSitesFromPc(pcState.restrictedSites);
+        }
+      }
+    } catch (e) {
+      pcConnectionStatus = 'disconnected';
     }
 
+    const activePassesMap = {};
     for (let d in localPasses) {
-        if (localPasses[d].remainingSec > 0) {
-            // V34 STRICT: Only include in push if we are the OWNER
-            // Non-owners only display the time locally, never report it back to cloud
-            if (localPasses[d].isOwner) {
-                activePassesMap[d.replace(/\./g, '_')] = {
-                    domain: d,
-                    remainingSec: localPasses[d].remainingSec,
-                    passesLeft: 2 - localPasses[d].usedCount,
-                    lastGrantTime: localPasses[d].grantTimestamp || 0
-                };
-            }
-        }
+      const key = d.replace(/\./g, '_');
+      if (localPasses[d].remainingSec > 0 && localPasses[d].isOwner) {
+        activePassesMap[key] = {
+          domain: d,
+          remainingSec: localPasses[d].remainingSec,
+          passesLeft: Math.max(0, MAX_EMERGENCY_PASSES - localPasses[d].usedCount),
+          lastGrantTime: localPasses[d].grantTimestamp || 0
+        };
+      } else if (localPasses[d].remainingSec <= 0) {
+        // Crucial: send null so Firebase RTDB deletes the expired pass!
+        activePassesMap[key] = null;
+      }
     }
 
     const safeDoomTracker = {};
@@ -308,7 +802,11 @@ async function syncToFirebase() {
       remainingSec: pcState.remainingSec || 0,
       activeDomain: pcState.activeDomain || "",
       activePasses: activePassesMap,
-      settings: { doomLimit, doomCooldown },
+      settings: {
+        doomLimit: settings.doomLimit,
+        doomCooldown: settings.doomCooldown,
+        protectionEnabled: settings.protectionEnabled
+      },
       doomTracker: safeDoomTracker,
       lastUpdate: Date.now()
     };
@@ -321,67 +819,207 @@ async function syncToFirebase() {
   } catch (err) {}
 }
 
-function reinjectScript(tabId) {
-    chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] }).catch(() => {});
-}
+setInterval(syncToFirebase, 10000);
 
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.tabs.query({}, (tabs) => {
-        tabs.forEach(tab => {
-            if (tab.url && (tab.url.includes("facebook.com") || tab.url.includes("youtube.com") || tab.url.includes("instagram.com") || tab.url.includes("tiktok.com"))) {
-                reinjectScript(tab.id);
-            }
-        });
-    });
-});
+// ==========================================
+// Runtime Messages (Popup & Blocked Page API)
+// ==========================================
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'UPDATE_SETTINGS') {
-    chrome.storage.local.get(['doomLimit', 'doomCooldown'], (res) => {
-      if (res.doomLimit) doomLimit = res.doomLimit;
-      if (res.doomCooldown) doomCooldown = res.doomCooldown;
-      syncToFirebase();
+  if (msg.type === 'GET_POPUP_DATA') {
+    // Return rich StayFree statistics
+    const domain = currentActiveTab ? currentActiveTab.domain : '';
+    const isRestricted = isDomainRestricted(domain);
+    const domainUsage = domain ? (dailyUsage[domain] || 0) : 0;
+    const sessionTracker = (domain && doomTracker[domain]) ? doomTracker[domain] : null;
+
+    // Format top visited sites today
+    const topSites = Object.keys(dailyUsage)
+      .map(d => ({ domain: d, seconds: dailyUsage[d], isRestricted: isDomainRestricted(d) }))
+      .sort((a, b) => b.seconds - a.seconds)
+      .slice(0, 5);
+
+    const activeLocalPass = Object.keys(localPasses).find(d => matchesDomain(domain, d) && localPasses[d].remainingSec > 0);
+    const activePassSec = activeLocalPass ? localPasses[activeLocalPass].remainingSec : 0;
+
+    sendResponse({
+      activeDomain: domain,
+      activeTitle: currentActiveTab ? currentActiveTab.title : '',
+      isRestricted: isRestricted,
+      todayUsageSec: domainUsage,
+      sessionTracker: sessionTracker,
+      settings: settings,
+      siteConfigs: siteConfigs,
+      currentSiteLimit: getSiteLimit(domain),
+      currentSiteCooldown: getSiteCooldown(domain),
+      activePassSec: activePassSec,
+      restrictedSites: restrictedSites,
+      topSites: topSites,
+      pcConnectionStatus: pcConnectionStatus,
+      passesLeft: (domain && localPasses[domain]) ? Math.max(0, MAX_EMERGENCY_PASSES - localPasses[domain].usedCount) : MAX_EMERGENCY_PASSES
     });
+    return true;
   }
+
+  if (msg.type === 'START_SESSION_LIMIT') {
+    const { domain, minutes } = msg;
+    if (!domain) {
+      sendResponse({ success: false, reason: "Invalid domain" });
+      return true;
+    }
+
+    const pattern = getMatchedRestrictedPattern(domain) || domain;
+
+    // 1. Update siteConfigs limit
+    if (!siteConfigs[pattern]) siteConfigs[pattern] = {};
+    siteConfigs[pattern].limit = minutes;
+
+    // 2. Start session limit in doomTracker (does NOT consume emergency passes!)
+    const now = Date.now();
+    const targetEndTime = now + (minutes * 60 * 1000);
+    if (!doomTracker[pattern]) doomTracker[pattern] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+    doomTracker[pattern].isPassActive = true;
+    doomTracker[pattern].cooldownStart = 0;
+    doomTracker[pattern].sessionLimitSec = minutes * 60;
+    doomTracker[pattern].sessionEndTime = targetEndTime;
+
+    // Clear any active emergency pass so session limit cleanly takes control
+    if (localPasses[pattern]) { localPasses[pattern].remainingSec = 0; localPasses[pattern].targetEndTime = 0; }
+    if (localPasses[domain]) { localPasses[domain].remainingSec = 0; localPasses[domain].targetEndTime = 0; }
+
+    scheduleStorageSave();
+    updateActiveTabContext();
+
+    if (sender && sender.tab && sender.tab.id) {
+      chrome.tabs.sendMessage(sender.tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
+      updateFloatingTimer(sender.tab.id, true, minutes * 60, "LIMIT", targetEndTime);
+    }
+
+    sendResponse({ success: true, limitSec: minutes * 60, targetEndTime: targetEndTime });
+    return true;
+  }
+
+  if (msg.type === 'GRANT_PASS_LOCAL') {
+    const { domain, minutes } = msg;
+    if (!domain) {
+      sendResponse({ success: false, reason: "Invalid domain" });
+      return true;
+    }
+
+    // 1. Immediately inform PC Desktop App so C++ marks it as pass_active
+    fetch(`${PC_APP_URL}/tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grantPass: true, domain: domain, minutes: minutes })
+    }).catch(() => {});
+
+    if (!localPasses[domain]) localPasses[domain] = { remainingSec: 0, usedCount: 0 };
+
+    // Auto-reset pass count if previous pass was granted more than 1 hour ago
+    const lastGrant = localPasses[domain].grantTimestamp || 0;
+    if (Date.now() - lastGrant > 3600 * 1000) {
+      localPasses[domain].usedCount = 0;
+    }
+
+    // Allow strict maximum of MAX_EMERGENCY_PASSES (2 passes per session/day)
+    if (localPasses[domain].usedCount < MAX_EMERGENCY_PASSES) {
+      const now = Date.now();
+      const targetEndTime = now + (minutes * 60 * 1000);
+      localPasses[domain].remainingSec = minutes * 60;
+      localPasses[domain].targetEndTime = targetEndTime;
+      localPasses[domain].usedCount++;
+      localPasses[domain].isOwner = true;
+      localPasses[domain].grantTimestamp = now;
+
+      if (!doomTracker[domain]) doomTracker[domain] = { cooldownStart: 0, isPassActive: false, sessionEndTime: 0 };
+      doomTracker[domain].isPassActive = false; // Emergency Pass takes over, NO competing limit timer!
+      doomTracker[domain].sessionEndTime = 0;
+      doomTracker[domain].cooldownStart = 0;
+
+      scheduleStorageSave();
+      syncToFirebase();
+      updateActiveTabContext();
+
+      // Dismiss the modal on the sender tab immediately
+      if (sender && sender.tab && sender.tab.id) {
+        chrome.tabs.sendMessage(sender.tab.id, { type: 'HIDE_BLOCK_MODAL' }).catch(() => {});
+        updateFloatingTimer(sender.tab.id, true, minutes * 60, "PASS", targetEndTime);
+      }
+
+      sendResponse({ success: true, passesLeft: Math.max(0, MAX_EMERGENCY_PASSES - localPasses[domain].usedCount), targetEndTime: targetEndTime });
+    } else {
+      sendResponse({ success: false, reason: "Emergency pass limit reached (2/2 used). Please wait for the cooldown to finish." });
+    }
+    return true;
+  }
+
+  if (msg.type === 'UPDATE_SETTINGS') {
+    if (typeof msg.doomLimit === 'number') settings.doomLimit = msg.doomLimit;
+    if (typeof msg.doomCooldown === 'number') settings.doomCooldown = msg.doomCooldown;
+    if (typeof msg.protectionEnabled === 'boolean') settings.protectionEnabled = msg.protectionEnabled;
+
+    chrome.storage.local.set({
+      doomLimit: settings.doomLimit,
+      doomCooldown: settings.doomCooldown,
+      protectionEnabled: settings.protectionEnabled
+    });
+
+    syncToFirebase();
+    sendResponse({ success: true });
+    return true;
+  }
+
+  if (msg.type === 'UPDATE_SITE_CONFIG') {
+    const { domain, limit, cooldown } = msg;
+    if (domain) {
+      const pattern = getMatchedRestrictedPattern(domain) || domain;
+      siteConfigs[pattern] = {
+        limit: typeof limit === 'number' ? limit : getSiteLimit(pattern),
+        cooldown: typeof cooldown === 'number' ? cooldown : getSiteCooldown(pattern)
+      };
+      // Save immediately to local storage
+      chrome.storage.local.set({ siteConfigs });
+      updateActiveTabContext();
+      sendResponse({ success: true, siteConfigs });
+    }
+    return true;
+  }
+
+  if (msg.type === 'POLL_PC_STATE') {
+    fetch(`${PC_APP_URL}/state`)
+      .then(r => r.json())
+      .then(pcState => {
+        if (pcState && Array.isArray(pcState.restrictedSites)) {
+          syncRestrictedSitesFromPc(pcState.restrictedSites);
+        }
+        sendResponse({ success: true, pcState });
+      })
+      .catch(() => {
+        sendResponse({ success: false });
+      });
+    return true;
+  }
+
   if (msg.type === 'UPDATE_RESTRICTED_SITES') {
     restrictedSites = (msg.sites && msg.sites.length > 0) ? msg.sites : [...DEFAULT_RESTRICTED];
     chrome.storage.local.set({ restrictedSites });
+    updateActiveTabContext();
+    sendResponse({ success: true });
+    return true;
   }
-  if (msg.type === 'GRANT_PASS_LOCAL') {
-      const { domain, minutes } = msg;
 
-      // V23: Unified Pass Logic - Treat everything as a domain-specific emergency pass.
-      // This works for both Focus Mode and standalone Doomscroll mode.
-      if (!localPasses[domain]) localPasses[domain] = { remainingSec: 0, usedCount: 0 };
-
-      if (localPasses[domain].usedCount < 2) {
-          localPasses[domain].remainingSec = minutes * 60;
-          localPasses[domain].usedCount++;
-          localPasses[domain].isOwner = true;
-          localPasses[domain].grantTimestamp = Date.now();
-
-          // Ensure doomTracker knows this domain is now authorized
-          if (!doomTracker[domain]) doomTracker[domain] = { totalSecThisSession: 0, cooldownStart: 0, isPassActive: false };
-          doomTracker[domain].isPassActive = true;
-          doomTracker[domain].totalSecThisSession = 0; // Reset session progress
-
-          chrome.storage.local.set({ localPasses, doomTracker });
-          syncToFirebase();
-          sendResponse({ success: true });
-      } else {
-          sendResponse({ success: false, reason: "Limit reached" });
-      }
-      return true;
+  if (msg.type === 'CLOSE_ACTIVE_TAB') {
+    if (sender.tab && sender.tab.id) {
+      chrome.tabs.remove(sender.tab.id);
+    }
+    return true;
   }
-  if (msg.type === 'GET_PASS_INFO') {
-      const info = localPasses[msg.domain] || { usedCount: 0 };
-      sendResponse({ passesLeft: 2 - info.usedCount });
+
+  if (msg.type === 'CHECK_PAGE_RESTRICTION') {
+    if (sender.tab && sender.tab.url) {
+      const d = extractDomain(sender.tab.url);
+      enforceTabPolicy(sender.tab, d);
+    }
+    return true;
   }
 });
-
-// V32: STABLE SYNC LOOPS
-// 1. Sync Active Tab (Blocking & Floating Timer) - 1s
-setInterval(syncActiveTab, 1000);
-
-// 2. Sync with Cloud (Firebase) - 2s (Safe & Responsive)
-setInterval(syncToFirebase, 2000);
