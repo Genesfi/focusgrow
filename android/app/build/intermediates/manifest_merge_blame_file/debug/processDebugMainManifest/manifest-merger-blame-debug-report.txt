@@ -9,318 +9,321 @@
 9        android:targetSdkVersion="34" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
-11-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:5:5-67
-11-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:5:22-64
+11-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:6:5-67
+11-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:6:22-64
 12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-12-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:6:5-79
-12-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:6:22-76
+12-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:7:5-79
+12-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:7:22-76
 13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-13-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:7:5-77
-13-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:7:22-74
+13-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:8:5-77
+13-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:8:22-74
 14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-14-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:8:5-87
-14-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:8:22-84
+14-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:9:5-87
+14-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:9:22-84
 15    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-15-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:9:5-78
-15-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:9:22-75
-16    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-16-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:10:5-77
-16-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:10:22-74
-17    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-17-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:11:5-79
-17-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:11:22-76
-18    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-18-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:12:5-81
-18-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:12:22-78
-19    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-19-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:13:5-77
-19-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:13:22-74
-20    <uses-permission android:name="android.permission.VIBRATE" />
-20-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:14:5-66
-20-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:14:22-63
-21    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-21-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:15:5-79
-21-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:15:22-76
-22    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-22-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:16:5-81
-22-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:16:22-78
-23    <uses-permission android:name="android.permission.CAMERA" />
-23-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:17:5-65
-23-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:17:22-62
-24
-25    <uses-feature
-25-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:19:5-21:36
-26        android:name="android.hardware.camera"
-26-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:20:9-47
-27        android:required="false" />
-27-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:21:9-33
-28
-29    <permission
-29-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
-30        android:name="com.genesfi.focusgrow.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-30-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
-31        android:protectionLevel="signature" />
-31-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
-32
-33    <uses-permission android:name="com.genesfi.focusgrow.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-33-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
-33-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
-34
-35    <application
-35-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:23:5-60:19
-36        android:allowBackup="true"
-36-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:24:9-35
-37        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-37-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
-38        android:debuggable="true"
-39        android:extractNativeLibs="false"
-40        android:icon="@mipmap/ic_launcher"
-40-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:25:9-43
-41        android:label="FocusGrow"
-41-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:26:9-34
-42        android:roundIcon="@mipmap/ic_launcher_round"
-42-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:27:9-54
-43        android:supportsRtl="true"
-43-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:28:9-35
-44        android:testOnly="true"
-45        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
-45-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:30:9-71
-46        android:usesCleartextTraffic="true" >
-46-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:29:9-44
-47        <activity
-47-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:32:9-40:20
-48            android:name="com.genesfi.focusgrow.MainActivity"
-48-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:33:13-41
-49            android:exported="true"
-49-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:34:13-36
-50            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" >
-50-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:35:13-75
-51            <intent-filter>
-51-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:36:13-39:29
-52                <action android:name="android.intent.action.MAIN" />
-52-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:37:17-69
-52-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:37:25-66
-53
-54                <category android:name="android.intent.category.LAUNCHER" />
-54-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:38:17-77
-54-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:38:27-74
-55            </intent-filter>
-56        </activity>
-57
-58        <service
-58-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:42:9-52:19
-59            android:name="com.genesfi.focusgrow.FocusBlockerService"
-59-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:43:13-48
-60            android:exported="false"
-60-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:45:13-37
-61            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
-61-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:44:13-79
-62            <intent-filter>
-62-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:46:13-48:29
-63                <action android:name="android.accessibilityservice.AccessibilityService" />
-63-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:47:17-92
-63-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:47:25-89
-64            </intent-filter>
-65
-66            <meta-data
-66-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:49:13-51:72
-67                android:name="android.accessibilityservice"
-67-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:50:17-60
-68                android:resource="@xml/accessibility_service_config" />
-68-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:51:17-69
-69        </service>
-70        <service
-70-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:54:9-58:56
-71            android:name="com.genesfi.focusgrow.SyncService"
-71-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:55:13-40
-72            android:enabled="true"
-72-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:56:13-35
-73            android:exported="false"
-73-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:57:13-37
-74            android:foregroundServiceType="dataSync" />
-74-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:58:13-53
-75
-76        <!--
-77        Service for holding metadata. Cannot be instantiated.
-78        Metadata will be merged from other manifests.
-79        -->
-80        <service
-80-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:29:9-33:78
-81            android:name="androidx.camera.core.impl.MetadataHolderService"
-81-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:30:13-75
-82            android:enabled="false"
-82-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:31:13-36
-83            android:exported="false" >
-83-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:32:13-37
-84            <meta-data
-84-->[androidx.camera:camera-camera2:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ce0dcbdf516d787f4f9e728f29a9afa9\workspace\transformed\camera-camera2-1.3.2\AndroidManifest.xml:30:13-32:89
-85                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
-85-->[androidx.camera:camera-camera2:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ce0dcbdf516d787f4f9e728f29a9afa9\workspace\transformed\camera-camera2-1.3.2\AndroidManifest.xml:31:17-103
-86                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
-86-->[androidx.camera:camera-camera2:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ce0dcbdf516d787f4f9e728f29a9afa9\workspace\transformed\camera-camera2-1.3.2\AndroidManifest.xml:32:17-86
-87        </service>
-88        <service
-88-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:9:9-15:19
-89            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
-89-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:10:13-91
-90            android:directBootAware="true"
-90-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:17:13-43
-91            android:exported="false" >
-91-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:11:13-37
-92            <meta-data
-92-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:12:13-14:85
-93                android:name="com.google.firebase.components:com.google.mlkit.vision.barcode.internal.BarcodeRegistrar"
-93-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:13:17-120
-94                android:value="com.google.firebase.components.ComponentRegistrar" />
-94-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:14:17-82
-95            <meta-data
-95-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\93b4501bdce4b0b8617b7fb7228e860b\workspace\transformed\vision-common-17.3.0\AndroidManifest.xml:12:13-14:85
-96                android:name="com.google.firebase.components:com.google.mlkit.vision.common.internal.VisionCommonRegistrar"
-96-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\93b4501bdce4b0b8617b7fb7228e860b\workspace\transformed\vision-common-17.3.0\AndroidManifest.xml:13:17-124
-97                android:value="com.google.firebase.components.ComponentRegistrar" />
-97-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\93b4501bdce4b0b8617b7fb7228e860b\workspace\transformed\vision-common-17.3.0\AndroidManifest.xml:14:17-82
-98            <meta-data
-98-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:20:13-22:85
-99                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
-99-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:21:17-120
-100                android:value="com.google.firebase.components.ComponentRegistrar" />
-100-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:22:17-82
-101        </service>
-102
-103        <provider
-103-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:9:9-13:38
-104            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
-104-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:10:13-78
-105            android:authorities="com.genesfi.focusgrow.mlkitinitprovider"
-105-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:11:13-69
-106            android:exported="false"
-106-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:12:13-37
-107            android:initOrder="99" />
-107-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:13:13-35
-108
-109        <activity
-109-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:20:9-22:45
-110            android:name="com.google.android.gms.common.api.GoogleApiActivity"
-110-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:20:19-85
-111            android:exported="false"
-111-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:22:19-43
-112            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-112-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:21:19-78
-113
-114        <meta-data
-114-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ec523d77c616ee2622af161389c3b102\workspace\transformed\play-services-basement-18.1.0\AndroidManifest.xml:21:9-23:69
-115            android:name="com.google.android.gms.version"
-115-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ec523d77c616ee2622af161389c3b102\workspace\transformed\play-services-basement-18.1.0\AndroidManifest.xml:22:13-58
-116            android:value="@integer/google_play_services_version" />
-116-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ec523d77c616ee2622af161389c3b102\workspace\transformed\play-services-basement-18.1.0\AndroidManifest.xml:23:13-66
-117
-118        <activity
-118-->[androidx.compose.ui:ui-test-manifest:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\54f120e3c8ce182188f7b2d9db02c197\workspace\transformed\ui-test-manifest-1.6.1\AndroidManifest.xml:23:9-25:39
-119            android:name="androidx.activity.ComponentActivity"
-119-->[androidx.compose.ui:ui-test-manifest:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\54f120e3c8ce182188f7b2d9db02c197\workspace\transformed\ui-test-manifest-1.6.1\AndroidManifest.xml:24:13-63
-120            android:exported="true" />
-120-->[androidx.compose.ui:ui-test-manifest:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\54f120e3c8ce182188f7b2d9db02c197\workspace\transformed\ui-test-manifest-1.6.1\AndroidManifest.xml:25:13-36
-121        <activity
-121-->[androidx.compose.ui:ui-tooling-android:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2a68dbc48a895efc3940df9f92daf062\workspace\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
-122            android:name="androidx.compose.ui.tooling.PreviewActivity"
-122-->[androidx.compose.ui:ui-tooling-android:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2a68dbc48a895efc3940df9f92daf062\workspace\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
-123            android:exported="true" />
-123-->[androidx.compose.ui:ui-tooling-android:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2a68dbc48a895efc3940df9f92daf062\workspace\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
-124
-125        <provider
-125-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
-126            android:name="androidx.startup.InitializationProvider"
-126-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
-127            android:authorities="com.genesfi.focusgrow.androidx-startup"
-127-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
-128            android:exported="false" >
-128-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
-129            <meta-data
-129-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
-130                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-130-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
-131                android:value="androidx.startup" />
-131-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
-132            <meta-data
-132-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\3c1d25bd998a7062766c1608ef474a43\workspace\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
-133                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-133-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\3c1d25bd998a7062766c1608ef474a43\workspace\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
-134                android:value="androidx.startup" />
-134-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\3c1d25bd998a7062766c1608ef474a43\workspace\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
-135            <meta-data
-135-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
-136                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-136-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
-137                android:value="androidx.startup" />
-137-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
-138        </provider>
-139
-140        <service
-140-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:29:9-35:19
-141            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
-141-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:30:13-103
-142            android:exported="false" >
-142-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:31:13-37
-143            <meta-data
-143-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:32:13-34:39
-144                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
-144-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:33:17-94
-145                android:value="cct" />
-145-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:34:17-36
-146        </service>
-147        <service
-147-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:26:9-30:19
-148            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
-148-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:27:13-117
-149            android:exported="false"
-149-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:28:13-37
-150            android:permission="android.permission.BIND_JOB_SERVICE" >
-150-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:29:13-69
-151        </service>
-152
-153        <receiver
-153-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:32:9-34:40
-154            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
-154-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:33:13-132
-155            android:exported="false" />
-155-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:34:13-37
-156        <receiver
-156-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
-157            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-157-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
-158            android:directBootAware="false"
-158-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
-159            android:enabled="true"
-159-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
-160            android:exported="true"
-160-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
-161            android:permission="android.permission.DUMP" >
-161-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
-162            <intent-filter>
-162-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
-163                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-163-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
-163-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
-164            </intent-filter>
-165            <intent-filter>
-165-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
-166                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-166-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
-166-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
-167            </intent-filter>
-168            <intent-filter>
-168-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
-169                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-169-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
-169-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
-170            </intent-filter>
-171            <intent-filter>
-171-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
-172                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-172-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
-172-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
-173            </intent-filter>
-174        </receiver>
-175    </application>
-176
-177</manifest>
+15-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:10:5-78
+15-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:10:22-75
+16    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+16-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:11:5-114
+16-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:11:22-75
+17    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+17-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:12:5-77
+17-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:12:22-74
+18    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+18-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:13:5-79
+18-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:13:22-76
+19    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+19-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:14:5-81
+19-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:14:22-78
+20    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+20-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:15:5-77
+20-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:15:22-74
+21    <uses-permission android:name="android.permission.VIBRATE" />
+21-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:16:5-66
+21-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:16:22-63
+22    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+22-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:17:5-79
+22-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:17:22-76
+23    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+23-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:18:5-81
+23-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:18:22-78
+24    <uses-permission android:name="android.permission.CAMERA" />
+24-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:19:5-65
+24-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:19:22-62
+25
+26    <uses-feature
+26-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:21:5-23:36
+27        android:name="android.hardware.camera"
+27-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:22:9-47
+28        android:required="false" />
+28-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:23:9-33
+29
+30    <permission
+30-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+31        android:name="com.genesfi.focusgrow.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+31-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+32        android:protectionLevel="signature" />
+32-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+33
+34    <uses-permission android:name="com.genesfi.focusgrow.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+34-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+34-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+35
+36    <application
+36-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:25:5-62:19
+37        android:allowBackup="true"
+37-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:26:9-35
+38        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+38-->[androidx.core:core:1.12.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\f45723ba2dc2e9dd682057658c69bb6c\workspace\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+39        android:debuggable="true"
+40        android:extractNativeLibs="false"
+41        android:icon="@mipmap/ic_launcher"
+41-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:27:9-43
+42        android:label="FocusGrow"
+42-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:28:9-34
+43        android:roundIcon="@mipmap/ic_launcher_round"
+43-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:29:9-54
+44        android:supportsRtl="true"
+44-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:30:9-35
+45        android:testOnly="true"
+46        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+46-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:32:9-71
+47        android:usesCleartextTraffic="true" >
+47-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:31:9-44
+48        <activity
+48-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:34:9-42:20
+49            android:name="com.genesfi.focusgrow.MainActivity"
+49-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:35:13-41
+50            android:exported="true"
+50-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:36:13-36
+51            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" >
+51-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:37:13-75
+52            <intent-filter>
+52-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:38:13-41:29
+53                <action android:name="android.intent.action.MAIN" />
+53-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:39:17-69
+53-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:39:25-66
+54
+55                <category android:name="android.intent.category.LAUNCHER" />
+55-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:40:17-77
+55-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:40:27-74
+56            </intent-filter>
+57        </activity>
+58
+59        <service
+59-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:44:9-54:19
+60            android:name="com.genesfi.focusgrow.FocusBlockerService"
+60-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:45:13-48
+61            android:exported="false"
+61-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:47:13-37
+62            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+62-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:46:13-79
+63            <intent-filter>
+63-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:48:13-50:29
+64                <action android:name="android.accessibilityservice.AccessibilityService" />
+64-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:49:17-92
+64-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:49:25-89
+65            </intent-filter>
+66
+67            <meta-data
+67-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:51:13-53:72
+68                android:name="android.accessibilityservice"
+68-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:52:17-60
+69                android:resource="@xml/accessibility_service_config" />
+69-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:53:17-69
+70        </service>
+71        <service
+71-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:56:9-60:56
+72            android:name="com.genesfi.focusgrow.SyncService"
+72-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:57:13-40
+73            android:enabled="true"
+73-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:58:13-35
+74            android:exported="false"
+74-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:59:13-37
+75            android:foregroundServiceType="dataSync" />
+75-->F:\Android Project\FocusGrow - webview\android\app\src\main\AndroidManifest.xml:60:13-53
+76
+77        <!--
+78        Service for holding metadata. Cannot be instantiated.
+79        Metadata will be merged from other manifests.
+80        -->
+81        <service
+81-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:29:9-33:78
+82            android:name="androidx.camera.core.impl.MetadataHolderService"
+82-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:30:13-75
+83            android:enabled="false"
+83-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:31:13-36
+84            android:exported="false" >
+84-->[androidx.camera:camera-core:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\fc3997e11e8427209134d96eb71a110f\workspace\transformed\camera-core-1.3.2\AndroidManifest.xml:32:13-37
+85            <meta-data
+85-->[androidx.camera:camera-camera2:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ce0dcbdf516d787f4f9e728f29a9afa9\workspace\transformed\camera-camera2-1.3.2\AndroidManifest.xml:30:13-32:89
+86                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+86-->[androidx.camera:camera-camera2:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ce0dcbdf516d787f4f9e728f29a9afa9\workspace\transformed\camera-camera2-1.3.2\AndroidManifest.xml:31:17-103
+87                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+87-->[androidx.camera:camera-camera2:1.3.2] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ce0dcbdf516d787f4f9e728f29a9afa9\workspace\transformed\camera-camera2-1.3.2\AndroidManifest.xml:32:17-86
+88        </service>
+89        <service
+89-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:9:9-15:19
+90            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
+90-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:10:13-91
+91            android:directBootAware="true"
+91-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:17:13-43
+92            android:exported="false" >
+92-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:11:13-37
+93            <meta-data
+93-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:12:13-14:85
+94                android:name="com.google.firebase.components:com.google.mlkit.vision.barcode.internal.BarcodeRegistrar"
+94-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:13:17-120
+95                android:value="com.google.firebase.components.ComponentRegistrar" />
+95-->[com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4aef087e5fd6295ba79cc09db36ea59a\workspace\transformed\play-services-mlkit-barcode-scanning-18.3.0\AndroidManifest.xml:14:17-82
+96            <meta-data
+96-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\93b4501bdce4b0b8617b7fb7228e860b\workspace\transformed\vision-common-17.3.0\AndroidManifest.xml:12:13-14:85
+97                android:name="com.google.firebase.components:com.google.mlkit.vision.common.internal.VisionCommonRegistrar"
+97-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\93b4501bdce4b0b8617b7fb7228e860b\workspace\transformed\vision-common-17.3.0\AndroidManifest.xml:13:17-124
+98                android:value="com.google.firebase.components.ComponentRegistrar" />
+98-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\93b4501bdce4b0b8617b7fb7228e860b\workspace\transformed\vision-common-17.3.0\AndroidManifest.xml:14:17-82
+99            <meta-data
+99-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:20:13-22:85
+100                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
+100-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:21:17-120
+101                android:value="com.google.firebase.components.ComponentRegistrar" />
+101-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:22:17-82
+102        </service>
+103
+104        <provider
+104-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:9:9-13:38
+105            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
+105-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:10:13-78
+106            android:authorities="com.genesfi.focusgrow.mlkitinitprovider"
+106-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:11:13-69
+107            android:exported="false"
+107-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:12:13-37
+108            android:initOrder="99" />
+108-->[com.google.mlkit:common:18.9.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\e65312ccc17e642c8cbe3e9dc62a3885\workspace\transformed\common-18.9.0\AndroidManifest.xml:13:13-35
+109
+110        <activity
+110-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:20:9-22:45
+111            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+111-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:20:19-85
+112            android:exported="false"
+112-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:22:19-43
+113            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+113-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\81ad0662e6897850d35a91f90d725551\workspace\transformed\play-services-base-18.1.0\AndroidManifest.xml:21:19-78
+114
+115        <meta-data
+115-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ec523d77c616ee2622af161389c3b102\workspace\transformed\play-services-basement-18.1.0\AndroidManifest.xml:21:9-23:69
+116            android:name="com.google.android.gms.version"
+116-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ec523d77c616ee2622af161389c3b102\workspace\transformed\play-services-basement-18.1.0\AndroidManifest.xml:22:13-58
+117            android:value="@integer/google_play_services_version" />
+117-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\ec523d77c616ee2622af161389c3b102\workspace\transformed\play-services-basement-18.1.0\AndroidManifest.xml:23:13-66
+118
+119        <activity
+119-->[androidx.compose.ui:ui-test-manifest:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\54f120e3c8ce182188f7b2d9db02c197\workspace\transformed\ui-test-manifest-1.6.1\AndroidManifest.xml:23:9-25:39
+120            android:name="androidx.activity.ComponentActivity"
+120-->[androidx.compose.ui:ui-test-manifest:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\54f120e3c8ce182188f7b2d9db02c197\workspace\transformed\ui-test-manifest-1.6.1\AndroidManifest.xml:24:13-63
+121            android:exported="true" />
+121-->[androidx.compose.ui:ui-test-manifest:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\54f120e3c8ce182188f7b2d9db02c197\workspace\transformed\ui-test-manifest-1.6.1\AndroidManifest.xml:25:13-36
+122        <activity
+122-->[androidx.compose.ui:ui-tooling-android:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2a68dbc48a895efc3940df9f92daf062\workspace\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+123            android:name="androidx.compose.ui.tooling.PreviewActivity"
+123-->[androidx.compose.ui:ui-tooling-android:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2a68dbc48a895efc3940df9f92daf062\workspace\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+124            android:exported="true" />
+124-->[androidx.compose.ui:ui-tooling-android:1.6.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2a68dbc48a895efc3940df9f92daf062\workspace\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+125
+126        <provider
+126-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+127            android:name="androidx.startup.InitializationProvider"
+127-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+128            android:authorities="com.genesfi.focusgrow.androidx-startup"
+128-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+129            android:exported="false" >
+129-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+130            <meta-data
+130-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+131                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+131-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+132                android:value="androidx.startup" />
+132-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\1bd7816cb62831b669e46ba83708935b\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+133            <meta-data
+133-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\3c1d25bd998a7062766c1608ef474a43\workspace\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
+134                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+134-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\3c1d25bd998a7062766c1608ef474a43\workspace\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
+135                android:value="androidx.startup" />
+135-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\3c1d25bd998a7062766c1608ef474a43\workspace\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
+136            <meta-data
+136-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+137                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+137-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+138                android:value="androidx.startup" />
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+139        </provider>
+140
+141        <service
+141-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:29:9-35:19
+142            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+142-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:30:13-103
+143            android:exported="false" >
+143-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:31:13-37
+144            <meta-data
+144-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:32:13-34:39
+145                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+145-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:33:17-94
+146                android:value="cct" />
+146-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\2e70a5628406c95104df993ce409a3a4\workspace\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:34:17-36
+147        </service>
+148        <service
+148-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:26:9-30:19
+149            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+149-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:27:13-117
+150            android:exported="false"
+150-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:28:13-37
+151            android:permission="android.permission.BIND_JOB_SERVICE" >
+151-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:29:13-69
+152        </service>
+153
+154        <receiver
+154-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:32:9-34:40
+155            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+155-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:33:13-132
+156            android:exported="false" />
+156-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\4eeec01aea20996bcd390234688f534e\workspace\transformed\transport-runtime-2.2.6\AndroidManifest.xml:34:13-37
+157        <receiver
+157-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+158            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+158-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+159            android:directBootAware="false"
+159-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+160            android:enabled="true"
+160-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+161            android:exported="true"
+161-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+162            android:permission="android.permission.DUMP" >
+162-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+163            <intent-filter>
+163-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+164                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+164-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+164-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+165            </intent-filter>
+166            <intent-filter>
+166-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+167                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+167-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+167-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+168            </intent-filter>
+169            <intent-filter>
+169-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+170                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+170-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+170-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+171            </intent-filter>
+172            <intent-filter>
+172-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+173                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+173-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+173-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Gusti N\.gradle\caches\9.3.0\transforms\96342fd318cbad3e020f5136dbd013b7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+174            </intent-filter>
+175        </receiver>
+176    </application>
+177
+178</manifest>

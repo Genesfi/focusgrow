@@ -62,6 +62,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -101,8 +102,25 @@ class MainActivity : ComponentActivity() {
     fun MainScreen() {
     val context = LocalContext.current
     val packageManager = remember(context) { context.packageManager }
+    val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf(0) }
     var selectedAppForConfig by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var usageTimeRange by remember { mutableStateOf(UsageTimeRange.TODAY) }
+    var usageResult by remember { mutableStateOf<AppUsageResult?>(null) }
+    var isLoadingUsage by remember { mutableStateOf(false) }
+    var showAllUsageApps by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedTab, usageTimeRange) {
+        if (selectedTab == 1 && SyncManager.hasUsageStatsPermission(context)) {
+            isLoadingUsage = true
+            val isEn = SyncManager.currentLanguage == "en"
+            val res = withContext(Dispatchers.IO) {
+                AppUsageTracker.getUsageStats(context, usageTimeRange, isEn)
+            }
+            usageResult = res
+            isLoadingUsage = false
+        }
+    }
         var ipInput by remember { mutableStateOf(SyncManager.pcIpAddress) }
         val status = SyncManager.currentStatus
         val isPrayerBreak = status.isPrayerBreak
@@ -657,6 +675,34 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // App Screen Time Tracker (Daily, Weekly, Monthly)
+                            AppUsageSection(
+                                context = context,
+                                isEn = isEn1,
+                                primaryAccent = primaryAccent,
+                                selectedRange = usageTimeRange,
+                                onRangeSelected = { usageTimeRange = it },
+                                usageResult = usageResult,
+                                isLoading = isLoadingUsage,
+                                showAll = showAllUsageApps,
+                                onToggleShowAll = { showAllUsageApps = !showAllUsageApps },
+                                onRefresh = {
+                                    if (SyncManager.hasUsageStatsPermission(context)) {
+                                        isLoadingUsage = true
+                                        val isEn = SyncManager.currentLanguage == "en"
+                                        scope.launch {
+                                            val res = withContext(Dispatchers.IO) {
+                                                AppUsageTracker.getUsageStats(context, usageTimeRange, isEn)
+                                            }
+                                            usageResult = res
+                                            isLoadingUsage = false
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
 
@@ -1783,6 +1829,536 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+    @Composable
+    fun AppUsageSection(
+        context: android.content.Context,
+        isEn: Boolean,
+        primaryAccent: Color,
+        selectedRange: UsageTimeRange,
+        onRangeSelected: (UsageTimeRange) -> Unit,
+        usageResult: AppUsageResult?,
+        isLoading: Boolean,
+        showAll: Boolean,
+        onToggleShowAll: () -> Unit,
+        onRefresh: () -> Unit
+    ) {
+        val hasUsagePermission = remember(context) { SyncManager.hasUsageStatsPermission(context) }
+        var isDropdownOpen by remember { mutableStateOf(false) }
+
+        val rangeOptions = remember(isEn) {
+            listOf(
+                UsageTimeRange.TODAY to (if (isEn) "Today" else "Hari Ini"),
+                UsageTimeRange.YESTERDAY to (if (isEn) "Yesterday" else "Kemarin"),
+                UsageTimeRange.LAST_7_DAYS to (if (isEn) "Last 7 days" else "7 Hari Terakhir"),
+                UsageTimeRange.LAST_30_DAYS to (if (isEn) "Last 30 days" else "30 Hari Terakhir"),
+                UsageTimeRange.LAST_90_DAYS to (if (isEn) "Last 3 months (90 days)" else "3 Bulan Terakhir (90 Hari)")
+            )
+        }
+
+        val currentLabel = rangeOptions.firstOrNull { it.first == selectedRange }?.second ?: (if (isEn) "Today" else "Hari Ini")
+        val currentIndex = rangeOptions.indexOfFirst { it.first == selectedRange }.coerceAtLeast(0)
+
+        ModernCard(
+            title = if (isEn) "App Screen Time" else "Waktu Pemakaian Aplikasi",
+            icon = Icons.Default.DateRange
+        ) {
+            Column {
+                if (!hasUsagePermission) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFF59E0B).copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFF59E0B),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    if (isEn) "Usage Access Permission Required" else "Izin Akses Penggunaan Diperlukan",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF59E0B)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                if (isEn) "Enable Usage Access so FocusGrow can display your daily, weekly, and monthly screen time statistics." else "Aktifkan Akses Penggunaan agar FocusGrow dapat menampilkan statistik waktu pemakaian aplikasi harian, mingguan, dan bulanan.",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.75f),
+                                lineHeight = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Button(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFF59E0B),
+                                    contentColor = Color.Black
+                                ),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Text(
+                                    if (isEn) "Grant Permission" else "Buka Pengaturan Izin",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // StayFree Style Date Navigator Bar (< [📅 Range ▼] > + Refresh)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Left Arrow (<) - go to older period
+                            IconButton(
+                                onClick = {
+                                    if (currentIndex < rangeOptions.lastIndex) {
+                                        onRangeSelected(rangeOptions[currentIndex + 1].first)
+                                    }
+                                },
+                                enabled = currentIndex < rangeOptions.lastIndex,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ArrowBack,
+                                    contentDescription = "Previous",
+                                    tint = if (currentIndex < rangeOptions.lastIndex) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(2.dp))
+
+                            // Dropdown Trigger Pill
+                            Box {
+                                Surface(
+                                    onClick = { isDropdownOpen = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("📅", fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = currentLabel,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Default.ArrowDropDown,
+                                            contentDescription = null,
+                                            tint = Color.White.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded = isDropdownOpen,
+                                    onDismissRequest = { isDropdownOpen = false },
+                                    modifier = Modifier.background(Color(0xFF1E293B))
+                                ) {
+                                    rangeOptions.forEach { (range, label) ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = if (selectedRange == range) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (selectedRange == range) primaryAccent else Color.White
+                                                )
+                                            },
+                                            onClick = {
+                                                onRangeSelected(range)
+                                                isDropdownOpen = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(2.dp))
+
+                            // Right Arrow (>) - go to newer period
+                            IconButton(
+                                onClick = {
+                                    if (currentIndex > 0) {
+                                        onRangeSelected(rangeOptions[currentIndex - 1].first)
+                                    }
+                                },
+                                enabled = currentIndex > 0,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ArrowForward,
+                                    contentDescription = "Next",
+                                    tint = if (currentIndex > 0) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onRefresh,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                tint = if (isLoading) primaryAccent else Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // StayFree Style Analytics & Mini Chart Card
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF131B2E),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            // Total Screen Time Header + Trend Badge
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        if (isEn) "Total Usage" else "Total Penggunaan",
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.55f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = usageResult?.formattedTotalTime ?: "0m",
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color.White,
+                                        letterSpacing = (-0.5).sp
+                                    )
+                                }
+
+                                // Trend Comparison Pill
+                                val trend = usageResult?.trendPercentage
+                                if (trend != null) {
+                                    val isHigher = trend > 0
+                                    val trendColor = if (isHigher) Color(0xFFF87171) else Color(0xFF34D399)
+                                    val trendBg = if (isHigher) Color(0xFFEF4444).copy(alpha = 0.15f) else Color(0xFF10B981).copy(alpha = 0.15f)
+                                    val trendText = if (isHigher) "+$trend%" else "$trend%"
+
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = trendBg,
+                                        border = BorderStroke(1.dp, trendColor.copy(alpha = 0.35f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = if (isHigher) "▲" else "▼",
+                                                color = trendColor,
+                                                fontSize = 10.sp
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = if (isEn) "$trendText vs prev" else "$trendText vs lalu",
+                                                color = trendColor,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Mini Bar Chart (StayFree Visual Distribution)
+                            val bars = usageResult?.chartBars ?: emptyList()
+                            if (bars.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(18.dp))
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(86.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    bars.forEach { bar ->
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Bottom
+                                        ) {
+                                            // Top small duration if selected
+                                            if (bar.isSelected && bar.durationMs > 0) {
+                                                Text(
+                                                    text = bar.formattedDuration,
+                                                    fontSize = 8.sp,
+                                                    color = primaryAccent,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                            }
+
+                                            // Bar Fill
+                                            val barHeightFraction = bar.relativeHeight.coerceIn(0.08f, 1f)
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height((56 * barHeightFraction).dp)
+                                                    .background(
+                                                        if (bar.isSelected) {
+                                                            Brush.verticalGradient(
+                                                                listOf(primaryAccent, Color(0xFF818CF8))
+                                                            )
+                                                        } else {
+                                                            Brush.verticalGradient(
+                                                                listOf(Color(0xFF818CF8).copy(alpha = 0.5f), Color(0xFF6366F1).copy(alpha = 0.25f))
+                                                            )
+                                                        },
+                                                        RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                                    )
+                                            )
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Label (Day / Week / Month)
+                                            Text(
+                                                text = bar.label,
+                                                fontSize = 9.sp,
+                                                fontWeight = if (bar.isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (bar.isSelected) Color.White else Color.White.copy(alpha = 0.45f),
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Top Used App Sub-badge
+                            val topApp = usageResult?.topAppName
+                            if (!topApp.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("🏆", fontSize = 11.sp)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isEn) "Most used: $topApp" else "Paling sering: $topApp",
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.65f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Loading State
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 3.dp,
+                                color = primaryAccent
+                            )
+                        }
+                    } else if (usageResult == null || usageResult.items.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                if (isEn) "No app usage detected for this period." else "Tidak ada pemakaian aplikasi yang terdeteksi untuk periode ini.",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.45f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        // StayFree Style Compact App List
+                        val displayItems = if (showAll) usageResult.items else usageResult.items.take(8)
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White.copy(alpha = 0.025f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                                displayItems.forEachIndexed { index, item ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // App Icon
+                                        AsyncImage(
+                                            model = item.icon,
+                                            contentDescription = item.appName,
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(9.dp)),
+                                            contentScale = ContentScale.Fit
+                                        )
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            // Line 1: App Name & Duration
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = item.appName,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color.White,
+                                                    maxLines = 1,
+                                                    modifier = Modifier.weight(1f, fill = false)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = item.formattedTime,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White.copy(alpha = 0.95f)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Line 2: Progress bar + Percentage
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .height(4.dp)
+                                                        .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(2.dp))
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth(item.relativePercentage)
+                                                            .fillMaxHeight()
+                                                            .background(
+                                                                Brush.horizontalGradient(
+                                                                    listOf(Color(0xFF818CF8), primaryAccent)
+                                                                ),
+                                                                RoundedCornerShape(2.dp)
+                                                            )
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.width(10.dp))
+
+                                                Text(
+                                                    text = "${item.percentageOfTotal}%",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = Color.White.copy(alpha = 0.55f),
+                                                    modifier = Modifier.width(42.dp),
+                                                    textAlign = TextAlign.End
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (index < displayItems.lastIndex) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 48.dp)
+                                                .height(0.5.dp)
+                                                .background(Color.White.copy(alpha = 0.05f))
+                                        )
+                                    }
+                                }
+
+                                // Show More / Show Less Button
+                                if (usageResult.items.size > 8) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Surface(
+                                        onClick = onToggleShowAll,
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color.White.copy(alpha = 0.04f),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = if (showAll) {
+                                                    if (isEn) "Show Less ▲" else "Tampilkan Lebih Sedikit ▲"
+                                                } else {
+                                                    if (isEn) "Show All (${usageResult.items.size} apps) ▼" else "Tampilkan Semua (${usageResult.items.size} aplikasi) ▼"
+                                                },
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = primaryAccent
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 @Composable
 fun FocusGrowTheme(content: @Composable () -> Unit) {

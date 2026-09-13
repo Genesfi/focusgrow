@@ -1,14 +1,18 @@
 [
     {
-        "merged": "com.genesfi.focusgrow.app-debug-58:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
-        "source": "com.genesfi.focusgrow.app-main-60:/mipmap-xxxhdpi/ic_launcher_round.png"
+        "merged": "C:\\Users\\Gusti N\\.gradle\\daemon\\9.3.0\\com.genesfi.focusgrow.app-debug-58:\\mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\Gusti N\\.gradle\\daemon\\9.3.0\\com.genesfi.focusgrow.app-main-60:\\mipmap-xxxhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\Gusti N\\.gradle\\daemon\\9.3.0\\com.genesfi.focusgrow.app-debug-58:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\Gusti N\\.gradle\\daemon\\9.3.0\\com.genesfi.focusgrow.app-main-60:\\mipmap-xxxhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\Gusti N\\.gradle\\daemon\\9.3.0\\com.genesfi.focusgrow.app-debug-58:\\xml_accessibility_service_config.xml.flat",
+        "source": "C:\\Users\\Gusti N\\.gradle\\daemon\\9.3.0\\com.genesfi.focusgrow.app-main-60:\\xml\\accessibility_service_config.xml"
     },
     {
         "merged": "com.genesfi.focusgrow.app-debug-58:/xml_accessibility_service_config.xml.flat",
         "source": "com.genesfi.focusgrow.app-main-60:/xml/accessibility_service_config.xml"
-    },
-    {
-        "merged": "com.genesfi.focusgrow.app-debug-58:/mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "com.genesfi.focusgrow.app-main-60:/mipmap-xxxhdpi/ic_launcher.png"
     }
 ]
