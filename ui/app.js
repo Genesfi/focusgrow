@@ -4772,9 +4772,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Direct Firebase Cloud Sync (Standalone Cross-Platform without Extension) ---
     const FIREBASE_RTDB_URL = "https://focusgrow-e2d8f-default-rtdb.asia-southeast1.firebasedatabase.app/.json";
+    const FIREBASE_GIF_URL = "https://focusgrow-e2d8f-default-rtdb.asia-southeast1.firebasedatabase.app/customGifData.json";
+    let lastUploadedGifHash = null;
     let lastDirectFirebasePush = 0;
     let lastPushedState = null;
     let isPushingFirebase = false;
+
+    function computeSimpleHash(str) {
+        if (!str) return '';
+        let hash = 0;
+        const len = str.length;
+        const sampleLimit = Math.min(len, 1000);
+        for (let i = 0; i < sampleLimit; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return 'gif_' + Math.abs(hash) + '_' + len;
+    }
 
     async function triggerFirebaseDirectSync(data, force = false) {
         if (!data) return;
@@ -4837,7 +4851,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 payload.activePasses = passesMap;
             }
 
-            // Include active ambient GIF if configured
+            // Include active ambient GIF hash (Ultra-efficient 1-time payload sync)
             try {
                 let rawGif = userData.customGifData || '';
                 // If stored in cardGifImg or gaugeGifImg, use it directly
@@ -4857,11 +4871,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if (rawGif && (rawGif.startsWith('http') || (rawGif.startsWith('data:') && rawGif.length < 10000000))) {
-                    payload.customGif = rawGif;
+                    const currentHash = computeSimpleHash(rawGif);
+                    payload.gifHash = currentHash;
                     payload.gifOpacity = (userData.gifOpacity || 78) / 100;
+
+                    // Upload full heavy GIF data to dedicated node ONCE only when changed
+                    if (lastUploadedGifHash !== currentHash) {
+                        fetch(FIREBASE_GIF_URL, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: rawGif, hash: currentHash })
+                        }).then(() => {
+                            lastUploadedGifHash = currentHash;
+                        }).catch(e => console.warn('[Sync] Failed uploading custom GIF to cloud:', e));
+                    }
                 } else if (!userData.customGifData || userData.ambientMode === 'plant') {
-                    payload.customGif = "";
+                    payload.gifHash = "";
+                    if (lastUploadedGifHash !== "") {
+                        fetch(FIREBASE_GIF_URL, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(null)
+                        }).then(() => {
+                            lastUploadedGifHash = "";
+                        }).catch(() => {});
+                    }
                 }
+                // Clear legacy multi-megabyte customGif property from root Firebase RTDB state
+                payload.customGif = null;
             } catch (gifErr) {
                 console.warn('[Sync] Error resolving custom gif:', gifErr);
             }

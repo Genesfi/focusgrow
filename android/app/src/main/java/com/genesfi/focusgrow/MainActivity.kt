@@ -1030,6 +1030,7 @@ class MainActivity : ComponentActivity() {
                                     false
                                 }
                             }
+                            val isUsageAccessActive = remember(context) { SyncManager.hasUsageStatsPermission(context) }
 
                             ModernCard(
                                 title = if (SyncManager.currentLanguage == "en") "System Permissions" else "Perizinan Sistem",
@@ -1049,7 +1050,7 @@ class MainActivity : ComponentActivity() {
                                     Spacer(modifier = Modifier.height(10.dp))
 
                                     PermissionRow(
-                                        title = if (SyncManager.currentLanguage == "en") "2. Accessibility Permission (Focus Guard)" else "2. Izin Accessibility (Focus Guard)",
+                                        title = if (SyncManager.currentLanguage == "en") "2. Accessibility (Instant 0ms Blocker)" else "2. Aksesibilitas (Pemblokir Instan 0ms)",
                                         isGranted = isAccessibilityActive
                                     ) {
                                         try {
@@ -1071,6 +1072,22 @@ class MainActivity : ComponentActivity() {
                                             } catch (e2: Exception) {
                                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                                             }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    PermissionRow(
+                                        title = if (SyncManager.currentLanguage == "en") "3. Usage Access (Bank-Safe / Hybrid)" else "3. Akses Penggunaan (Bebas Blokir Bank / Hybrid)",
+                                        isGranted = isUsageAccessActive
+                                    ) {
+                                        try {
+                                            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            context.startActivity(Intent(Settings.ACTION_SETTINGS))
                                         }
                                     }
                                 }

@@ -1,7 +1,10 @@
 package com.genesfi.focusgrow
 
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
+import android.os.Process
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,12 +70,16 @@ object SyncManager {
     private const val KEY_RESTRICTED_APPS = "restricted_apps"
     private const val KEY_PC_IP = "pc_ip_address"
     private const val KEY_CUSTOM_GIF = "cached_custom_gif"
+    private const val KEY_GIF_HASH = "cached_gif_hash"
     private const val KEY_GIF_OPACITY = "cached_gif_opacity"
     private const val KEY_LANGUAGE = "app_language"
     private const val KEY_SITE_CONFIGS = "cached_site_configs"
+    private const val KEY_BLOCKER_MODE = "blocker_mode"
     private var prefs: SharedPreferences? = null
 
     var currentLanguage by mutableStateOf("id")
+    var cachedGifHash by mutableStateOf("")
+    var blockerMode by mutableStateOf("hybrid") // "hybrid", "accessibility", "usage_stats"
 
     var onBreakFinished: (() -> Unit)? = null
     private var wasResting: Boolean = false
@@ -86,6 +93,8 @@ object SyncManager {
 
             val cachedGif = prefs?.getString(KEY_CUSTOM_GIF, "") ?: ""
             val cachedOpacity = prefs?.getFloat(KEY_GIF_OPACITY, 0.78f) ?: 0.78f
+            cachedGifHash = prefs?.getString(KEY_GIF_HASH, "") ?: ""
+            blockerMode = prefs?.getString(KEY_BLOCKER_MODE, "hybrid") ?: "hybrid"
             if (cachedGif.isNotEmpty()) {
                 currentStatus = currentStatus.copy(customGif = cachedGif, gifOpacity = cachedOpacity)
             }
@@ -153,12 +162,15 @@ object SyncManager {
         SyncService.updateCloudSiteConfig(key, limit, cooldown)
     }
 
-    fun updateCustomGif(gif: String, opacity: Float) {
-        if (currentStatus.customGif != gif || currentStatus.gifOpacity != opacity) {
+    fun updateCustomGif(gif: String, opacity: Float, hash: String = "") {
+        val hashToStore = if (hash.isNotEmpty()) hash else cachedGifHash
+        if (currentStatus.customGif != gif || currentStatus.gifOpacity != opacity || cachedGifHash != hashToStore) {
             currentStatus = currentStatus.copy(customGif = gif, gifOpacity = opacity)
+            cachedGifHash = hashToStore
             prefs?.edit()?.apply {
                 putString(KEY_CUSTOM_GIF, gif)
                 putFloat(KEY_GIF_OPACITY, opacity)
+                putString(KEY_GIF_HASH, hashToStore)
                 apply()
             }
         }
@@ -172,6 +184,25 @@ object SyncManager {
     fun setLanguage(lang: String) {
         currentLanguage = lang
         prefs?.edit()?.putString(KEY_LANGUAGE, lang)?.apply()
+    }
+
+    fun setBlockerModePref(mode: String) {
+        blockerMode = mode
+        prefs?.edit()?.putString(KEY_BLOCKER_MODE, mode)?.apply()
+    }
+
+    fun hasUsageStatsPermission(context: Context): Boolean {
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+            } else {
+                appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+            }
+            mode == AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun saveRestrictedApps() {

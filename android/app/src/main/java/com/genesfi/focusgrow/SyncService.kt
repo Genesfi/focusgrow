@@ -33,6 +33,8 @@ class SyncService : Service() {
         .build()
 
     private val FIREBASE_URL = "https://focusgrow-e2d8f-default-rtdb.asia-southeast1.firebasedatabase.app/.json"
+    private val FIREBASE_GIF_URL = "https://focusgrow-e2d8f-default-rtdb.asia-southeast1.firebasedatabase.app/customGifData.json"
+    private var isFetchingGif = false
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -61,13 +63,39 @@ class SyncService : Service() {
 
                 withContext(Dispatchers.Main) {
                     SyncManager.tickSessionTimer()
-                    SyncManager.tickActivePasses(FocusBlockerService.currentPackage)
+                    SyncManager.tickActivePasses(FocusBlockerManager.currentPackage)
+                    if (FocusBlockerService.instance == null) {
+                        FocusBlockerManager.tickTimers(this@SyncService)
+                    }
                 }
 
                 // Keep foreground notification updated live with Stop All Service button
                 updateForegroundNotification()
 
                 delay(1000)
+            }
+        }
+
+        // UsageStats Hybrid Watcher: monitors apps in background when Accessibility is OFF
+        serviceScope.launch {
+            var lastFgApp: String? = null
+            while (isActive) {
+                val isA11yActive = FocusBlockerService.instance != null && !FocusBlockerManager.isServiceDisabled
+                val hasUsage = SyncManager.hasUsageStatsPermission(this@SyncService)
+                val hasOverlay = android.provider.Settings.canDrawOverlays(this@SyncService)
+
+                if (!isA11yActive && hasUsage && hasOverlay && !FocusBlockerManager.isServiceDisabled) {
+                    val fgApp = getForegroundAppViaUsageStats()
+                    if (fgApp != null && fgApp != lastFgApp) {
+                        lastFgApp = fgApp
+                        withContext(Dispatchers.Main) {
+                            FocusBlockerManager.handleAppSwitch(this@SyncService, fgApp, fromAccessibility = false)
+                        }
+                    }
+                } else if (isA11yActive) {
+                    lastFgApp = null
+                }
+                delay(400)
             }
         }
 
@@ -82,6 +110,25 @@ class SyncService : Service() {
                 val delayTime = if (isBusy) 2500L else 5000L
                 delay(delayTime)
             }
+        }
+    }
+
+    private fun getForegroundAppViaUsageStats(): String? {
+        return try {
+            val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager ?: return null
+            val time = System.currentTimeMillis()
+            val events = usm.queryEvents(time - 3000, time)
+            val event = android.app.usage.UsageEvents.Event()
+            var lastPackage: String? = null
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                    lastPackage = event.packageName
+                }
+            }
+            lastPackage
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -319,6 +366,9 @@ class SyncService : Service() {
                 val formattedTime = if (resolvedSec > 0) String.format(Locale.US, "%02d:%02d", mins, secs) else base.optString("formattedTime", "00:00")
                 val maxPeriod = if (isPrayerBreak) 900 else base.optInt("maxPeriodSec", 1)
 
+                val incomingGifHash = base.optString("gifHash", "")
+                val incomingGifOpacity = if (base.has("gifOpacity")) base.optDouble("gifOpacity", 0.78).toFloat() else SyncManager.currentStatus.gifOpacity
+
                 SyncManager.currentStatus = FocusStatus(
                     state = base.optString("state", "idle"),
                     formattedTime = formattedTime,
@@ -338,16 +388,31 @@ class SyncService : Service() {
                     prayerNextName = if (prayerNextName.isNotEmpty()) prayerNextName else SyncManager.currentStatus.prayerNextName,
                     prayerNextTime = if (prayerNextTime.isNotEmpty()) prayerNextTime else SyncManager.currentStatus.prayerNextTime,
                     prayerTimes = if (prayerTimesList.isNotEmpty()) prayerTimesList else SyncManager.currentStatus.prayerTimes,
-                    customGif = if (base.has("customGif")) base.optString("customGif", "") else SyncManager.currentStatus.customGif,
-                    gifOpacity = if (base.has("gifOpacity")) base.optDouble("gifOpacity", 0.78).toFloat() else SyncManager.currentStatus.gifOpacity,
+                    customGif = SyncManager.currentStatus.customGif,
+                    gifOpacity = incomingGifOpacity,
                     activePasses = finalPasses.values.toList()
                 )
 
-                if (base.has("customGif")) {
-                    SyncManager.updateCustomGif(
-                        base.optString("customGif", ""),
-                        base.optDouble("gifOpacity", 0.78).toFloat()
-                    )
+                if (incomingGifHash.isNotEmpty()) {
+                    if (incomingGifHash != SyncManager.cachedGifHash) {
+                        // GIF changed on desktop or fresh install: Fetch dedicated node ONCE only
+                        serviceScope.launch(Dispatchers.IO) {
+                            fetchAndCacheGif(incomingGifHash, incomingGifOpacity)
+                        }
+                    } else if (SyncManager.currentStatus.gifOpacity != incomingGifOpacity) {
+                        SyncManager.updateCustomGif(SyncManager.currentStatus.customGif, incomingGifOpacity, incomingGifHash)
+                    }
+                } else if (base.has("gifHash") && incomingGifHash.isEmpty()) {
+                    // Desktop explicitly removed custom gif
+                    if (SyncManager.currentStatus.customGif.isNotEmpty() || SyncManager.cachedGifHash.isNotEmpty()) {
+                        SyncManager.updateCustomGif("", incomingGifOpacity, "")
+                    }
+                } else if (base.has("customGif") && !base.isNull("customGif")) {
+                    // Legacy fallback
+                    val directGif = base.optString("customGif", "")
+                    if (directGif.isNotEmpty()) {
+                        SyncManager.updateCustomGif(directGif, incomingGifOpacity, "")
+                    }
                 }
 
                 val data = SyncManager.doomData ?: JSONObject()
@@ -423,6 +488,42 @@ class SyncService : Service() {
     fun pushLocalStateToCloud() {
         CoroutineScope(Dispatchers.IO).launch {
             pushLocalStateToCloudInternal()
+        }
+    }
+
+    private suspend fun fetchAndCacheGif(hash: String, opacity: Float) {
+        if (isFetchingGif) return
+        isFetchingGif = true
+        try {
+            val request = Request.Builder().url(FIREBASE_GIF_URL).build()
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val bodyStr = response.body?.string()
+                    if (!bodyStr.isNullOrEmpty() && bodyStr != "null") {
+                        val rawData: String = if (bodyStr.startsWith("{")) {
+                            val json = JSONObject(bodyStr)
+                            json.optString("data", "")
+                        } else if (bodyStr.startsWith("\"") && bodyStr.endsWith("\"")) {
+                            try {
+                                org.json.JSONTokener(bodyStr).nextValue().toString()
+                            } catch (e: Exception) {
+                                bodyStr.removeSurrounding("\"")
+                            }
+                        } else {
+                            bodyStr
+                        }
+                        if (rawData.isNotEmpty()) {
+                            withContext(Dispatchers.Main) {
+                                SyncManager.updateCustomGif(rawData, opacity, hash)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SyncService", "Error fetching dedicated GIF: ${e.message}")
+        } finally {
+            isFetchingGif = false
         }
     }
 
@@ -510,13 +611,38 @@ class SyncService : Service() {
             this, 2, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val stopText = if (isEn) "Stop All Service" else "Stop All Service"
+        val stopText = if (isEn) "Stop Service" else "Stop Service"
+
+        val isA11yActive = FocusBlockerService.instance != null && !FocusBlockerManager.isServiceDisabled
+        val bankPendingIntent: PendingIntent
+        val bankActionText: String
+
+        if (isA11yActive) {
+            val pauseA11yIntent = Intent(this, SyncService::class.java).apply {
+                action = ACTION_PAUSE_FOR_BANKING
+            }
+            bankPendingIntent = PendingIntent.getService(
+                this, 3, pauseA11yIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            bankActionText = if (isEn) "Open Bank" else "Buka Bank"
+        } else {
+            val a11ySettingsIntent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            bankPendingIntent = PendingIntent.getActivity(
+                this, 4, a11ySettingsIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            bankActionText = if (isEn) "Turn On A11y" else "Nyalakan A11y"
+        }
 
         val publicNotification = NotificationCompat.Builder(this, "sync_channel_v3")
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(icon)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, stopText, stopPendingIntent)
+            .addAction(android.R.drawable.ic_dialog_info, bankActionText, bankPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
@@ -525,6 +651,7 @@ class SyncService : Service() {
             .setContentText(text)
             .setSmallIcon(icon)
             .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.ic_dialog_info, bankActionText, bankPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, stopText, stopPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -629,14 +756,29 @@ class SyncService : Service() {
             stopAllServices()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_PAUSE_FOR_BANKING) {
+            pauseForBanking()
+            return START_STICKY
+        }
         return START_STICKY
+    }
+
+    fun pauseForBanking() {
+        FocusBlockerService.disableSelfFromAnywhere()
+        FocusBlockerManager.hideAllOverlays()
+        updateForegroundNotification()
+        android.widget.Toast.makeText(
+            this,
+            if (SyncManager.currentLanguage == "en") "Accessibility paused for banking. Protected via Usage Access." else "Aksesibilitas dimatikan. Buka BRImo sekarang. Proteksi aktif via Mode Usage Access.",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 
     fun stopAllServices() {
         try {
             // 1. Disable blocker accessibility service & dismiss overlays
-            FocusBlockerService.isServiceDisabled = true
-            FocusBlockerService.instance?.hideAllOverlays()
+            FocusBlockerManager.isServiceDisabled = true
+            FocusBlockerManager.hideAllOverlays()
 
             // 2. Remove foreground state and cancel all notifications
             try {
@@ -671,6 +813,7 @@ class SyncService : Service() {
 
     companion object {
         const val ACTION_STOP_SERVICE = "ACTION_STOP_SERVICE"
+        const val ACTION_PAUSE_FOR_BANKING = "ACTION_PAUSE_FOR_BANKING"
         var instance: SyncService? = null
 
         fun triggerManualSync(onComplete: (() -> Unit)? = null) {
